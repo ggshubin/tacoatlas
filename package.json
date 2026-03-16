@@ -62,7 +62,9 @@
       "^react-native-mmkv$": "<rootDir>/src/__mocks__/react-native-mmkv.js",
       "^nanoid/non-secure$": "<rootDir>/src/__mocks__/nanoid.ts",
       "^react-native-url-polyfill/auto$": "<rootDir>/src/__mocks__/react-native-url-polyfill.ts",
-      "^@react-native-async-storage/async-storage$": "<rootDir>/src/__mocks__/async-storage.ts"
+      "^@react-native-async-storage/async-storage$": "<rootDir>/src/__mocks__/async-storage.ts",
+      "^expo-location$": "<rootDir>/src/__mocks__/expo-location.ts",
+      "^expo-image-picker$": "<rootDir>/src/__mocks__/expo-image-picker.ts"
     },
     "transformIgnorePatterns": [
       "node_modules/(?!(react-native|expo-router|expo-status-bar|expo|expo-camera|expo-image-picker|expo-location)/)"
