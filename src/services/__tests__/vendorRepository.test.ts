@@ -10,7 +10,7 @@ import { supabase } from '../supabase'
 const mockSupabaseClient = supabase as jest.Mocked<typeof supabase>
 
 // Helper to create a fluent mock chain
-const createMockQueryBuilder = (resolveValue = { data: [], error: null }) => {
+const createMockQueryBuilder = (resolveValue: any = { data: [], error: null }) => {
   const builder = {
     select: jest.fn(function() { return this }),
     eq: jest.fn(function() { return this }),
@@ -93,7 +93,7 @@ describe('vendorRepository', () => {
     await vendorRepository.getPendingVendors()
     expect(mockSupabaseClient.from).toHaveBeenCalledWith('vendors')
     // Verify the chain was called with correct parameters
-    const calls = builder.eq.mock.calls
+    const calls = (builder.eq.mock.calls as unknown) as Array<Array<unknown>>
     expect(calls.some(call => call[0] === 'status' && call[1] === 'pending')).toBe(true)
   })
 })

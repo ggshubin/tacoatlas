@@ -2,6 +2,19 @@
  * @jest-environment node
  */
 
+const mockStorageStore: Record<string, string> = {}
+jest.mock('react-native-mmkv', () => ({
+  createMMKV: jest.fn(() => ({
+    getString: (key: string) => mockStorageStore[key],
+    set: (key: string, value: string) => { mockStorageStore[key] = value },
+    remove: (key: string) => { delete mockStorageStore[key] },
+  })),
+}))
+
+jest.mock('nanoid/non-secure', () => ({
+  nanoid: jest.fn(() => 'test-' + Math.random().toString(36).slice(2, 6)),
+}))
+
 import { localStorageService } from '../localStorage'
 
 beforeEach(() => {

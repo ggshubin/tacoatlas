@@ -1,8 +1,8 @@
-import { MMKV } from 'react-native-mmkv'
+import { createMMKV } from 'react-native-mmkv'
 import { nanoid } from 'nanoid/non-secure'
 import type { LocalVendor, LocalReview } from '../types/app'
 
-const storage = new MMKV()
+const storage = createMMKV()
 
 const VENDORS_KEY = 'local_vendors'
 const REVIEWS_KEY = 'local_reviews'
@@ -57,7 +57,7 @@ export const localStorageService = {
   },
 
   clearAll(): void {
-    storage.delete(VENDORS_KEY)
-    storage.delete(REVIEWS_KEY)
+    storage.remove(VENDORS_KEY)
+    storage.remove(REVIEWS_KEY)
   },
 }

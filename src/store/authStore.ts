@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { supabase } from '../services/supabase'
+import { syncService } from '../services/syncService'
 import type { Profile } from '../types/database'
 import type { Session } from '@supabase/supabase-js'
 
@@ -45,6 +46,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const { data: { session } } = await supabase.auth.getSession()
     if (session) {
       await supabase.from('profiles').update({ display_name: displayName }).eq('id', session.user.id)
+      await syncService.syncGuestDataToSupabase(session.user.id)
     }
     await get().loadProfile()
     return { error: null }

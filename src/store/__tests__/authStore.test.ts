@@ -16,6 +16,22 @@ jest.mock('../../services/supabase', () => ({
   },
 }))
 
+// Mock syncService
+jest.mock('../../services/syncService', () => ({
+  syncService: {
+    syncGuestDataToSupabase: jest.fn().mockResolvedValue({ synced: 0 }),
+  },
+}))
+
+// Mock react-native-mmkv
+jest.mock('react-native-mmkv', () => ({
+  createMMKV: jest.fn(() => ({
+    getString: jest.fn(() => undefined),
+    set: jest.fn(),
+    remove: jest.fn(),
+  })),
+}))
+
 import { useAuthStore } from '../authStore'
 
 beforeEach(() => {
