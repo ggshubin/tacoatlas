@@ -16,10 +16,7 @@
       ]
     ],
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#C45C3A"
-      }
+      "icon": "./assets/icon.png"
     },
     "ios": {
       "supportsTablet": true
