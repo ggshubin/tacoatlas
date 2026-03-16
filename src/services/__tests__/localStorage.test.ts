@@ -2,27 +2,10 @@
  * @jest-environment node
  */
 
-// Mock MMKV with in-memory implementation
-const store: Record<string, string> = {}
-jest.mock('react-native-mmkv', () => ({
-  MMKV: jest.fn().mockImplementation(() => ({
-    getString: (key: string) => store[key],
-    set: (key: string, value: string) => { store[key] = value },
-    delete: (key: string) => { delete store[key] },
-  })),
-}))
-
-// Mock nanoid
-jest.mock('nanoid/non-secure', () => ({
-  nanoid: jest.fn(() => 'test-id-' + Math.random().toString(36).slice(2, 7)),
-}))
-
 import { localStorageService } from '../localStorage'
 
 beforeEach(() => {
   localStorageService.clearAll()
-  // Clear store
-  Object.keys(store).forEach(k => delete store[k])
 })
 
 describe('localStorageService', () => {
