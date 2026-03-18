@@ -41,13 +41,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   signUp: async (email, password, displayName) => {
-    const { error } = await supabase.auth.signUp({ email, password })
+    const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { display_name: displayName } } })
     if (error) return { error: error.message }
-    const { data: { session } } = await supabase.auth.getSession()
-    if (session) {
-      await supabase.from('profiles').update({ display_name: displayName }).eq('id', session.user.id)
-      await syncService.syncGuestDataToSupabase(session.user.id)
+    // If email confirmation is required, session will be null
+    if (!data.session) {
+      return { error: 'Check your email to confirm your account, then sign in.' }
     }
+    set({ session: data.session })
+    await supabase.from('profiles').upsert({ id: data.session.user.id, display_name: displayName })
+    await syncService.syncGuestDataToSupabase(data.session.user.id)
     await get().loadProfile()
     return { error: null }
   },

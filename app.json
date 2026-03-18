@@ -34,7 +34,11 @@
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.RECORD_AUDIO"
       ],
-      "package": "com.tacooatlas.app"
+      "package": "com.tacooatlas.app",
+      "navigationBar": {
+        "backgroundColor": "#18140F",
+        "barStyle": "light-content"
+      }
     },
     "ios": {
       "supportsTablet": true,

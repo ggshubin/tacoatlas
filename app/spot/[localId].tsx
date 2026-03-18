@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, FlatList,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, Alert,
 } from 'react-native'
 import { useLocalSearchParams, router, useFocusEffect } from 'expo-router'
 import { useState } from 'react'
@@ -42,6 +42,24 @@ export default function SpotDetailScreen() {
     router.push({ pathname: '/review/add', params: { editReviewId: review.localId, vendorLocalId: vendor.localId } })
   }
 
+  function handleDelete() {
+    Alert.alert(
+      'Delete Spot',
+      `Remove "${vendor?.name}" and all its visits? This can't be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            await localStorageService.deleteVendor(localId)
+            router.replace('/(tabs)/')
+          },
+        },
+      ]
+    )
+  }
+
   if (!vendor) return null
 
   const avgRating = reviews.length
@@ -78,6 +96,9 @@ export default function SpotDetailScreen() {
               )}
             </View>
           </View>
+          <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete}>
+            <Ionicons name="trash-outline" size={20} color={colors.error} />
+          </TouchableOpacity>
         </View>
 
         {/* Stats row */}
@@ -221,6 +242,15 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   headerText: { flex: 1 },
+  deleteBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(224,82,82,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
   vendorName: { fontSize: 28, fontWeight: '800', color: colors.cream, letterSpacing: -0.5 },
   vendorMeta: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm, marginTop: 6 },
   spotTypeBadge: { backgroundColor: colors.amberSubtle, borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: 2, borderWidth: 1, borderColor: colors.amberDim },
