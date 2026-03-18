@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback } from 'react'
 import { View, FlatList, Text, StyleSheet, TouchableOpacity, Image } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect, router } from 'expo-router'
@@ -38,13 +38,6 @@ export default function MyTacosScreen() {
       load()
     }, [])
   )
-
-  // Auto-redirect to Find My Tacos if empty
-  useEffect(() => {
-    if (loaded && rows.length === 0) {
-      router.replace('/(tabs)/')
-    }
-  }, [loaded, rows.length])
 
   return (
     <View style={styles.container}>
@@ -102,6 +95,23 @@ export default function MyTacosScreen() {
               </View>
             </View>
           </View>
+        }
+        ListEmptyComponent={
+          loaded ? (
+            <View style={styles.emptyState}>
+              <Image
+                source={require('../../assets/taco-icon.png')}
+                style={styles.emptyIcon}
+                resizeMode="contain"
+              />
+              <Text style={styles.emptyTitle}>No taco spots yet</Text>
+              <Text style={styles.emptySubtitle}>Start building your taco atlas by logging your first spot.</Text>
+              <TouchableOpacity style={styles.emptyBtn} onPress={() => router.push('/review/add')}>
+                <Ionicons name="add" size={20} color={colors.cream} />
+                <Text style={styles.emptyBtnText}>Log Your First Spot</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null
         }
         contentContainerStyle={styles.list}
       />
@@ -230,4 +240,24 @@ const styles = StyleSheet.create({
   },
   bannerText: { color: colors.cream, fontSize: 13, flex: 1 },
   bannerLink: { color: colors.amber, fontWeight: '700', fontSize: 13 },
+
+  emptyState: {
+    alignItems: 'center',
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.xxl,
+  },
+  emptyIcon: { width: 80, height: 80, marginBottom: spacing.lg, opacity: 0.6 },
+  emptyTitle: { fontSize: 22, fontWeight: '800', color: colors.cream, marginBottom: spacing.sm, textAlign: 'center' },
+  emptySubtitle: { fontSize: 14, color: colors.creamMuted, textAlign: 'center', lineHeight: 20, marginBottom: spacing.xl },
+  emptyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.amber,
+    borderRadius: radius.full,
+    paddingVertical: spacing.sm + 4,
+    paddingHorizontal: spacing.xl,
+  },
+  emptyBtnText: { color: colors.cream, fontWeight: '700', fontSize: 16 },
 })
