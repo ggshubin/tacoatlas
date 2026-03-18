@@ -4,7 +4,7 @@ import { localStorageService } from './localStorage'
 
 export const syncService = {
   async syncGuestDataToSupabase(userId: string): Promise<{ synced: number }> {
-    const localVendors = localStorageService.getVendors()
+    const localVendors = await localStorageService.getVendors()
     if (localVendors.length === 0) return { synced: 0 }
 
     let synced = 0
@@ -22,7 +22,7 @@ export const syncService = {
           submitted_by: userId,
         })
 
-        const localReviews = localStorageService.getReviewsForVendor(localVendor.localId)
+        const localReviews = await localStorageService.getReviewsForVendor(localVendor.localId)
         for (const r of localReviews) {
           await reviewRepository.createReview({
             vendorId: vendor.id,
@@ -53,7 +53,7 @@ export const syncService = {
     }
 
     // Clear local data after successful sync
-    localStorageService.clearAll()
+    await localStorageService.clearAll()
     return { synced }
   },
 }
