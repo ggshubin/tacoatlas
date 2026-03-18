@@ -69,6 +69,11 @@ export const localStorageService = {
     }
   },
 
+  async deleteReview(localId: string): Promise<void> {
+    const reviews = await getReviews()
+    await saveReviews(reviews.filter(r => r.localId !== localId))
+  },
+
   async deleteVendor(localId: string): Promise<void> {
     const vendors = await getVendors()
     await saveVendors(vendors.filter(v => v.localId !== localId))

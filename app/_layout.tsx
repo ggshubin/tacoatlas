@@ -1,12 +1,21 @@
 import { useEffect, useState } from 'react'
+import { Platform } from 'react-native'
 import { Stack, router } from 'expo-router'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import * as NavigationBar from 'expo-navigation-bar'
 import { supabase } from '../src/services/supabase'
 import { useAuthStore } from '../src/store/authStore'
 
 export default function RootLayout() {
   const { setSession, loadProfile } = useAuthStore()
   const [ready, setReady] = useState(false)
+
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      NavigationBar.setVisibilityAsync('hidden')
+      NavigationBar.setBehaviorAsync('overlay-swipe')
+    }
+  }, [])
 
   useEffect(() => {
     async function init() {

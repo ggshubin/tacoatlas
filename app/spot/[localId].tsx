@@ -42,6 +42,24 @@ export default function SpotDetailScreen() {
     router.push({ pathname: '/review/add', params: { editReviewId: review.localId, vendorLocalId: vendor.localId } })
   }
 
+  function handleDeleteReview(review: LocalReview) {
+    Alert.alert(
+      'Delete Visit',
+      'Remove this visit? This can\'t be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            await localStorageService.deleteReview(review.localId)
+            setReviews(prev => prev.filter(r => r.localId !== review.localId))
+          },
+        },
+      ]
+    )
+  }
+
   function handleDelete() {
     Alert.alert(
       'Delete Spot',
@@ -124,10 +142,15 @@ export default function SpotDetailScreen() {
               <Text style={styles.reviewDate}>
                 {new Date(review.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
               </Text>
-              <TouchableOpacity style={styles.editBtn} onPress={() => handleEdit(review)}>
-                <Ionicons name="pencil" size={14} color={colors.amber} />
-                <Text style={styles.editBtnText}>Edit</Text>
-              </TouchableOpacity>
+              <View style={styles.reviewActions}>
+                <TouchableOpacity style={styles.editBtn} onPress={() => handleEdit(review)}>
+                  <Ionicons name="pencil" size={14} color={colors.amber} />
+                  <Text style={styles.editBtnText}>Edit</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.deleteReviewBtn} onPress={() => handleDeleteReview(review)}>
+                  <Ionicons name="trash-outline" size={14} color={colors.error} />
+                </TouchableOpacity>
+              </View>
             </View>
 
             {/* Overall rating + intent */}
@@ -283,8 +306,10 @@ const styles = StyleSheet.create({
   },
   reviewHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
   reviewDate: { fontSize: 12, color: colors.creamDim, fontWeight: '600', letterSpacing: 0.5 },
+  reviewActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   editBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4, paddingHorizontal: spacing.sm, backgroundColor: colors.amberSubtle, borderRadius: radius.full },
   editBtnText: { color: colors.amber, fontSize: 12, fontWeight: '700' },
+  deleteReviewBtn: { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(224,82,82,0.15)', alignItems: 'center', justifyContent: 'center' },
 
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md },
   intentBadge: { borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: 3 },
