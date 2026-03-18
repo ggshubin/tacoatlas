@@ -1,5 +1,7 @@
 import React from 'react'
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
+import { View, TouchableOpacity } from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
+import { colors } from '../utils/theme'
 
 interface Props {
   value: number
@@ -12,7 +14,7 @@ export function TacoRating({ value, onChange, readonly = false, size = 28 }: Pro
   const tacos = [1, 2, 3, 4, 5]
 
   return (
-    <View style={styles.row}>
+    <View style={{ flexDirection: 'row', gap: 4 }}>
       {tacos.map((n) => (
         <TouchableOpacity
           key={n}
@@ -21,13 +23,13 @@ export function TacoRating({ value, onChange, readonly = false, size = 28 }: Pro
           accessibilityLabel={`${n} taco${n > 1 ? 's' : ''}`}
           accessibilityRole="button"
         >
-          <Text style={{ fontSize: size, opacity: n <= value ? 1 : 0.25 }}>🌮</Text>
+          <Ionicons
+            name="restaurant"
+            size={size}
+            color={n <= value ? colors.amber : colors.surfaceBorder}
+          />
         </TouchableOpacity>
       ))}
     </View>
   )
 }
-
-const styles = StyleSheet.create({
-  row: { flexDirection: 'row', gap: 4 },
-})

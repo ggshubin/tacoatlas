@@ -1,8 +1,11 @@
 // Local (guest) versions of entities — no UUIDs yet
 
+export type SpotType = 'Truck' | 'Food Cart' | 'Street Tent' | 'House' | 'Brick & Mortar' | 'Restaurant'
+
 export interface LocalVendor {
   localId: string
   name: string
+  spotType: SpotType | null
   lat: number
   lng: number
   address: string | null
@@ -34,5 +37,5 @@ export interface LocalTacoEntry {
 export interface LocalSalsaEntry {
   salsaName: string
   flavorRating: number
-  heatLevel: 'mild' | 'medium' | 'hot' | 'fire' | null
+  heatLevel: 'mild' | 'medium' | 'hot' | 'fire' | 'volcano' | null
 }

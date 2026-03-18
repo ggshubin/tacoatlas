@@ -52,8 +52,21 @@ export const localStorageService = {
     return newReview
   },
 
+  getVendorByLocalId(localId: string): LocalVendor | null {
+    return getVendors().find(v => v.localId === localId) ?? null
+  },
+
   getReviewsForVendor(vendorLocalId: string): LocalReview[] {
     return getReviews().filter(r => r.vendorLocalId === vendorLocalId)
+  },
+
+  updateReview(localId: string, updates: Partial<Omit<LocalReview, 'localId' | 'createdAt'>>): void {
+    const reviews = getReviews()
+    const idx = reviews.findIndex(r => r.localId === localId)
+    if (idx !== -1) {
+      reviews[idx] = { ...reviews[idx], ...updates }
+      saveReviews(reviews)
+    }
   },
 
   clearAll(): void {

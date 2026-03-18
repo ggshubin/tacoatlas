@@ -1,18 +1,39 @@
 export const colors = {
-  terracotta: '#C45C3A',
-  terracottaLight: '#E8855E',
-  cream: '#F5ECD7',
-  creamDark: '#E8D9B8',
-  brown: '#3D1F0A',
-  brownLight: '#6B3A1F',
+  // Backgrounds
+  bg: '#18140F',
+  surface: '#241C16',
+  surfaceRaised: '#2E2218',
+  surfaceBorder: '#3D2E22',
+
+  // Accent
+  amber: '#E8821A',
+  amberDim: '#7A4310',
+  amberSubtle: '#2A1A08',
+
+  // Greens (cilantro accent — use sparingly)
+  green: '#8BC34A',
+  greenDim: '#4A6A20',
+
+  // Text
+  cream: '#F5EDD8',
+  creamMuted: '#B8A898',
+  creamDim: '#6B5B4E',
+
+  // Legacy / compat aliases
+  terracotta: '#E8821A',
+  terracottaLight: '#F09B45',
+  brown: '#18140F',
+  brownLight: '#241C16',
   white: '#FFFFFF',
-  gray100: '#F7F3ED',
-  gray300: '#C4B8A8',
-  gray500: '#7A6A5A',
-  gray700: '#4A3A2A',
-  success: '#4A7C59',
-  warning: '#D4AC2B',
-  error: '#C0392B',
+  gray100: '#2E2218',
+  gray300: '#6B5B4E',
+  gray500: '#B8A898',
+  gray700: '#F5EDD8',
+
+  // Semantic
+  success: '#8BC34A',
+  warning: '#E8C21A',
+  error: '#E05252',
 }
 
 export const typography = {

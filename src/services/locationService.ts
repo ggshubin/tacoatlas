@@ -15,13 +15,17 @@ export const locationService = {
     const hasPermission = await locationService.requestPermission()
     if (!hasPermission) return null
 
-    const location = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.Balanced,
-    })
-
-    return {
-      lat: location.coords.latitude,
-      lng: location.coords.longitude,
+    try {
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      })
+      return {
+        lat: location.coords.latitude,
+        lng: location.coords.longitude,
+      }
+    } catch {
+      // Location unavailable (simulator, services off, etc.) — return null gracefully
+      return null
     }
   },
 

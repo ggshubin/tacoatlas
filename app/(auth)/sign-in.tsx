@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, KeyboardAvoidingView, Platform } from 'react-native'
+import { View, Text, Image, TextInput, TouchableOpacity, StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView, Dimensions } from 'react-native'
 import { router } from 'expo-router'
 import { useAuthStore } from '../../src/store/authStore'
-import { colors, spacing, typography, radius } from '../../src/utils/theme'
+import { colors, spacing, radius } from '../../src/utils/theme'
 
 export default function SignInScreen() {
   const [email, setEmail] = useState('')
@@ -30,71 +30,105 @@ export default function SignInScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <Text style={styles.title}>Sign In</Text>
-      <Text style={styles.subtitle}>Welcome back to TacoAtlas</Text>
-
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        placeholderTextColor={colors.gray300}
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
-        autoComplete="email"
+      <Image
+        source={require('../../assets/background.png')}
+        style={StyleSheet.absoluteFillObject}
+        resizeMode="cover"
       />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        placeholderTextColor={colors.gray300}
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        autoComplete="password"
-      />
+      <ScrollView contentContainerStyle={styles.inner} keyboardShouldPersistTaps="handled">
+        {/* Hero banner */}
+        <Image
+          source={require('../../assets/header.png')}
+          style={styles.heroBanner}
+          resizeMode="cover"
+        />
 
-      <TouchableOpacity
-        style={[styles.button, loading && styles.buttonDisabled]}
-        onPress={handleSignIn}
-        disabled={loading}
-      >
-        <Text style={styles.buttonText}>{loading ? 'Signing in...' : 'Sign In'}</Text>
-      </TouchableOpacity>
+        {/* Form */}
+        <View style={styles.form}>
+          <Text style={styles.formTitle}>Welcome back</Text>
 
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>No account? </Text>
-        <TouchableOpacity onPress={() => router.push('/(auth)/sign-up')}>
-          <Text style={styles.link}>Sign Up</Text>
-        </TouchableOpacity>
-      </View>
+          <TextInput
+            style={styles.input}
+            placeholder="Email"
+            placeholderTextColor={colors.creamDim}
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            autoComplete="email"
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
+            placeholderTextColor={colors.creamDim}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            autoComplete="password"
+          />
+
+          <TouchableOpacity
+            style={[styles.button, loading && styles.buttonDisabled]}
+            onPress={handleSignIn}
+            disabled={loading}
+          >
+            <Text style={styles.buttonText}>{loading ? 'Signing in...' : 'Sign In'}</Text>
+          </TouchableOpacity>
+
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>No account? </Text>
+            <TouchableOpacity onPress={() => router.push('/(auth)/sign-up')}>
+              <Text style={styles.link}>Sign Up</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   )
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.cream, padding: spacing.xl, justifyContent: 'center' },
-  title: { fontSize: typography.fontSizeXxl, fontWeight: typography.fontWeightBold, color: colors.brown, marginBottom: spacing.xs },
-  subtitle: { fontSize: typography.fontSizeMd, color: colors.gray500, marginBottom: spacing.xl },
+  container: { flex: 1, backgroundColor: colors.bg },
+  inner: { flexGrow: 1 },
+  heroBanner: {
+    width: Dimensions.get('window').width,
+    height: 220,
+  },
+
+  form: {
+    padding: spacing.xl,
+  },
+  formTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.cream,
+    marginBottom: spacing.lg,
+  },
   input: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surfaceRaised,
     borderRadius: radius.md,
     padding: spacing.md,
     marginBottom: spacing.md,
-    fontSize: typography.fontSizeLg,
-    color: colors.brown,
+    fontSize: 16,
+    color: colors.cream,
     borderWidth: 1,
-    borderColor: colors.creamDark,
+    borderColor: colors.surfaceBorder,
   },
   button: {
-    backgroundColor: colors.terracotta,
+    backgroundColor: colors.amber,
     borderRadius: radius.md,
     padding: spacing.md,
     alignItems: 'center',
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
   },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: colors.white, fontWeight: typography.fontWeightBold, fontSize: typography.fontSizeLg },
+  buttonDisabled: { opacity: 0.5 },
+  buttonText: {
+    color: colors.cream,
+    fontWeight: '700',
+    fontSize: 16,
+    letterSpacing: 0.3,
+  },
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: spacing.lg },
-  footerText: { color: colors.gray500 },
-  link: { color: colors.terracotta, fontWeight: typography.fontWeightBold },
+  footerText: { color: colors.creamMuted, fontSize: 14 },
+  link: { color: colors.amber, fontWeight: '700', fontSize: 14 },
 })
