@@ -1,76 +1,76 @@
-import { createMMKV } from 'react-native-mmkv'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { nanoid } from 'nanoid/non-secure'
 import type { LocalVendor, LocalReview } from '../types/app'
-
-const storage = createMMKV()
 
 const VENDORS_KEY = 'local_vendors'
 const REVIEWS_KEY = 'local_reviews'
 
-function getVendors(): LocalVendor[] {
-  const raw = storage.getString(VENDORS_KEY)
+async function getVendors(): Promise<LocalVendor[]> {
+  const raw = await AsyncStorage.getItem(VENDORS_KEY)
   return raw ? JSON.parse(raw) : []
 }
 
-function saveVendors(vendors: LocalVendor[]): void {
-  storage.set(VENDORS_KEY, JSON.stringify(vendors))
+async function saveVendors(vendors: LocalVendor[]): Promise<void> {
+  await AsyncStorage.setItem(VENDORS_KEY, JSON.stringify(vendors))
 }
 
-function getReviews(): LocalReview[] {
-  const raw = storage.getString(REVIEWS_KEY)
+async function getReviews(): Promise<LocalReview[]> {
+  const raw = await AsyncStorage.getItem(REVIEWS_KEY)
   return raw ? JSON.parse(raw) : []
 }
 
-function saveReviews(reviews: LocalReview[]): void {
-  storage.set(REVIEWS_KEY, JSON.stringify(reviews))
+async function saveReviews(reviews: LocalReview[]): Promise<void> {
+  await AsyncStorage.setItem(REVIEWS_KEY, JSON.stringify(reviews))
 }
 
 export const localStorageService = {
-  addVendor(vendor: Omit<LocalVendor, 'localId' | 'createdAt'>): LocalVendor {
-    const vendors = getVendors()
+  async addVendor(vendor: Omit<LocalVendor, 'localId' | 'createdAt'>): Promise<LocalVendor> {
+    const vendors = await getVendors()
     const newVendor: LocalVendor = {
       ...vendor,
       localId: nanoid(),
       createdAt: new Date().toISOString(),
     }
-    saveVendors([...vendors, newVendor])
+    await saveVendors([...vendors, newVendor])
     return newVendor
   },
 
-  getVendors(): LocalVendor[] {
+  async getVendors(): Promise<LocalVendor[]> {
     return getVendors()
   },
 
-  addReview(review: Omit<LocalReview, 'localId' | 'createdAt'>): LocalReview {
-    const reviews = getReviews()
+  async getVendorByLocalId(localId: string): Promise<LocalVendor | null> {
+    const vendors = await getVendors()
+    return vendors.find(v => v.localId === localId) ?? null
+  },
+
+  async addReview(review: Omit<LocalReview, 'localId' | 'createdAt'>): Promise<LocalReview> {
+    const reviews = await getReviews()
     const newReview: LocalReview = {
       ...review,
       localId: nanoid(),
       createdAt: new Date().toISOString(),
     }
-    saveReviews([...reviews, newReview])
+    await saveReviews([...reviews, newReview])
     return newReview
   },
 
-  getVendorByLocalId(localId: string): LocalVendor | null {
-    return getVendors().find(v => v.localId === localId) ?? null
+  async getReviewsForVendor(vendorLocalId: string): Promise<LocalReview[]> {
+    const reviews = await getReviews()
+    return reviews.filter(r => r.vendorLocalId === vendorLocalId)
   },
 
-  getReviewsForVendor(vendorLocalId: string): LocalReview[] {
-    return getReviews().filter(r => r.vendorLocalId === vendorLocalId)
-  },
-
-  updateReview(localId: string, updates: Partial<Omit<LocalReview, 'localId' | 'createdAt'>>): void {
-    const reviews = getReviews()
+  async updateReview(localId: string, updates: Partial<Omit<LocalReview, 'localId' | 'createdAt'>>): Promise<void> {
+    const reviews = await getReviews()
     const idx = reviews.findIndex(r => r.localId === localId)
     if (idx !== -1) {
       reviews[idx] = { ...reviews[idx], ...updates }
-      saveReviews(reviews)
+      await saveReviews(reviews)
     }
   },
 
-  clearAll(): void {
-    storage.remove(VENDORS_KEY)
-    storage.remove(REVIEWS_KEY)
+  async clearAll(): Promise<void> {
+    await AsyncStorage.removeItem(VENDORS_KEY)
+    await AsyncStorage.removeItem(REVIEWS_KEY)
   },
 }

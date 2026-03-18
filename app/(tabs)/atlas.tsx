@@ -8,26 +8,43 @@ import { TacoRating } from '../../src/components/TacoRating'
 import { colors, spacing, radius } from '../../src/utils/theme'
 import type { LocalVendor } from '../../src/types/app'
 
+interface VendorRow {
+  vendor: LocalVendor
+  visitCount: number
+  avgRating: number | null
+}
 
 export default function MyTacosScreen() {
   const { session } = useAuthStore()
-  const [vendors, setVendors] = useState<LocalVendor[]>([])
+  const [rows, setRows] = useState<VendorRow[]>([])
   const [loaded, setLoaded] = useState(false)
 
   useFocusEffect(
     useCallback(() => {
-      const v = localStorageService.getVendors()
-      setVendors(v)
-      setLoaded(true)
+      async function load() {
+        const vendors = await localStorageService.getVendors()
+        const result: VendorRow[] = await Promise.all(
+          vendors.map(async (vendor) => {
+            const reviews = await localStorageService.getReviewsForVendor(vendor.localId)
+            const avgRating = reviews.length
+              ? reviews.reduce((sum, r) => sum + r.overallRating, 0) / reviews.length
+              : null
+            return { vendor, visitCount: reviews.length, avgRating }
+          })
+        )
+        setRows(result)
+        setLoaded(true)
+      }
+      load()
     }, [])
   )
 
   // Auto-redirect to Find My Tacos if empty
   useEffect(() => {
-    if (loaded && vendors.length === 0) {
+    if (loaded && rows.length === 0) {
       router.replace('/(tabs)/')
     }
-  }, [loaded, vendors.length])
+  }, [loaded, rows.length])
 
   return (
     <View style={styles.container}>
@@ -37,59 +54,51 @@ export default function MyTacosScreen() {
         resizeMode="cover"
       />
 
-      {/* Content */}
       <FlatList
-        data={vendors}
-        keyExtractor={v => v.localId}
-        renderItem={({ item }) => {
-          const reviews = localStorageService.getReviewsForVendor(item.localId)
-          const avgRating = reviews.length
-            ? reviews.reduce((sum, r) => sum + r.overallRating, 0) / reviews.length
-            : null
-
-          return (
-            <TouchableOpacity style={styles.card} onPress={() => router.push(`/spot/${item.localId}`)}>
-              <View style={styles.cardLeft}>
-                <View style={styles.tacoIcon}>
-                  <Image
-                    source={require('../../assets/taco-icon.png')}
-                    style={{ width: 32, height: 32, borderRadius: 6 }}
-                    resizeMode="contain"
-                  />
+        data={rows}
+        keyExtractor={r => r.vendor.localId}
+        renderItem={({ item: { vendor, visitCount, avgRating } }) => (
+          <TouchableOpacity style={styles.card} onPress={() => router.push(`/spot/${vendor.localId}`)}>
+            <View style={styles.cardLeft}>
+              <View style={styles.tacoIcon}>
+                <Image
+                  source={require('../../assets/taco-icon.png')}
+                  style={{ width: 32, height: 32, borderRadius: 6 }}
+                  resizeMode="contain"
+                />
+              </View>
+            </View>
+            <View style={styles.cardBody}>
+              <Text style={styles.name}>{vendor.name}</Text>
+              {vendor.cityName && (
+                <View style={styles.cityRow}>
+                  <Ionicons name="location-sharp" size={12} color={colors.creamMuted} />
+                  <Text style={styles.city}>{vendor.cityName}</Text>
                 </View>
-              </View>
-              <View style={styles.cardBody}>
-                <Text style={styles.name}>{item.name}</Text>
-                {item.cityName && (
-                  <View style={styles.cityRow}>
-                    <Ionicons name="location-sharp" size={12} color={colors.creamMuted} />
-                    <Text style={styles.city}>{item.cityName}</Text>
-                  </View>
-                )}
-                {item.spotType && (
-                  <Text style={styles.spotType}>{item.spotType}</Text>
-                )}
-                {avgRating !== null ? (
-                  <TacoRating value={Math.round(avgRating)} readonly size={14} />
-                ) : (
-                  <Text style={styles.noReviews}>No visits yet</Text>
-                )}
-              </View>
-              <View style={styles.cardRight}>
-                <Text style={styles.reviewCount}>{reviews.length}</Text>
-                <Text style={styles.reviewLabel}>visit{reviews.length !== 1 ? 's' : ''}</Text>
-              </View>
-            </TouchableOpacity>
-          )
-        }}
+              )}
+              {vendor.spotType && (
+                <Text style={styles.spotType}>{vendor.spotType}</Text>
+              )}
+              {avgRating !== null ? (
+                <TacoRating value={Math.round(avgRating)} readonly size={14} />
+              ) : (
+                <Text style={styles.noReviews}>No visits yet</Text>
+              )}
+            </View>
+            <View style={styles.cardRight}>
+              <Text style={styles.reviewCount}>{visitCount}</Text>
+              <Text style={styles.reviewLabel}>visit{visitCount !== 1 ? 's' : ''}</Text>
+            </View>
+          </TouchableOpacity>
+        )}
         ListHeaderComponent={
           <View style={styles.header}>
             <Text style={styles.headerEyebrow}>YOUR COLLECTION</Text>
             <Text style={styles.headerTitle}>My Tacos</Text>
             <View style={styles.statsRow}>
               <View style={styles.statPill}>
-                <Text style={styles.statNumber}>{vendors.length}</Text>
-                <Text style={styles.statLabel}> spot{vendors.length !== 1 ? 's' : ''} tracked</Text>
+                <Text style={styles.statNumber}>{rows.length}</Text>
+                <Text style={styles.statLabel}> spot{rows.length !== 1 ? 's' : ''} tracked</Text>
               </View>
             </View>
           </View>

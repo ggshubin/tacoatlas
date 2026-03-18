@@ -147,7 +147,7 @@ export default function AddReviewModal() {
     }
 
     if (isEditing && store.editingReviewLocalId) {
-      localStorageService.updateReview(store.editingReviewLocalId, {
+      await localStorageService.updateReview(store.editingReviewLocalId, {
         overallRating: store.overallRating || 3,
         returnIntent: store.returnIntent,
         notes: store.notes || null,
@@ -161,7 +161,7 @@ export default function AddReviewModal() {
       return
     }
 
-    localStorageService.addVendor({
+    const vendor = await localStorageService.addVendor({
       name: store.vendorName.trim(),
       spotType: store.spotType,
       lat: store.lat ?? 0,
@@ -172,9 +172,7 @@ export default function AddReviewModal() {
       photoUri: null,
     })
 
-    const vendor = localStorageService.getVendors().slice(-1)[0]
-
-    localStorageService.addReview({
+    await localStorageService.addReview({
       vendorLocalId: params.vendorLocalId ?? vendor.localId,
       overallRating: store.overallRating || 3,
       returnIntent: store.returnIntent,

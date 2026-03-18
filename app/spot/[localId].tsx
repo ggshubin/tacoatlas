@@ -27,9 +27,12 @@ export default function SpotDetailScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      const v = localStorageService.getVendorByLocalId(localId)
-      setVendor(v)
-      if (v) setReviews(localStorageService.getReviewsForVendor(v.localId))
+      async function load() {
+        const v = await localStorageService.getVendorByLocalId(localId)
+        setVendor(v)
+        if (v) setReviews(await localStorageService.getReviewsForVendor(v.localId))
+      }
+      load()
     }, [localId])
   )
 
