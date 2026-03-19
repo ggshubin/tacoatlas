@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { localStorageService } from '../../src/services/localStorage'
 import { useReviewFormStore } from '../../src/store/reviewFormStore'
 import { TacoRating } from '../../src/components/TacoRating'
+import { shareSpot } from '../../src/utils/shareSpot'
 import { colors, spacing, radius, typography } from '../../src/utils/theme'
 import type { LocalVendor, LocalReview } from '../../src/types/app'
 
@@ -114,6 +115,13 @@ export default function SpotDetailScreen() {
               )}
             </View>
           </View>
+          <TouchableOpacity
+            style={styles.shareBtn}
+            onPress={() => shareSpot(vendor, reviews)}
+            accessibilityLabel="Share this spot"
+          >
+            <Ionicons name="share-outline" size={22} color={colors.amber} />
+          </TouchableOpacity>
           <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete}>
             <Ionicons name="trash-outline" size={20} color={colors.error} />
           </TouchableOpacity>
@@ -265,6 +273,9 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   headerText: { flex: 1 },
+  shareBtn: {
+    padding: spacing.sm,
+  },
   deleteBtn: {
     width: 36,
     height: 36,
