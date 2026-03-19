@@ -86,4 +86,14 @@ export const localStorageService = {
     await AsyncStorage.removeItem(VENDORS_KEY)
     await AsyncStorage.removeItem(REVIEWS_KEY)
   },
+
+  async getVendorCount(): Promise<number> {
+    const vendors = await getVendors()
+    return vendors.length
+  },
+
+  async isAtFreeLimit(): Promise<boolean> {
+    const count = await this.getVendorCount()
+    return count >= 15
+  },
 }
