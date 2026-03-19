@@ -1,12 +1,12 @@
 import { useState, useCallback } from 'react'
-import { View, FlatList, Text, StyleSheet, TouchableOpacity, Image } from 'react-native'
+import { View, FlatList, Text, StyleSheet, TouchableOpacity, Image, TextInput } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect, router } from 'expo-router'
 import { useAuthStore } from '../../src/store/authStore'
 import { localStorageService } from '../../src/services/localStorage'
 import { TacoRating } from '../../src/components/TacoRating'
 import { colors, spacing, radius } from '../../src/utils/theme'
-import type { LocalVendor } from '../../src/types/app'
+import type { LocalVendor, SpotType } from '../../src/types/app'
 
 interface VendorRow {
   vendor: LocalVendor
@@ -18,6 +18,14 @@ export default function MyTacosScreen() {
   const { session } = useAuthStore()
   const [rows, setRows] = useState<VendorRow[]>([])
   const [loaded, setLoaded] = useState(false)
+  const [search, setSearch] = useState('')
+  const [filterType, setFilterType] = useState<SpotType | null>(null)
+
+  const filteredRows = rows.filter(({ vendor }) => {
+    const matchesSearch = vendor.name.toLowerCase().includes(search.toLowerCase())
+    const matchesType = filterType === null || vendor.spotType === filterType
+    return matchesSearch && matchesType
+  })
 
   useFocusEffect(
     useCallback(() => {
@@ -48,7 +56,7 @@ export default function MyTacosScreen() {
       />
 
       <FlatList
-        data={rows}
+        data={filteredRows}
         keyExtractor={r => r.vendor.localId}
         renderItem={({ item: { vendor, visitCount, avgRating } }) => (
           <TouchableOpacity style={styles.card} onPress={() => router.push(`/spot/${vendor.localId}`)}>
@@ -92,6 +100,24 @@ export default function MyTacosScreen() {
               <View style={styles.statPill}>
                 <Text style={styles.statNumber}>{rows.length}</Text>
                 <Text style={styles.statLabel}> spot{rows.length !== 1 ? 's' : ''} tracked</Text>
+              </View>
+            </View>
+            <View style={styles.searchRow}>
+              <View style={styles.searchBar}>
+                <Ionicons name="search" size={16} color={colors.creamMuted} />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search spots..."
+                  placeholderTextColor={colors.creamMuted}
+                  value={search}
+                  onChangeText={setSearch}
+                  returnKeyType="search"
+                />
+                {search.length > 0 && (
+                  <TouchableOpacity onPress={() => setSearch('')}>
+                    <Ionicons name="close-circle" size={16} color={colors.creamMuted} />
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
           </View>
@@ -161,7 +187,26 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
     marginBottom: spacing.sm,
   },
-  statsRow: { flexDirection: 'row' },
+  statsRow: { flexDirection: 'row', marginBottom: spacing.sm },
+  searchRow: {
+    paddingBottom: spacing.sm,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
+  },
+  searchInput: {
+    flex: 1,
+    color: colors.cream,
+    fontSize: 14,
+  },
   statPill: {
     backgroundColor: 'rgba(36, 28, 22, 0.85)',
     borderRadius: radius.full,
