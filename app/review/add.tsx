@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   View,
   Text,
@@ -20,6 +20,7 @@ import { locationService } from '../../src/services/locationService'
 import { Ionicons } from '@expo/vector-icons'
 import { TacoRating } from '../../src/components/TacoRating'
 import { colors, spacing, typography, radius } from '../../src/utils/theme'
+import { ProPaywallModal } from '../../src/components/ProPaywallModal'
 
 const HEAT_CONFIG: Record<string, { icon: 'thermometer-outline' | 'thermometer'; color: string; label: string; flame?: boolean; volcano?: boolean }> = {
   mild:    { icon: 'thermometer-outline', color: '#64B5F6', label: 'Mild' },
@@ -89,6 +90,17 @@ export default function AddReviewModal() {
   const store = useReviewFormStore()
   const { session } = useAuthStore()
   const isEditing = !!store.editingReviewLocalId
+  const [showPaywall, setShowPaywall] = useState(false)
+
+  useEffect(() => {
+    async function checkLimit() {
+      const atLimit = await localStorageService.isAtFreeLimit()
+      if (atLimit) setShowPaywall(true)
+    }
+    if (!isEditing) {
+      checkLimit()
+    }
+  }, [isEditing])
 
   // Initialize from params if coming from vendor detail (new review only)
   useState(() => {
@@ -395,6 +407,10 @@ export default function AddReviewModal() {
           </TouchableOpacity>
         )}
       </View>
+      <ProPaywallModal
+        visible={showPaywall}
+        onClose={() => { setShowPaywall(false); router.back() }}
+      />
     </KeyboardAvoidingView>
   )
 }
