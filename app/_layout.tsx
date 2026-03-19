@@ -5,9 +5,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as NavigationBar from 'expo-navigation-bar'
 import { supabase } from '../src/services/supabase'
 import { useAuthStore } from '../src/store/authStore'
+import { proService } from '../src/services/proService'
+import { useProStore } from '../src/store/proStore'
 
 export default function RootLayout() {
   const { setSession, loadProfile } = useAuthStore()
+  const { checkPro } = useProStore()
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
@@ -15,6 +18,11 @@ export default function RootLayout() {
       NavigationBar.setVisibilityAsync('hidden')
       NavigationBar.setBehaviorAsync('overlay-swipe')
     }
+  }, [])
+
+  useEffect(() => {
+    proService.configure()
+    checkPro()
   }, [])
 
   useEffect(() => {

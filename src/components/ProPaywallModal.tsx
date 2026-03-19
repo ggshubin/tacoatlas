@@ -1,6 +1,9 @@
-import { Modal, View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native'
+import { useState } from 'react'
+import { Modal, View, Text, TouchableOpacity, StyleSheet, Image, ActivityIndicator, Alert } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { colors, spacing, radius } from '../utils/theme'
+import { proService } from '../services/proService'
+import { useProStore } from '../store/proStore'
 
 interface Props {
   visible: boolean
@@ -8,6 +11,44 @@ interface Props {
 }
 
 export function ProPaywallModal({ visible, onClose }: Props) {
+  const { setPro } = useProStore()
+  const [purchasing, setPurchasing] = useState(false)
+
+  async function handleUpgrade() {
+    setPurchasing(true)
+    try {
+      const pkg = await proService.getProPackage()
+      if (!pkg) {
+        Alert.alert('Error', 'Could not load purchase options. Try again later.')
+        return
+      }
+      const success = await proService.purchase(pkg)
+      if (success) {
+        setPro(true)
+        onClose()
+      }
+    } catch {
+      Alert.alert('Error', 'Purchase failed. Please try again.')
+    } finally {
+      setPurchasing(false)
+    }
+  }
+
+  async function handleRestore() {
+    setPurchasing(true)
+    try {
+      const success = await proService.restore()
+      if (success) {
+        setPro(true)
+        onClose()
+      } else {
+        Alert.alert('No purchase found', 'No previous TacoAtlas Pro purchase found on this account.')
+      }
+    } finally {
+      setPurchasing(false)
+    }
+  }
+
   return (
     <Modal visible={visible} transparent animationType="slide">
       <View style={styles.overlay}>
@@ -35,11 +76,18 @@ export function ProPaywallModal({ visible, onClose }: Props) {
               </View>
             ))}
           </View>
-          <TouchableOpacity style={styles.upgradeBtn} onPress={onClose}>
-            <Text style={styles.upgradeBtnText}>Upgrade for $3.99</Text>
+          <TouchableOpacity style={styles.upgradeBtn} onPress={handleUpgrade} disabled={purchasing}>
+            {purchasing ? (
+              <ActivityIndicator color={colors.cream} />
+            ) : (
+              <Text style={styles.upgradeBtnText}>Upgrade for $3.99</Text>
+            )}
           </TouchableOpacity>
-          <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
+          <TouchableOpacity style={styles.cancelBtn} onPress={onClose} disabled={purchasing}>
             <Text style={styles.cancelBtnText}>Maybe later</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.restoreBtn} onPress={handleRestore} disabled={purchasing}>
+            <Text style={styles.restoreBtnText}>Restore purchase</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -98,4 +146,6 @@ const styles = StyleSheet.create({
   upgradeBtnText: { color: colors.cream, fontWeight: '700', fontSize: 16 },
   cancelBtn: { paddingVertical: spacing.sm },
   cancelBtnText: { color: colors.creamMuted, fontSize: 14 },
+  restoreBtn: { paddingVertical: spacing.xs },
+  restoreBtnText: { color: colors.creamMuted, fontSize: 12, textDecorationLine: 'underline' },
 })
