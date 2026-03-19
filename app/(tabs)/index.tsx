@@ -5,6 +5,9 @@ import { locationService } from '../../src/services/locationService'
 import { vendorRepository } from '../../src/services/vendorRepository'
 import { reviewRepository } from '../../src/services/reviewRepository'
 import { VendorCard } from '../../src/components/VendorCard'
+import { GooglePlaceCard } from '../../src/components/GooglePlaceCard'
+import { googlePlacesService } from '../../src/services/googlePlacesService'
+import type { GooglePlace } from '../../src/services/googlePlacesService'
 import { colors, spacing, typography } from '../../src/utils/theme'
 import type { Vendor } from '../../src/types/database'
 
@@ -14,6 +17,9 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [googlePlaces, setGooglePlaces] = useState<GooglePlace[]>([])
+  const [remainingSearches, setRemainingSearches] = useState<number>(5)
+  const [searchesLoaded, setSearchesLoaded] = useState(false)
 
   useEffect(() => {
     loadNearbyVendors()
@@ -38,6 +44,16 @@ export default function HomeScreen() {
         })
       )
       setRatings(ratingMap)
+
+      // Load Google Places if we have a real location
+      if (coords) {
+        const places = await googlePlacesService.searchNearby(coords.lat, coords.lng)
+        setGooglePlaces(places)
+      }
+
+      const remaining = await googlePlacesService.getRemainingSearches()
+      setRemainingSearches(remaining)
+      setSearchesLoaded(true)
     } catch {
       setError('Could not load vendors. Pull down to try again.')
     } finally {
@@ -104,6 +120,21 @@ export default function HomeScreen() {
             onRefresh={() => { setRefreshing(true); loadNearbyVendors(true) }}
             tintColor={colors.amber}
           />
+        }
+        ListFooterComponent={
+          googlePlaces.length > 0 ? (
+            <View>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Nearby on Google</Text>
+                {searchesLoaded && (
+                  <Text style={styles.searchesLeft}>{remainingSearches} searches left today</Text>
+                )}
+              </View>
+              {googlePlaces.map(place => (
+                <GooglePlaceCard key={place.id} place={place} />
+              ))}
+            </View>
+          ) : null
         }
         contentContainerStyle={styles.list}
       />
@@ -182,5 +213,23 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 15,
     letterSpacing: 0.3,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.amber,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  searchesLeft: {
+    fontSize: 11,
+    color: colors.creamMuted,
   },
 })

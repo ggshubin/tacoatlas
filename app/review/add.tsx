@@ -86,11 +86,12 @@ const CONDIMENT_OPTIONS = [
 ]
 
 export default function AddReviewModal() {
-  const params = useLocalSearchParams<{ vendorId?: string; vendorName?: string; editReviewId?: string; vendorLocalId?: string }>()
+  const params = useLocalSearchParams<{ vendorId?: string; vendorName?: string; editReviewId?: string; vendorLocalId?: string; prefillName?: string; prefillAddress?: string; prefillLat?: string; prefillLng?: string }>()
   const store = useReviewFormStore()
   const { session } = useAuthStore()
   const isEditing = !!store.editingReviewLocalId
   const [showPaywall, setShowPaywall] = useState(false)
+  const [prefillCoords, setPrefillCoords] = useState<{ lat: number; lng: number; address: string | null } | null>(null)
 
   useEffect(() => {
     async function checkLimit() {
@@ -108,6 +109,19 @@ export default function AddReviewModal() {
       store.setField('vendorName', params.vendorName)
     }
   })
+
+  useEffect(() => {
+    if (params.prefillName && !store.vendorName && !store.editingReviewLocalId) {
+      store.setField('vendorName', params.prefillName)
+    }
+    if (params.prefillLat && params.prefillLng) {
+      setPrefillCoords({
+        lat: parseFloat(params.prefillLat),
+        lng: parseFloat(params.prefillLng),
+        address: params.prefillAddress ?? null,
+      })
+    }
+  }, [])
 
   async function handleGpsTag() {
     const coords = await locationService.getCurrentLocation()
@@ -176,9 +190,9 @@ export default function AddReviewModal() {
     const vendor = await localStorageService.addVendor({
       name: store.vendorName.trim(),
       spotType: store.spotType,
-      lat: store.lat ?? 0,
-      lng: store.lng ?? 0,
-      address: store.address,
+      lat: store.lat ?? prefillCoords?.lat ?? 0,
+      lng: store.lng ?? prefillCoords?.lng ?? 0,
+      address: store.address ?? prefillCoords?.address ?? null,
       cityName: store.cityName,
       hours: null,
       photoUri: null,
