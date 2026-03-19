@@ -5,6 +5,7 @@ import { useFocusEffect, router } from 'expo-router'
 import { useAuthStore } from '../../src/store/authStore'
 import { localStorageService } from '../../src/services/localStorage'
 import { TacoRating } from '../../src/components/TacoRating'
+import { AtlasMapView } from '../../src/components/AtlasMapView'
 import { colors, spacing, radius } from '../../src/utils/theme'
 import type { LocalVendor, SpotType } from '../../src/types/app'
 
@@ -20,6 +21,7 @@ export default function MyTacosScreen() {
   const [loaded, setLoaded] = useState(false)
   const [search, setSearch] = useState('')
   const [filterType, setFilterType] = useState<SpotType | null>(null)
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('list')
 
   const filteredRows = rows.filter(({ vendor }) => {
     const matchesSearch = vendor.name.toLowerCase().includes(search.toLowerCase())
@@ -55,92 +57,114 @@ export default function MyTacosScreen() {
         resizeMode="cover"
       />
 
-      <FlatList
-        data={filteredRows}
-        keyExtractor={r => r.vendor.localId}
-        renderItem={({ item: { vendor, visitCount, avgRating } }) => (
-          <TouchableOpacity style={styles.card} onPress={() => router.push(`/spot/${vendor.localId}`)}>
-            <View style={styles.cardLeft}>
-              <View style={styles.tacoIcon}>
-                <Image
-                  source={require('../../assets/taco-icon.png')}
-                  style={{ width: 32, height: 32, borderRadius: 6 }}
-                  resizeMode="contain"
-                />
-              </View>
-            </View>
-            <View style={styles.cardBody}>
-              <Text style={styles.name}>{vendor.name}</Text>
-              {vendor.cityName && (
-                <View style={styles.cityRow}>
-                  <Ionicons name="location-sharp" size={12} color={colors.creamMuted} />
-                  <Text style={styles.city}>{vendor.cityName}</Text>
-                </View>
-              )}
-              {vendor.spotType && (
-                <Text style={styles.spotType}>{vendor.spotType}</Text>
-              )}
-              {avgRating !== null ? (
-                <TacoRating value={Math.round(avgRating)} readonly size={14} />
-              ) : (
-                <Text style={styles.noReviews}>No visits yet</Text>
-              )}
-            </View>
-            <View style={styles.cardRight}>
-              <Text style={styles.reviewCount}>{visitCount}</Text>
-              <Text style={styles.reviewLabel}>visit{visitCount !== 1 ? 's' : ''}</Text>
-            </View>
+      {/* Static header — always visible */}
+      <View style={styles.staticHeader}>
+        <Text style={styles.headerEyebrow}>YOUR COLLECTION</Text>
+        <Text style={styles.headerTitle}>My Tacos</Text>
+        <View style={styles.statsRow}>
+          <View style={styles.statPill}>
+            <Text style={styles.statNumber}>{rows.length}</Text>
+            <Text style={styles.statLabel}> spot{rows.length !== 1 ? 's' : ''} tracked</Text>
+          </View>
+        </View>
+        <View style={styles.toggleRow}>
+          <TouchableOpacity
+            style={[styles.toggleBtn, viewMode === 'list' && styles.toggleBtnActive]}
+            onPress={() => setViewMode('list')}
+          >
+            <Ionicons name="list" size={16} color={viewMode === 'list' ? colors.cream : colors.creamMuted} />
+            <Text style={[styles.toggleBtnText, viewMode === 'list' && styles.toggleBtnTextActive]}>List</Text>
           </TouchableOpacity>
-        )}
-        ListHeaderComponent={
-          <View style={styles.header}>
-            <Text style={styles.headerEyebrow}>YOUR COLLECTION</Text>
-            <Text style={styles.headerTitle}>My Tacos</Text>
-            <View style={styles.statsRow}>
-              <View style={styles.statPill}>
-                <Text style={styles.statNumber}>{rows.length}</Text>
-                <Text style={styles.statLabel}> spot{rows.length !== 1 ? 's' : ''} tracked</Text>
-              </View>
-            </View>
-            <View style={styles.searchRow}>
-              <View style={styles.searchBar}>
-                <Ionicons name="search" size={16} color={colors.creamMuted} />
-                <TextInput
-                  style={styles.searchInput}
-                  placeholder="Search spots..."
-                  placeholderTextColor={colors.creamMuted}
-                  value={search}
-                  onChangeText={setSearch}
-                  returnKeyType="search"
-                />
-                {search.length > 0 && (
-                  <TouchableOpacity onPress={() => setSearch('')}>
-                    <Ionicons name="close-circle" size={16} color={colors.creamMuted} />
-                  </TouchableOpacity>
-                )}
-              </View>
+          <TouchableOpacity
+            style={[styles.toggleBtn, viewMode === 'map' && styles.toggleBtnActive]}
+            onPress={() => setViewMode('map')}
+          >
+            <Ionicons name="map" size={16} color={viewMode === 'map' ? colors.cream : colors.creamMuted} />
+            <Text style={[styles.toggleBtnText, viewMode === 'map' && styles.toggleBtnTextActive]}>Map</Text>
+          </TouchableOpacity>
+        </View>
+        {viewMode === 'list' && (
+          <View style={styles.searchRow}>
+            <View style={styles.searchBar}>
+              <Ionicons name="search" size={16} color={colors.creamMuted} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search spots..."
+                placeholderTextColor={colors.creamMuted}
+                value={search}
+                onChangeText={setSearch}
+                returnKeyType="search"
+              />
+              {search.length > 0 && (
+                <TouchableOpacity onPress={() => setSearch('')}>
+                  <Ionicons name="close-circle" size={16} color={colors.creamMuted} />
+                </TouchableOpacity>
+              )}
             </View>
           </View>
-        }
-        ListEmptyComponent={
-          loaded ? (
-            <View style={styles.emptyState}>
-              <Image
-                source={require('../../assets/taco-icon.png')}
-                style={styles.emptyIcon}
-                resizeMode="contain"
-              />
-              <Text style={styles.emptyTitle}>No taco spots yet</Text>
-              <Text style={styles.emptySubtitle}>Start building your taco atlas by logging your first spot.</Text>
-              <TouchableOpacity style={styles.emptyBtn} onPress={() => router.push('/review/add')}>
-                <Ionicons name="add" size={20} color={colors.cream} />
-                <Text style={styles.emptyBtnText}>Log Your First Spot</Text>
-              </TouchableOpacity>
-            </View>
-          ) : null
-        }
-        contentContainerStyle={styles.list}
-      />
+        )}
+      </View>
+
+      {viewMode === 'map' ? (
+        <AtlasMapView rows={rows} />
+      ) : (
+        <FlatList
+          data={filteredRows}
+          keyExtractor={r => r.vendor.localId}
+          renderItem={({ item: { vendor, visitCount, avgRating } }) => (
+            <TouchableOpacity style={styles.card} onPress={() => router.push(`/spot/${vendor.localId}`)}>
+              <View style={styles.cardLeft}>
+                <View style={styles.tacoIcon}>
+                  <Image
+                    source={require('../../assets/taco-icon.png')}
+                    style={{ width: 32, height: 32, borderRadius: 6 }}
+                    resizeMode="contain"
+                  />
+                </View>
+              </View>
+              <View style={styles.cardBody}>
+                <Text style={styles.name}>{vendor.name}</Text>
+                {vendor.cityName && (
+                  <View style={styles.cityRow}>
+                    <Ionicons name="location-sharp" size={12} color={colors.creamMuted} />
+                    <Text style={styles.city}>{vendor.cityName}</Text>
+                  </View>
+                )}
+                {vendor.spotType && (
+                  <Text style={styles.spotType}>{vendor.spotType}</Text>
+                )}
+                {avgRating !== null ? (
+                  <TacoRating value={Math.round(avgRating)} readonly size={14} />
+                ) : (
+                  <Text style={styles.noReviews}>No visits yet</Text>
+                )}
+              </View>
+              <View style={styles.cardRight}>
+                <Text style={styles.reviewCount}>{visitCount}</Text>
+                <Text style={styles.reviewLabel}>visit{visitCount !== 1 ? 's' : ''}</Text>
+              </View>
+            </TouchableOpacity>
+          )}
+          ListEmptyComponent={
+            loaded ? (
+              <View style={styles.emptyState}>
+                <Image
+                  source={require('../../assets/taco-icon.png')}
+                  style={styles.emptyIcon}
+                  resizeMode="contain"
+                />
+                <Text style={styles.emptyTitle}>No taco spots yet</Text>
+                <Text style={styles.emptySubtitle}>Start building your taco atlas by logging your first spot.</Text>
+                <TouchableOpacity style={styles.emptyBtn} onPress={() => router.push('/review/add')}>
+                  <Ionicons name="add" size={20} color={colors.cream} />
+                  <Text style={styles.emptyBtnText}>Log Your First Spot</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null
+          }
+          contentContainerStyle={styles.list}
+        />
+      )}
 
       {/* FAB */}
       <TouchableOpacity
@@ -168,10 +192,11 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   list: { paddingBottom: 120, flexGrow: 1 },
 
-  header: {
+  staticHeader: {
     paddingHorizontal: spacing.md,
     paddingTop: 60,
-    paddingBottom: spacing.lg,
+    paddingBottom: spacing.sm,
+    zIndex: 10,
   },
   headerEyebrow: {
     fontSize: 11,
@@ -188,6 +213,29 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   statsRow: { flexDirection: 'row', marginBottom: spacing.sm },
+  toggleRow: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  toggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
+    backgroundColor: 'rgba(36, 28, 22, 0.6)',
+  },
+  toggleBtnActive: {
+    backgroundColor: colors.amberDim,
+    borderColor: colors.amber,
+  },
+  toggleBtnText: { color: colors.creamMuted, fontSize: 13, fontWeight: '600' },
+  toggleBtnTextActive: { color: colors.cream },
   searchRow: {
     paddingBottom: spacing.sm,
   },
