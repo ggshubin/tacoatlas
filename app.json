@@ -21,7 +21,8 @@
         {
           "photosPermission": "TacoAtlas needs photo access to attach images to your reviews."
         }
-      ]
+      ],
+      "react-native-purchases"
     ],
     "android": {
       "icon": "./assets/icon.png",
@@ -35,7 +36,6 @@
         "android.permission.RECORD_AUDIO"
       ],
       "package": "com.tacooatlas.app",
-      "versionCode": 2,
       "navigationBar": {
         "backgroundColor": "#18140F",
         "barStyle": "light-content"
