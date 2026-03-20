@@ -8,6 +8,7 @@ import { VendorCard } from '../../src/components/VendorCard'
 import { GooglePlaceCard } from '../../src/components/GooglePlaceCard'
 import { googlePlacesService } from '../../src/services/googlePlacesService'
 import type { GooglePlace } from '../../src/services/googlePlacesService'
+import { localStorageService } from '../../src/services/localStorage'
 import { colors, spacing, typography } from '../../src/utils/theme'
 import type { Vendor } from '../../src/types/database'
 
@@ -20,6 +21,7 @@ export default function HomeScreen() {
   const [googlePlaces, setGooglePlaces] = useState<GooglePlace[]>([])
   const [remainingSearches, setRemainingSearches] = useState<number>(5)
   const [searchesLoaded, setSearchesLoaded] = useState(false)
+  const [addedNames, setAddedNames] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     loadNearbyVendors()
@@ -54,6 +56,10 @@ export default function HomeScreen() {
       const remaining = await googlePlacesService.getRemainingSearches()
       setRemainingSearches(remaining)
       setSearchesLoaded(true)
+
+      // Build set of already-added vendor names for checkmark indicators
+      const localVendors = await localStorageService.getVendors()
+      setAddedNames(new Set(localVendors.map(v => v.name.toLowerCase())))
     } catch {
       setError('Could not load vendors. Pull down to try again.')
     } finally {
@@ -131,7 +137,11 @@ export default function HomeScreen() {
                 )}
               </View>
               {googlePlaces.map(place => (
-                <GooglePlaceCard key={place.id} place={place} />
+                <GooglePlaceCard
+                  key={place.id}
+                  place={place}
+                  isAdded={addedNames.has(place.name.toLowerCase())}
+                />
               ))}
             </View>
           ) : null

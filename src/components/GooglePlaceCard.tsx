@@ -6,9 +6,10 @@ import type { GooglePlace } from '../services/googlePlacesService'
 
 interface Props {
   place: GooglePlace
+  isAdded?: boolean
 }
 
-export function GooglePlaceCard({ place }: Props) {
+export function GooglePlaceCard({ place, isAdded = false }: Props) {
   function handleAddToAtlas() {
     router.push({
       pathname: '/review/add',
@@ -17,15 +18,19 @@ export function GooglePlaceCard({ place }: Props) {
         prefillAddress: place.address ?? '',
         prefillLat: String(place.lat),
         prefillLng: String(place.lng),
+        prefillCity: place.city ?? '',
       },
     })
   }
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, isAdded && styles.cardAdded]}>
       <View style={styles.body}>
-        <View style={styles.googleBadge}>
-          <Text style={styles.googleBadgeText}>G</Text>
+        <View style={[styles.googleBadge, isAdded && styles.googleBadgeAdded]}>
+          {isAdded
+            ? <Ionicons name="checkmark" size={16} color={colors.cream} />
+            : <Text style={styles.googleBadgeText}>G</Text>
+          }
         </View>
         <View style={styles.info}>
           <Text style={styles.name}>{place.name}</Text>
@@ -40,10 +45,17 @@ export function GooglePlaceCard({ place }: Props) {
           )}
         </View>
       </View>
-      <TouchableOpacity style={styles.addBtn} onPress={handleAddToAtlas}>
-        <Ionicons name="add" size={16} color={colors.cream} />
-        <Text style={styles.addBtnText}>Add to Atlas</Text>
-      </TouchableOpacity>
+      {isAdded ? (
+        <View style={styles.addedBadge}>
+          <Ionicons name="checkmark-circle" size={14} color={colors.amber} />
+          <Text style={styles.addedBadgeText}>In your Atlas</Text>
+        </View>
+      ) : (
+        <TouchableOpacity style={styles.addBtn} onPress={handleAddToAtlas}>
+          <Ionicons name="add" size={16} color={colors.cream} />
+          <Text style={styles.addBtnText}>Add to Atlas</Text>
+        </TouchableOpacity>
+      )}
     </View>
   )
 }
@@ -58,6 +70,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(61, 46, 34, 0.7)',
   },
+  cardAdded: {
+    borderColor: colors.amber,
+    backgroundColor: 'rgba(36, 28, 22, 0.6)',
+  },
   body: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: spacing.sm },
   googleBadge: {
     width: 32,
@@ -67,6 +83,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: spacing.sm,
+  },
+  googleBadgeAdded: {
+    backgroundColor: colors.amberDim,
   },
   googleBadgeText: { color: '#fff', fontWeight: '800', fontSize: 14 },
   info: { flex: 1 },
@@ -87,4 +106,13 @@ const styles = StyleSheet.create({
     borderColor: colors.amber,
   },
   addBtnText: { color: colors.cream, fontSize: 13, fontWeight: '600' },
+  addedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    alignSelf: 'flex-start',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+  },
+  addedBadgeText: { color: colors.amber, fontSize: 13, fontWeight: '600' },
 })

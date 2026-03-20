@@ -87,7 +87,7 @@ const CONDIMENT_OPTIONS = [
 ]
 
 export default function AddReviewModal() {
-  const params = useLocalSearchParams<{ vendorId?: string; vendorName?: string; editReviewId?: string; vendorLocalId?: string; prefillName?: string; prefillAddress?: string; prefillLat?: string; prefillLng?: string }>()
+  const params = useLocalSearchParams<{ vendorId?: string; vendorName?: string; editReviewId?: string; vendorLocalId?: string; prefillName?: string; prefillAddress?: string; prefillLat?: string; prefillLng?: string; prefillCity?: string }>()
   const store = useReviewFormStore()
   const { session } = useAuthStore()
   const isEditing = !!store.editingReviewLocalId
@@ -115,12 +115,17 @@ export default function AddReviewModal() {
     if (params.prefillName && !store.vendorName && !store.editingReviewLocalId) {
       store.setField('vendorName', params.prefillName)
     }
+    if (params.prefillCity) {
+      store.setField('cityName', params.prefillCity)
+    }
     if (params.prefillLat && params.prefillLng) {
       setPrefillCoords({
         lat: parseFloat(params.prefillLat),
         lng: parseFloat(params.prefillLng),
         address: params.prefillAddress ?? null,
       })
+      store.setField('lat', parseFloat(params.prefillLat))
+      store.setField('lng', parseFloat(params.prefillLng))
     }
   }, [])
 

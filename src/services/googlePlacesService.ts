@@ -9,6 +9,7 @@ export interface GooglePlace {
   id: string
   name: string
   address: string | null
+  city: string | null
   lat: number
   lng: number
   rating: number | null
@@ -78,7 +79,7 @@ export const googlePlacesService = {
       headers: {
         'Content-Type': 'application/json',
         'X-Goog-Api-Key': API_KEY,
-        'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.types',
+        'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.addressComponents,places.location,places.rating,places.types',
       },
       body: JSON.stringify(body),
     })
@@ -91,14 +92,20 @@ export const googlePlacesService = {
     const data = await res.json()
     await this.recordSearch()
 
-    return (data.places ?? []).map((p: any): GooglePlace => ({
-      id: p.id,
-      name: p.displayName?.text ?? 'Unknown',
-      address: p.formattedAddress ?? null,
-      lat: p.location?.latitude ?? 0,
-      lng: p.location?.longitude ?? 0,
-      rating: p.rating ?? null,
-      types: p.types ?? [],
-    }))
+    return (data.places ?? []).map((p: any): GooglePlace => {
+      const cityComponent = (p.addressComponents ?? []).find(
+        (c: any) => c.types?.includes('locality')
+      )
+      return {
+        id: p.id,
+        name: p.displayName?.text ?? 'Unknown',
+        address: p.formattedAddress ?? null,
+        city: cityComponent?.longText ?? null,
+        lat: p.location?.latitude ?? 0,
+        lng: p.location?.longitude ?? 0,
+        rating: p.rating ?? null,
+        types: p.types ?? [],
+      }
+    })
   },
 }
