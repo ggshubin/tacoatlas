@@ -3,7 +3,7 @@
     "name": "TacoAtlas",
     "slug": "tacooatlas",
     "scheme": "tacooatlas",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "icon": "./assets/icon.png",
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -35,6 +35,7 @@
         "android.permission.RECORD_AUDIO"
       ],
       "package": "com.tacooatlas.app",
+      "versionCode": 2,
       "navigationBar": {
         "backgroundColor": "#18140F",
         "barStyle": "light-content"
