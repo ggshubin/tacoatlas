@@ -21,8 +21,7 @@
         {
           "photosPermission": "TacoAtlas needs photo access to attach images to your reviews."
         }
-      ],
-      "react-native-purchases"
+      ]
     ],
     "android": {
       "icon": "./assets/icon.png",
