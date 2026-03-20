@@ -21,6 +21,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { TacoRating } from '../../src/components/TacoRating'
 import { colors, spacing, typography, radius } from '../../src/utils/theme'
 import { ProPaywallModal } from '../../src/components/ProPaywallModal'
+import MapView, { Marker } from 'react-native-maps'
 
 const HEAT_CONFIG: Record<string, { icon: 'thermometer-outline' | 'thermometer'; color: string; label: string; flame?: boolean; volcano?: boolean }> = {
   mild:    { icon: 'thermometer-outline', color: '#64B5F6', label: 'Mild' },
@@ -128,7 +129,16 @@ export default function AddReviewModal() {
     if (coords) {
       store.setField('lat', coords.lat)
       store.setField('lng', coords.lng)
-      Alert.alert('Location tagged', `${coords.lat.toFixed(4)}, ${coords.lng?.toFixed(4)}`)
+      // Auto-populate city from reverse geocode (only if not already set manually)
+      try {
+        const results = await (await import('expo-location')).reverseGeocodeAsync({
+          latitude: coords.lat,
+          longitude: coords.lng,
+        })
+        if (results.length && results[0].city) {
+          store.setField('cityName', results[0].city)
+        }
+      } catch {}
     }
   }
 
@@ -246,13 +256,6 @@ export default function AddReviewModal() {
               value={store.vendorName}
               onChangeText={v => store.setField('vendorName', v)}
             />
-            <TextInput
-              style={styles.input}
-              placeholder="City (optional)"
-              placeholderTextColor={colors.creamDim}
-              value={store.cityName ?? ''}
-              onChangeText={v => store.setField('cityName', v || null)}
-            />
             <Text style={styles.fieldLabel}>Type of Spot</Text>
             <View style={styles.spotTypeGrid}>
               {SPOT_TYPES.map(t => (
@@ -266,12 +269,45 @@ export default function AddReviewModal() {
               ))}
             </View>
 
+            <TextInput
+              style={styles.input}
+              placeholder="City (optional)"
+              placeholderTextColor={colors.creamDim}
+              value={store.cityName ?? ''}
+              onChangeText={v => store.setField('cityName', v || null)}
+            />
+
             <TouchableOpacity style={styles.gpsButton} onPress={handleGpsTag}>
-              <Text style={styles.gpsButtonText}>
-                {store.lat
-                  ? `📍 ${store.lat.toFixed(4)}, ${store.lng?.toFixed(4)}`
-                  : '📍 Tag Location (optional)'}
-              </Text>
+              {store.lat && store.lng ? (
+                <View style={styles.mapSnapshot}>
+                  <MapView
+                    style={StyleSheet.absoluteFillObject}
+                    region={{
+                      latitude: store.lat,
+                      longitude: store.lng,
+                      latitudeDelta: 0.005,
+                      longitudeDelta: 0.005,
+                    }}
+                    scrollEnabled={false}
+                    zoomEnabled={false}
+                    rotateEnabled={false}
+                    pitchEnabled={false}
+                    userInterfaceStyle="dark"
+                    pointerEvents="none"
+                  >
+                    <Marker coordinate={{ latitude: store.lat, longitude: store.lng }} />
+                  </MapView>
+                  <View style={styles.mapSnapshotBadge}>
+                    <Ionicons name="location" size={14} color={colors.cream} />
+                    <Text style={styles.mapSnapshotBadgeText}>Location tagged — tap to retag</Text>
+                  </View>
+                </View>
+              ) : (
+                <View style={styles.gpsButtonInner}>
+                  <Ionicons name="location-outline" size={18} color={colors.amber} />
+                  <Text style={styles.gpsButtonText}>Tag Location (optional)</Text>
+                </View>
+              )}
             </TouchableOpacity>
           </View>
         )}
@@ -569,12 +605,36 @@ const styles = StyleSheet.create({
   gpsButton: {
     backgroundColor: 'rgba(36, 28, 22, 0.85)',
     borderRadius: radius.md,
-    padding: spacing.md,
     marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: colors.surfaceBorder,
+    overflow: 'hidden',
+  },
+  gpsButtonInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    padding: spacing.md,
   },
   gpsButtonText: { color: colors.creamMuted, fontSize: typography.fontSizeMd },
+  mapSnapshot: {
+    height: 140,
+    borderRadius: radius.md,
+    overflow: 'hidden',
+  },
+  mapSnapshotBadge: {
+    position: 'absolute',
+    bottom: spacing.sm,
+    left: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(24, 20, 15, 0.8)',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: radius.full,
+  },
+  mapSnapshotBadgeText: { color: colors.cream, fontSize: 12 },
   entryRow: {
     flexDirection: 'row',
     alignItems: 'center',

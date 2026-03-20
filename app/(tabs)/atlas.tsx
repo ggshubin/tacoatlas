@@ -16,7 +16,7 @@ interface VendorRow {
 }
 
 export default function MyTacosScreen() {
-  const { session } = useAuthStore()
+  const { session, profile } = useAuthStore()
   const [rows, setRows] = useState<VendorRow[]>([])
   const [loaded, setLoaded] = useState(false)
   const [search, setSearch] = useState('')
@@ -59,8 +59,12 @@ export default function MyTacosScreen() {
 
       {/* Static header — always visible */}
       <View style={styles.staticHeader}>
-        <Text style={styles.headerEyebrow}>YOUR COLLECTION</Text>
-        <Text style={styles.headerTitle}>My Tacos</Text>
+        <Text style={styles.headerEyebrow}>
+          {profile?.display_name ? `${profile.display_name.toUpperCase()}'S COLLECTION` : 'YOUR COLLECTION'}
+        </Text>
+        <Text style={styles.headerTitle}>
+          {profile?.display_name ? `${profile.display_name}'s Tacos` : 'My Tacos'}
+        </Text>
         <View style={styles.statsRow}>
           <View style={styles.statPill}>
             <Text style={styles.statNumber}>{rows.length}</Text>
