@@ -35,6 +35,11 @@
         "android.permission.RECORD_AUDIO"
       ],
       "package": "com.tacooatlas.app",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyDvWs4orTUGdsKhu195FUWldN0OosGSrqQ"
+        }
+      },
       "navigationBar": {
         "backgroundColor": "#18140F",
         "barStyle": "light-content"
