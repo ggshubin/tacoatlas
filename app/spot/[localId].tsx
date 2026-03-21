@@ -122,10 +122,37 @@ export default function SpotDetailScreen() {
           >
             <Ionicons name="share-outline" size={22} color={colors.amber} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete}>
-            <Ionicons name="trash-outline" size={20} color={colors.error} />
+          <TouchableOpacity
+            style={styles.overflowBtn}
+            onPress={() =>
+              Alert.alert('Spot Options', undefined, [
+                { text: 'Delete Spot', style: 'destructive', onPress: handleDelete },
+                { text: 'Cancel', style: 'cancel' },
+              ])
+            }
+          >
+            <Ionicons name="ellipsis-horizontal" size={22} color={colors.cream} />
           </TouchableOpacity>
         </View>
+
+        {/* About This Spot note */}
+        {vendor.spotNote ? (
+          <View style={styles.spotNoteRow}>
+            <Ionicons name="information-circle-outline" size={16} color={colors.amber} />
+            <Text style={styles.spotNoteText}>{vendor.spotNote}</Text>
+          </View>
+        ) : (
+          <TouchableOpacity style={styles.addSpotNote} onPress={() => {
+            Alert.prompt?.('About this spot', 'Add a note visible on all your visits',
+              (text) => { if (text !== undefined) localStorageService.updateVendor(vendor.localId, { spotNote: text || null }).then(() => {
+                setVendor(prev => prev ? { ...prev, spotNote: text || null } : null)
+              }) },
+              'plain-text', vendor.spotNote ?? ''
+            ) ?? Alert.alert('Coming soon', 'Note editing will be available soon.')
+          }}>
+            <Text style={styles.addSpotNoteText}>+ About this spot</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Stats row */}
         <View style={styles.statsRow}>
@@ -140,6 +167,19 @@ export default function SpotDetailScreen() {
             </View>
           )}
         </View>
+
+        {/* Log Your First Visit CTA */}
+        {vendor.isVisited === false && (
+          <View style={styles.logVisitCta}>
+            <TouchableOpacity
+              style={styles.logVisitBtn}
+              onPress={() => router.push({ pathname: '/review/add', params: { vendorLocalId: vendor.localId } })}
+            >
+              <Ionicons name="restaurant" size={20} color={colors.cream} />
+              <Text style={styles.logVisitBtnText}>Log Your First Visit</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Reviews */}
         {reviews.map((review, i) => (
@@ -167,7 +207,7 @@ export default function SpotDetailScreen() {
               {review.returnIntent && (
                 <View style={[styles.intentBadge, { backgroundColor: review.returnIntent === 'yes' ? colors.amberSubtle : 'rgba(36,28,22,0.8)' }]}>
                   <Text style={[styles.intentText, { color: review.returnIntent === 'yes' ? colors.amber : colors.creamMuted }]}>
-                    {review.returnIntent === 'yes' ? '✓ Coming back' : review.returnIntent === 'maybe' ? '~ Maybe' : '✗ Probably not'}
+                    {review.returnIntent === 'yes' ? 'Hell yes 🤙' : review.returnIntent === 'maybe' ? 'Maybe' : 'Nah'}
                   </Text>
                 </View>
               )}
@@ -276,15 +316,6 @@ const styles = StyleSheet.create({
   shareBtn: {
     padding: spacing.sm,
   },
-  deleteBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(224,82,82,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 2,
-  },
   vendorName: { fontSize: 28, fontWeight: '800', color: colors.cream, letterSpacing: -0.5 },
   vendorMeta: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm, marginTop: 6 },
   spotTypeBadge: { backgroundColor: colors.amberSubtle, borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: 2, borderWidth: 1, borderColor: colors.amberDim },
@@ -316,7 +347,7 @@ const styles = StyleSheet.create({
     borderColor: colors.surfaceBorder,
   },
   reviewHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
-  reviewDate: { fontSize: 12, color: colors.creamDim, fontWeight: '600', letterSpacing: 0.5 },
+  reviewDate: { fontSize: 11, color: colors.creamDim, fontWeight: '500' },
   reviewActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   editBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4, paddingHorizontal: spacing.sm, backgroundColor: colors.amberSubtle, borderRadius: radius.full },
   editBtnText: { color: colors.amber, fontSize: 12, fontWeight: '700' },
@@ -355,4 +386,15 @@ const styles = StyleSheet.create({
     borderColor: colors.amber,
   },
   addReviewBtnText: { color: colors.cream, fontWeight: '700', fontSize: 15 },
+
+  overflowBtn: { padding: spacing.sm },
+
+  spotNoteRow: { flexDirection: 'row', gap: spacing.sm, padding: spacing.md, backgroundColor: colors.surfaceRaised, borderRadius: radius.md, marginHorizontal: spacing.md, marginBottom: spacing.sm, alignItems: 'flex-start' },
+  spotNoteText: { flex: 1, color: colors.creamMuted, fontSize: 13, lineHeight: 18 },
+  addSpotNote: { padding: spacing.md, marginHorizontal: spacing.md, marginBottom: spacing.sm },
+  addSpotNoteText: { color: colors.creamDim, fontSize: 13 },
+
+  logVisitCta: { padding: spacing.md },
+  logVisitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: colors.amber, borderRadius: radius.full, paddingVertical: 14 },
+  logVisitBtnText: { color: colors.cream, fontWeight: '700', fontSize: 15 },
 })
