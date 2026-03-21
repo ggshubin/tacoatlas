@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { useAuthStore } from '../../src/store/authStore'
 import { useProStore } from '../../src/store/proStore'
 import { localStorageService } from '../../src/services/localStorage'
-import { colors, spacing, radius, typography } from '../../src/utils/theme'
+import { colors, spacing, radius } from '../../src/utils/theme'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 interface Stats {
@@ -20,7 +20,6 @@ export default function ProfileScreen() {
   const { isPro } = useProStore()
   const insets = useSafeAreaInsets()
   const [stats, setStats] = useState<Stats | null>(null)
-  const [showPaywall, setShowPaywall] = useState(false)
 
   useFocusEffect(
     useCallback(() => {
@@ -38,6 +37,12 @@ export default function ProfileScreen() {
     }, [])
   )
 
+  async function handleSignOut() {
+    const { signOut } = useAuthStore.getState()
+    await signOut()
+    router.replace('/landing')
+  }
+
   return (
     <View style={styles.container}>
     <Image source={require('../../assets/background.png')} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
@@ -45,15 +50,12 @@ export default function ProfileScreen() {
       style={{ flex: 1 }}
       contentContainerStyle={[styles.content, { paddingTop: insets.top + spacing.md }]}
     >
-      {/* Header row with gear */}
+      {/* Header */}
       <View style={styles.headerRow}>
         <View>
           <Text style={styles.eyebrow}>taco atlas</Text>
           <Text style={styles.title}>Profile</Text>
         </View>
-        <TouchableOpacity style={styles.gearBtn} onPress={() => router.push('/settings')}>
-          <Ionicons name="settings-outline" size={22} color={colors.creamMuted} />
-        </TouchableOpacity>
       </View>
 
       {/* Identity card */}
@@ -106,7 +108,7 @@ export default function ProfileScreen() {
 
       {/* Pro upgrade card (free users only) */}
       {!isPro && (
-        <TouchableOpacity style={styles.upgradeCard} onPress={() => setShowPaywall(true)}>
+        <TouchableOpacity style={styles.upgradeCard} onPress={() => {}}>
           <View style={styles.upgradeCardInner}>
             <Text style={styles.upgradeTitle}>Unlock TacoAtlas Pro</Text>
             <Text style={styles.upgradePrice}>$3.99 one-time</Text>
@@ -118,25 +120,24 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       )}
 
-      {/* Mi Gente section */}
+      {/* Account section */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Mi Gente</Text>
-        {isPro ? (
+        <Text style={styles.sectionTitle}>Account</Text>
+        {session ? (
           <View style={styles.card}>
-            <Text style={styles.comingSoonText}>Friend connections coming soon.</Text>
+            <View style={styles.accountRow}>
+              <Ionicons name="mail-outline" size={18} color={colors.creamMuted} />
+              <View style={styles.accountRowText}>
+                <Text style={styles.accountEmail}>{session.user.email}</Text>
+                <Text style={styles.accountSub}>Signed in</Text>
+              </View>
+            </View>
+            <TouchableOpacity style={styles.accountRow} onPress={handleSignOut}>
+              <Ionicons name="log-out-outline" size={18} color={colors.error} />
+              <Text style={[styles.accountEmail, { color: colors.error }]}>Sign Out</Text>
+            </TouchableOpacity>
           </View>
         ) : (
-          <TouchableOpacity style={styles.lockedCard} onPress={() => setShowPaywall(true)}>
-            <Ionicons name="people-outline" size={24} color={colors.creamDim} />
-            <Text style={styles.lockedCardText}>Connect with your taco crew</Text>
-            <View style={styles.proBadge}><Text style={styles.proBadgeText}>Pro</Text></View>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* Sign in CTA for guests */}
-      {!session && (
-        <View style={styles.section}>
           <TouchableOpacity style={styles.signInCard} onPress={() => router.push('/(auth)/sign-in')}>
             <Ionicons name="cloud-upload-outline" size={22} color={colors.amber} />
             <View style={styles.signInCardText}>
@@ -145,8 +146,19 @@ export default function ProfileScreen() {
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.creamDim} />
           </TouchableOpacity>
+        )}
+      </View>
+
+      {/* App section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>App</Text>
+        <View style={styles.card}>
+          <View style={styles.accountRow}>
+            <Ionicons name="information-circle-outline" size={18} color={colors.creamMuted} />
+            <Text style={styles.accountEmail}>TacoAtlas v1.0</Text>
+          </View>
         </View>
-      )}
+      </View>
     </ScrollView>
     </View>
   )
@@ -158,7 +170,6 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.lg },
   eyebrow: { fontSize: 11, color: colors.creamDim, letterSpacing: 1, textTransform: 'uppercase', fontWeight: '600' },
   title: { fontSize: 28, fontWeight: '800', color: colors.cream, letterSpacing: -0.5 },
-  gearBtn: { padding: spacing.sm, marginTop: spacing.xs },
   identityCard: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.md,
     backgroundColor: colors.surface, borderRadius: radius.md,
@@ -196,15 +207,13 @@ const styles = StyleSheet.create({
   section: { marginBottom: spacing.md },
   sectionTitle: { fontSize: 11, fontWeight: '700', color: colors.creamDim, letterSpacing: 1, textTransform: 'uppercase', marginBottom: spacing.sm },
   card: { backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: colors.surfaceBorder },
-  comingSoonText: { color: colors.creamMuted, fontSize: 14, textAlign: 'center' },
-  lockedCard: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
-    backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md,
-    borderWidth: 1, borderColor: colors.surfaceBorder,
+  accountRow: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+    paddingVertical: spacing.xs,
   },
-  lockedCardText: { flex: 1, color: colors.creamMuted, fontSize: 14 },
-  proBadge: { backgroundColor: colors.amber, borderRadius: radius.full, paddingHorizontal: 8, paddingVertical: 2 },
-  proBadgeText: { fontSize: 10, fontWeight: '800', color: colors.bg },
+  accountRowText: { flex: 1 },
+  accountEmail: { fontSize: 14, color: colors.cream },
+  accountSub: { fontSize: 11, color: colors.creamMuted, marginTop: 2 },
   signInCard: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.md,
     backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md,
