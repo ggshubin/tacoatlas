@@ -12,6 +12,12 @@ config.resolver = {
   ...resolver,
   assetExts: resolver.assetExts.filter(ext => ext !== 'svg'),
   sourceExts: [...resolver.sourceExts, 'svg'],
+  resolveRequest: (context, moduleName, platform) => {
+    if (moduleName === 'react-dom/client') {
+      return { filePath: require.resolve('./stubs/react-dom-client.js'), type: 'sourceFile' }
+    }
+    return context.resolveRequest(context, moduleName, platform)
+  },
 }
 
 module.exports = config

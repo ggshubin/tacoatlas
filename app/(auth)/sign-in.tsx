@@ -22,7 +22,7 @@ export default function SignInScreen() {
       Alert.alert('Sign In Failed', error)
       return
     }
-    router.replace('/(tabs)')
+    router.replace('/(tabs)/atlas')
   }
 
   return (

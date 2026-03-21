@@ -1,0 +1,193 @@
+<style>
+  body { background: #111; }
+  .q { color: #F5EDD8; font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+  .sub { color: #B5A898; font-size: 13px; margin-bottom: 24px; }
+
+  .layout { display: flex; gap: 40px; justify-content: center; align-items: flex-start; flex-wrap: wrap; }
+
+  .col { text-align: center; }
+  .col-label { font-size: 11px; color: #B5A898; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; font-weight: 600; }
+
+  .phone {
+    width: 200px;
+    background: #1A1209;
+    border-radius: 34px;
+    border: 2px solid #3D2B12;
+    padding: 14px 8px 16px;
+    display: inline-block;
+  }
+  .screen { border-radius: 22px; overflow: hidden; }
+
+  .tabbar { display: flex; border-top: 1px solid #3D2B12; background: #1A1209; padding: 8px 0 4px; }
+  .tab { flex: 1; text-align: center; font-size: 7px; color: #B5A898; line-height: 1.4; }
+  .tab.active { color: #F5A623; }
+
+  .s-pad { padding: 10px 10px 8px; }
+  .eyebrow { font-size: 7px; color: #B5A898; letter-spacing: 1px; text-transform: uppercase; }
+  .ttl { font-size: 16px; font-weight: 800; color: #F5EDD8; margin-bottom: 8px; }
+
+  .icard { display: flex; align-items: center; gap: 8px; background: #26190C; border-radius: 8px; padding: 8px; border: 1px solid #3D2B12; margin-bottom: 6px; }
+  .av { width: 30px; height: 30px; border-radius: 15px; background: rgba(245,166,35,0.12); border: 1.5px solid #B37318; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #F5A623; font-weight: 700; flex-shrink: 0; }
+  .iname { font-size: 12px; font-weight: 700; color: #F5EDD8; }
+  .itype { font-size: 8px; color: #F5A623; margin-top: 1px; }
+
+  .stats { display: flex; gap: 5px; margin-bottom: 6px; }
+  .stat { flex: 1; background: #26190C; border-radius: 6px; padding: 6px 4px; border: 1px solid #3D2B12; text-align: center; }
+  .sn { font-size: 13px; font-weight: 800; color: #F5EDD8; }
+  .sl { font-size: 7px; color: #B5A898; }
+
+  .section-label { font-size: 7px; font-weight: 700; color: #B5A898; letter-spacing: 1px; text-transform: uppercase; margin: 8px 0 4px; }
+
+  .row { display: flex; align-items: center; background: #26190C; border-radius: 6px; padding: 7px 8px; border: 1px solid #3D2B12; margin-bottom: 4px; gap: 6px; }
+  .row-icon { font-size: 12px; }
+  .row-text { flex: 1; font-size: 10px; color: #F5EDD8; }
+  .row-sub { font-size: 8px; color: #B5A898; }
+  .row-caret { font-size: 10px; color: #B5A898; }
+
+  .destr { color: #C0392B !important; }
+
+  .upgrade { background: rgba(245,166,35,0.1); border-radius: 7px; padding: 8px; border: 1px solid #B37318; margin-bottom: 6px; }
+  .up-title { font-size: 11px; font-weight: 700; color: #F5EDD8; }
+  .up-sub { font-size: 8px; color: #B5A898; margin: 2px 0 5px; }
+  .up-btn { background: #F5A623; border-radius: 20px; padding: 4px; text-align: center; font-size: 9px; font-weight: 700; color: #1A1209; }
+
+  .divider { height: 1px; background: #3D2B12; margin: 6px 0; }
+
+  .old-gear { font-size: 10px; color: #B5A898; border: 1px solid #3D2B12; border-radius: 12px; padding: 3px 8px; }
+
+  .arrow-area { display: flex; align-items: center; color: #B5A898; font-size: 22px; padding-top: 60px; }
+
+  .badge { display: inline-block; background: #F5A623; color: #1A1209; font-size: 9px; font-weight: 800; border-radius: 10px; padding: 2px 8px; margin-left: 8px; }
+</style>
+
+<p class="q">New nav + merged Profile</p>
+<p class="sub">Settings folds into Profile — gear icon goes away, 4th tab added</p>
+
+<div class="layout">
+
+  <!-- OLD -->
+  <div class="col">
+    <div class="col-label">Before</div>
+    <div class="phone">
+      <div class="screen">
+        <div class="s-pad">
+          <div class="eyebrow">taco atlas</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div class="ttl">Profile</div>
+            <div class="old-gear">⚙ Settings</div>
+          </div>
+          <div class="icard">
+            <div class="av">GS</div>
+            <div>
+              <div class="iname">ggshubin</div>
+              <div class="itype">✦ Pro Member</div>
+            </div>
+          </div>
+          <div class="stats">
+            <div class="stat"><div class="sn">12</div><div class="sl">Spots</div></div>
+            <div class="stat"><div class="sn">8</div><div class="sl">Visits</div></div>
+            <div class="stat"><div class="sn">★4.2</div><div class="sl">Avg</div></div>
+          </div>
+          <div class="section-label">Mi Gente</div>
+          <div class="row">
+            <div class="row-icon">👥</div>
+            <div class="row-text">Friend connections coming soon</div>
+          </div>
+          <div style="height:6px;"></div>
+          <div style="font-size:8px;color:#555;text-align:center;">Settings = separate pushed screen<br>with gear icon in header</div>
+        </div>
+        <div class="tabbar">
+          <div class="tab">🗺️<br>Atlas</div>
+          <div class="tab">🔍<br>Explore</div>
+          <div class="tab active">👤<br>Profile</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ARROW -->
+  <div class="arrow-area">→</div>
+
+  <!-- NEW -->
+  <div class="col">
+    <div class="col-label">After <span class="badge">New</span></div>
+    <div class="phone">
+      <div class="screen">
+        <div class="s-pad">
+          <div class="eyebrow">taco atlas</div>
+          <div class="ttl">Profile</div>
+
+          <div class="icard">
+            <div class="av">GS</div>
+            <div>
+              <div class="iname">ggshubin</div>
+              <div class="itype">✦ Pro Member</div>
+            </div>
+          </div>
+
+          <div class="stats">
+            <div class="stat"><div class="sn">12</div><div class="sl">Spots</div></div>
+            <div class="stat"><div class="sn">8</div><div class="sl">Visits</div></div>
+            <div class="stat"><div class="sn">★4.2</div><div class="sl">Avg</div></div>
+          </div>
+
+          <div class="section-label">Account</div>
+          <div class="row">
+            <div class="row-icon">✉️</div>
+            <div>
+              <div class="row-text">ggshubin@gmail.com</div>
+              <div class="row-sub">Signed in</div>
+            </div>
+            <div class="row-caret">›</div>
+          </div>
+          <div class="row">
+            <div class="row-icon">☁️</div>
+            <div class="row-text">Cloud Sync</div>
+            <div class="row-caret" style="color:#B37318;">On ›</div>
+          </div>
+
+          <div class="section-label">App</div>
+          <div class="row">
+            <div class="row-icon">ℹ️</div>
+            <div class="row-text">TacoAtlas v1.0</div>
+          </div>
+          <div class="row">
+            <div class="row-icon">🚪</div>
+            <div class="row-text destr">Sign Out</div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tab">🗺️<br>Atlas</div>
+          <div class="tab">🔍<br>Explore</div>
+          <div class="tab active">👥<br>Mi Gente</div>
+          <div class="tab">👤<br>Profile</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div style="margin-top:28px;max-width:560px;margin-left:auto;margin-right:auto;">
+  <div style="background:#26190C;border:1px solid #3D2B12;border-radius:10px;padding:16px;display:flex;gap:24px;flex-wrap:wrap;">
+    <div style="flex:1;min-width:140px;">
+      <div style="font-size:10px;font-weight:700;color:#F5A623;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">What changes</div>
+      <div style="font-size:11px;color:#B5A898;line-height:1.6;">
+        ✓ Gear icon removed from Profile header<br>
+        ✓ Settings.tsx screen retired<br>
+        ✓ Account + About rows live in Profile<br>
+        ✓ Mi Gente gets its own tab (tab 3)<br>
+        ✓ Profile moves to tab 4
+      </div>
+    </div>
+    <div style="flex:1;min-width:140px;">
+      <div style="font-size:10px;font-weight:700;color:#F5A623;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">Nav order</div>
+      <div style="font-size:11px;color:#B5A898;line-height:1.8;">
+        1 · Atlas 🗺️<br>
+        2 · Explore 🔍<br>
+        3 · Mi Gente 👥 ← new<br>
+        4 · Profile 👤 ← was tab 3
+      </div>
+    </div>
+  </div>
+</div>

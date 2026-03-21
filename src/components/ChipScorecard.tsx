@@ -7,11 +7,14 @@ interface ScorecardItem {
   label: string
   rating: number
   notes: string | null
+  heatLevel?: string | null
 }
 
 interface Props {
   presets?: string[]        // preset chip labels (tacos, burritos, tortas)
   freeform?: boolean        // true for salsas — shows text input instead of chips
+  heatLevels?: string[]              // if provided, shows heat picker in freeform add form
+  heatLevelIcons?: Record<string, string>  // emoji icons for each heat level
   items: ScorecardItem[]
   onAdd: (item: ScorecardItem) => void
   onRemove: (index: number) => void
@@ -41,14 +44,16 @@ function StarRating({ value, onChange, readonly, size = 20 }: {
 }
 
 export function ChipScorecard({
-  presets, freeform, items, onAdd, onRemove, onUpdate, renderHeatPicker,
+  presets, freeform, heatLevels, heatLevelIcons, items, onAdd, onRemove, onUpdate, renderHeatPicker,
 }: Props) {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
   const [pendingLabel, setPendingLabel] = useState('')
   const [pendingRating, setPendingRating] = useState(0)
   const [pendingNotes, setPendingNotes] = useState('')
+  const [pendingHeatLevel, setPendingHeatLevel] = useState<string | null>(null)
+  const [showFreeform, setShowFreeform] = useState(false)
 
-  const addedLabels = new Set(items.map(i => i.label.toLowerCase()))
+  const addedLabels = new Set(items.filter(i => i?.label).map(i => i.label.toLowerCase()))
 
   function handlePresetTap(label: string) {
     if (addedLabels.has(label.toLowerCase())) {
@@ -62,41 +67,48 @@ export function ChipScorecard({
 
   function handleFreeformAdd() {
     if (!pendingLabel.trim() || !pendingRating) return
-    onAdd({ label: pendingLabel.trim(), rating: pendingRating, notes: pendingNotes.trim() || null })
+    onAdd({ label: pendingLabel.trim(), rating: pendingRating, notes: pendingNotes.trim() || null, heatLevel: pendingHeatLevel })
     setPendingLabel('')
     setPendingRating(0)
     setPendingNotes('')
+    setPendingHeatLevel(null)
+    setShowFreeform(false)
   }
 
   return (
     <View>
-      {items.map((item, idx) => (
-        <View key={idx}>
-          <TouchableOpacity
-            style={styles.ratedChip}
-            onPress={() => setExpandedIndex(expandedIndex === idx ? null : idx)}
-          >
-            <Text style={styles.ratedChipLabel}>{item.label}</Text>
-            <StarRating value={item.rating} readonly size={14} />
-            <TouchableOpacity onPress={() => { onRemove(idx); setExpandedIndex(null) }}>
-              <Ionicons name="close-circle" size={18} color={colors.creamDim} />
+      {items.map((item, idx) => {
+        const isExpanded = expandedIndex === idx
+        return (
+          <View key={idx} style={[styles.itemWrapper, isExpanded && styles.itemWrapperExpanded]}>
+            <TouchableOpacity
+              style={[styles.ratedChip, isExpanded && styles.ratedChipExpanded]}
+              onPress={() => setExpandedIndex(isExpanded ? null : idx)}
+            >
+              <Text style={styles.ratedChipLabel}>{item.label}</Text>
+              <StarRating value={item.rating} readonly size={14} />
+              <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={14} color={colors.creamDim} style={{ marginLeft: 2 }} />
+              <TouchableOpacity onPress={() => { onRemove(idx); setExpandedIndex(null) }}>
+                <Ionicons name="close-circle" size={18} color={colors.creamDim} />
+              </TouchableOpacity>
             </TouchableOpacity>
-          </TouchableOpacity>
-          {expandedIndex === idx && (
-            <View style={styles.expanded}>
-              <StarRating value={item.rating} onChange={r => onUpdate(idx, { rating: r })} />
-              {renderHeatPicker?.(item, idx)}
-              <TextInput
-                style={styles.noteInput}
-                placeholder="Quick note..."
-                placeholderTextColor={colors.creamDim}
-                value={item.notes ?? ''}
-                onChangeText={t => onUpdate(idx, { notes: t || null })}
-              />
-            </View>
-          )}
-        </View>
-      ))}
+            {isExpanded && (
+              <View style={styles.expanded}>
+                <Text style={styles.expandedLabel}>Rate your {item.label}</Text>
+                <StarRating value={item.rating} onChange={r => onUpdate(idx, { rating: r })} />
+                {renderHeatPicker?.(item, idx)}
+                <TextInput
+                  style={styles.noteInput}
+                  placeholder="Quick note..."
+                  placeholderTextColor={colors.creamDim}
+                  value={item.notes ?? ''}
+                  onChangeText={t => onUpdate(idx, { notes: t || null })}
+                />
+              </View>
+            )}
+          </View>
+        )
+      })}
 
       {presets && (
         <View style={styles.presetGrid}>
@@ -120,28 +132,59 @@ export function ChipScorecard({
 
       {freeform && (
         <View style={styles.freeformEntry}>
-          <TextInput
-            style={styles.freeformInput}
-            placeholder="Salsa name (e.g. Salsa Verde)"
-            placeholderTextColor={colors.creamDim}
-            value={pendingLabel}
-            onChangeText={setPendingLabel}
-          />
-          <StarRating value={pendingRating} onChange={setPendingRating} />
-          <TextInput
-            style={styles.noteInput}
-            placeholder="Quick note..."
-            placeholderTextColor={colors.creamDim}
-            value={pendingNotes}
-            onChangeText={setPendingNotes}
-          />
-          <TouchableOpacity
-            style={[styles.addBtn, (!pendingLabel.trim() || !pendingRating) && styles.addBtnDisabled]}
-            onPress={handleFreeformAdd}
-            disabled={!pendingLabel.trim() || !pendingRating}
-          >
-            <Text style={styles.addBtnText}>Add Salsa</Text>
-          </TouchableOpacity>
+          {(!showFreeform && items.length > 0) ? (
+            <TouchableOpacity style={styles.addAnotherBtn} onPress={() => setShowFreeform(true)}>
+              <Ionicons name="add-circle-outline" size={16} color={colors.amber} />
+              <Text style={styles.addAnotherBtnText}>Add another salsa</Text>
+            </TouchableOpacity>
+          ) : (showFreeform || items.length === 0) && (
+            <>
+              <TextInput
+                style={styles.freeformInput}
+                placeholder="Salsa name (e.g. Salsa Verde)"
+                placeholderTextColor={colors.creamDim}
+                value={pendingLabel}
+                onChangeText={setPendingLabel}
+              />
+              <View style={styles.freeformCard}>
+                <Text style={styles.freeformCardLabel}>Flavor Rating</Text>
+                <StarRating value={pendingRating} onChange={setPendingRating} />
+                {heatLevels && (
+                  <>
+                    <Text style={[styles.freeformCardLabel, { marginTop: spacing.sm }]}>Heat Level</Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                      {heatLevels.map(h => (
+                        <TouchableOpacity
+                          key={h}
+                          style={[styles.heatChip, pendingHeatLevel === h && styles.heatChipActive]}
+                          onPress={() => setPendingHeatLevel(pendingHeatLevel === h ? null : h)}
+                        >
+                          {heatLevelIcons?.[h] && (
+                            <Text style={styles.heatChipIcon}>{heatLevelIcons[h]}</Text>
+                          )}
+                          <Text style={[styles.heatChipText, pendingHeatLevel === h && styles.heatChipTextActive]}>{h}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </>
+                )}
+                <TextInput
+                  style={[styles.noteInput, { marginTop: spacing.sm }]}
+                  placeholder="Quick note..."
+                  placeholderTextColor={colors.creamDim}
+                  value={pendingNotes}
+                  onChangeText={setPendingNotes}
+                />
+                <TouchableOpacity
+                  style={[styles.addBtn, (!pendingLabel.trim() || !pendingRating) && styles.addBtnDisabled]}
+                  onPress={handleFreeformAdd}
+                  disabled={!pendingLabel.trim() || !pendingRating}
+                >
+                  <Text style={styles.addBtnText}>Add Salsa</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
         </View>
       )}
     </View>
@@ -149,17 +192,25 @@ export function ChipScorecard({
 }
 
 const styles = StyleSheet.create({
+  itemWrapper: {
+    borderRadius: radius.md, marginBottom: spacing.sm,
+    borderWidth: 1, borderColor: colors.surfaceBorder,
+    backgroundColor: colors.surfaceRaised, overflow: 'hidden',
+  },
+  itemWrapperExpanded: { borderColor: colors.amberDim },
   ratedChip: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
-    backgroundColor: colors.amberSubtle,
-    borderRadius: radius.full, paddingHorizontal: spacing.md, paddingVertical: 8,
-    borderWidth: 1, borderColor: colors.amberDim, marginBottom: spacing.sm,
+    paddingHorizontal: spacing.md, paddingVertical: 10,
   },
+  ratedChipExpanded: { borderBottomWidth: 1, borderBottomColor: colors.amberDim },
   ratedChipLabel: { flex: 1, color: colors.cream, fontSize: 14, fontWeight: '600' },
+  expandedLabel: {
+    fontSize: 11, fontWeight: '700', color: colors.amber,
+    letterSpacing: 1, marginBottom: spacing.sm,
+  },
   expanded: {
-    backgroundColor: colors.surfaceRaised,
-    borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.sm,
-    borderWidth: 1, borderColor: colors.surfaceBorder,
+    backgroundColor: colors.amberSubtle,
+    padding: spacing.md,
   },
   presetGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
   presetChip: {
@@ -172,6 +223,32 @@ const styles = StyleSheet.create({
   presetChipText: { color: colors.creamMuted, fontSize: 13, fontWeight: '600' },
   presetChipTextAdded: { color: colors.amber },
   freeformEntry: { marginTop: spacing.sm },
+  freeformCard: {
+    backgroundColor: colors.surfaceRaised, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.surfaceBorder,
+    padding: spacing.md, marginTop: spacing.sm,
+  },
+  freeformCardLabel: {
+    fontSize: 11, fontWeight: '700', color: colors.creamMuted,
+    letterSpacing: 0.5, marginBottom: spacing.sm,
+  },
+  heatChip: {
+    alignItems: 'center', gap: 2,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
+    borderRadius: radius.md, borderWidth: 1, borderColor: colors.surfaceBorder,
+    backgroundColor: colors.surface,
+  },
+  heatChipActive: { borderColor: colors.amber, backgroundColor: colors.amberSubtle },
+  heatChipIcon: { fontSize: 16 },
+  heatChipText: { color: colors.creamMuted, fontSize: 10, fontWeight: '600' },
+  heatChipTextActive: { color: colors.amber },
+  addAnotherBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+    paddingVertical: spacing.sm + 2, paddingHorizontal: spacing.md,
+    borderRadius: radius.md, borderWidth: 1, borderColor: colors.amberDim,
+    backgroundColor: colors.amberSubtle,
+  },
+  addAnotherBtnText: { color: colors.amber, fontSize: 14, fontWeight: '600' },
   freeformInput: {
     backgroundColor: colors.surfaceRaised, borderRadius: radius.md,
     borderWidth: 1, borderColor: colors.surfaceBorder,

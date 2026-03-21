@@ -24,7 +24,16 @@ export default function SpotDetailScreen() {
   const { localId } = useLocalSearchParams<{ localId: string }>()
   const [vendor, setVendor] = useState<LocalVendor | null>(null)
   const [reviews, setReviews] = useState<LocalReview[]>([])
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const loadForEdit = useReviewFormStore(s => s.loadForEdit)
+
+  function toggleExpanded(id: string) {
+    setExpandedIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
 
   useFocusEffect(
     useCallback(() => {
@@ -39,7 +48,7 @@ export default function SpotDetailScreen() {
 
   function handleEdit(review: LocalReview) {
     if (!vendor) return
-    loadForEdit(review, vendor.name)
+    loadForEdit(review, vendor)
     router.push({ pathname: '/review/add', params: { editReviewId: review.localId, vendorLocalId: vendor.localId } })
   }
 
@@ -92,48 +101,49 @@ export default function SpotDetailScreen() {
         style={StyleSheet.absoluteFillObject}
         resizeMode="cover"
       />
-      <ScrollView contentContainerStyle={styles.scroll}>
 
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-            <Ionicons name="chevron-back" size={22} color={colors.cream} />
-          </TouchableOpacity>
-          <View style={styles.headerText}>
-            <Text style={styles.vendorName}>{vendor.name}</Text>
-            <View style={styles.vendorMeta}>
-              {vendor.spotType && (
-                <View style={styles.spotTypeBadge}>
-                  <Text style={styles.spotTypeText}>{vendor.spotType}</Text>
-                </View>
-              )}
-              {vendor.cityName && (
-                <View style={styles.cityRow}>
-                  <Ionicons name="location-sharp" size={13} color={colors.creamMuted} />
-                  <Text style={styles.vendorCity}>{vendor.cityName}</Text>
-                </View>
-              )}
-            </View>
+      {/* Fixed header */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+          <Ionicons name="chevron-back" size={22} color={colors.cream} />
+        </TouchableOpacity>
+        <View style={styles.headerText}>
+          <Text style={styles.vendorName} numberOfLines={1}>{vendor.name}</Text>
+          <View style={styles.vendorMeta}>
+            {vendor.spotType && (
+              <View style={styles.spotTypeBadge}>
+                <Text style={styles.spotTypeText}>{vendor.spotType}</Text>
+              </View>
+            )}
+            {vendor.cityName && (
+              <View style={styles.cityRow}>
+                <Ionicons name="location-sharp" size={13} color={colors.creamMuted} />
+                <Text style={styles.vendorCity}>{vendor.cityName}</Text>
+              </View>
+            )}
           </View>
-          <TouchableOpacity
-            style={styles.shareBtn}
-            onPress={() => shareSpot(vendor, reviews)}
-            accessibilityLabel="Share this spot"
-          >
-            <Ionicons name="share-outline" size={22} color={colors.amber} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.overflowBtn}
-            onPress={() =>
-              Alert.alert('Spot Options', undefined, [
-                { text: 'Delete Spot', style: 'destructive', onPress: handleDelete },
-                { text: 'Cancel', style: 'cancel' },
-              ])
-            }
-          >
-            <Ionicons name="ellipsis-horizontal" size={22} color={colors.cream} />
-          </TouchableOpacity>
         </View>
+        <TouchableOpacity
+          style={styles.shareBtn}
+          onPress={() => shareSpot(vendor, reviews)}
+          accessibilityLabel="Share this spot"
+        >
+          <Ionicons name="share-outline" size={22} color={colors.amber} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.overflowBtn}
+          onPress={() =>
+            Alert.alert('Spot Options', undefined, [
+              { text: 'Delete Spot', style: 'destructive', onPress: handleDelete },
+              { text: 'Cancel', style: 'cancel' },
+            ])
+          }
+        >
+          <Ionicons name="ellipsis-horizontal" size={22} color={colors.cream} />
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView contentContainerStyle={styles.scroll}>
 
         {/* About This Spot note */}
         {vendor.spotNote ? (
@@ -182,100 +192,129 @@ export default function SpotDetailScreen() {
         )}
 
         {/* Reviews */}
-        {reviews.map((review, i) => (
-          <View key={review.localId} style={styles.reviewCard}>
+        {reviews.map((review, i) => {
+          const isFirst = i === 0
+          const isExpanded = isFirst || expandedIds.has(review.localId)
+          const dateStr = new Date(review.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 
-            {/* Card header */}
-            <View style={styles.reviewHeader}>
-              <Text style={styles.reviewDate}>
-                {new Date(review.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-              </Text>
-              <View style={styles.reviewActions}>
-                <TouchableOpacity style={styles.editBtn} onPress={() => handleEdit(review)}>
-                  <Ionicons name="pencil" size={14} color={colors.amber} />
-                  <Text style={styles.editBtnText}>Edit</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.deleteReviewBtn} onPress={() => handleDeleteReview(review)}>
-                  <Ionicons name="trash-outline" size={14} color={colors.error} />
-                </TouchableOpacity>
-              </View>
-            </View>
+          return (
+            <View key={review.localId} style={[styles.reviewCard, !isExpanded && styles.reviewCardCollapsed]}>
 
-            {/* Overall rating + intent */}
-            <View style={styles.ratingRow}>
-              <TacoRating value={review.overallRating} readonly size={20} />
-              {review.returnIntent && (
-                <View style={[styles.intentBadge, { backgroundColor: review.returnIntent === 'yes' ? colors.amberSubtle : 'rgba(36,28,22,0.8)' }]}>
-                  <Text style={[styles.intentText, { color: review.returnIntent === 'yes' ? colors.amber : colors.creamMuted }]}>
-                    {review.returnIntent === 'yes' ? 'Hell yes 🤙' : review.returnIntent === 'maybe' ? 'Maybe' : 'Nah'}
-                  </Text>
+              {/* Card header — tappable on older reviews to expand/collapse */}
+              <TouchableOpacity
+                style={[styles.reviewHeader, !isExpanded && { marginBottom: 0 }]}
+                onPress={() => !isFirst && toggleExpanded(review.localId)}
+                activeOpacity={isFirst ? 1 : 0.6}
+              >
+                <View style={styles.reviewHeaderLeft}>
+                  <Text style={styles.reviewDate}>{dateStr}</Text>
+                  {isFirst && <View style={styles.latestBadge}><Text style={styles.latestBadgeText}>LATEST</Text></View>}
                 </View>
-              )}
-            </View>
+                <View style={styles.reviewActions}>
+                  {isExpanded && (
+                    <>
+                      <TouchableOpacity style={styles.editBtn} onPress={() => handleEdit(review)}>
+                        <Ionicons name="pencil" size={14} color={colors.amber} />
+                        <Text style={styles.editBtnText}>Edit</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.deleteReviewBtn} onPress={() => handleDeleteReview(review)}>
+                        <Ionicons name="trash-outline" size={14} color={colors.error} />
+                      </TouchableOpacity>
+                    </>
+                  )}
+                  {!isFirst && !isExpanded && (
+                    <TacoRating value={review.overallRating} readonly size={12} />
+                  )}
+                  {!isFirst && (
+                    <Ionicons
+                      name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                      size={16}
+                      color={colors.creamDim}
+                    />
+                  )}
+                </View>
+              </TouchableOpacity>
 
-            {/* Photos */}
-            {review.photoUris.length > 0 && (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoRow}>
-                {review.photoUris.map((uri, pi) => (
-                  <Image key={pi} source={{ uri }} style={styles.photo} />
-                ))}
-              </ScrollView>
-            )}
-
-            {/* Tacos */}
-            {review.tacoEntries.length > 0 && (
-              <View style={styles.section}>
-                <Text style={styles.sectionLabel}>TACOS</Text>
-                {review.tacoEntries.map((t, ti) => (
-                  <View key={ti} style={styles.entryRow}>
-                    <Ionicons name="restaurant" size={14} color={colors.amber} style={{ marginRight: 6 }} />
-                    <Text style={styles.entryName}>{t.tacoType}</Text>
-                    <TacoRating value={t.rating} readonly size={12} />
-                  </View>
-                ))}
-              </View>
-            )}
-
-            {/* Salsas */}
-            {review.salsaEntries.length > 0 && (
-              <View style={styles.section}>
-                <Text style={styles.sectionLabel}>SALSAS</Text>
-                {review.salsaEntries.map((s, si) => (
-                  <View key={si} style={styles.entryRow}>
-                    <Ionicons name="flame" size={14} color={s.heatLevel ? HEAT_COLOR[s.heatLevel] : colors.creamDim} style={{ marginRight: 6 }} />
-                    <Text style={styles.entryName}>{s.salsaName}</Text>
-                    <TacoRating value={s.flavorRating} readonly size={12} />
-                    {s.heatLevel && (
-                      <Text style={[styles.heatTag, { color: HEAT_COLOR[s.heatLevel] }]}>{s.heatLevel}</Text>
+              {isExpanded && (
+                <>
+                  {/* Overall rating + intent */}
+                  <View style={styles.ratingRow}>
+                    <TacoRating value={review.overallRating} readonly size={20} />
+                    {review.returnIntent && (
+                      <View style={[styles.intentBadge, { backgroundColor: review.returnIntent === 'yes' ? colors.amberSubtle : 'rgba(36,28,22,0.8)' }]}>
+                        <Text style={[styles.intentText, { color: review.returnIntent === 'yes' ? colors.amber : colors.creamMuted }]}>
+                          {review.returnIntent === 'yes' ? 'Hell yes 🤙' : review.returnIntent === 'maybe' ? 'Maybe' : 'Nah'}
+                        </Text>
+                      </View>
                     )}
                   </View>
-                ))}
-              </View>
-            )}
 
-            {/* Condiments */}
-            {review.condiments.length > 0 && (
-              <View style={styles.section}>
-                <Text style={styles.sectionLabel}>CONDIMENTS</Text>
-                <View style={styles.chipRow}>
-                  {review.condiments.map(c => (
-                    <View key={c} style={styles.chip}>
-                      <Text style={styles.chipText}>{c}</Text>
+                  {/* Photos */}
+                  {review.photoUris.length > 0 && (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoRow}>
+                      {review.photoUris.map((uri, pi) => (
+                        <Image key={pi} source={{ uri }} style={styles.photo} />
+                      ))}
+                    </ScrollView>
+                  )}
+
+                  {/* Tacos */}
+                  {review.tacoEntries.length > 0 && (
+                    <View style={styles.section}>
+                      <Text style={styles.sectionLabel}>TACOS</Text>
+                      {review.tacoEntries.map((t, ti) => (
+                        <View key={ti} style={styles.entryRow}>
+                          <Ionicons name="restaurant" size={14} color={colors.amber} style={{ marginRight: 6 }} />
+                          <Text style={styles.entryName}>{t.tacoType}</Text>
+                          <TacoRating value={t.rating} readonly size={12} />
+                        </View>
+                      ))}
                     </View>
-                  ))}
-                </View>
-              </View>
-            )}
+                  )}
 
-            {/* Notes */}
-            {review.notes && (
-              <View style={styles.section}>
-                <Text style={styles.sectionLabel}>NOTES</Text>
-                <Text style={styles.notes}>{review.notes}</Text>
-              </View>
-            )}
-          </View>
-        ))}
+                  {/* Salsas */}
+                  {review.salsaEntries.length > 0 && (
+                    <View style={styles.section}>
+                      <Text style={styles.sectionLabel}>SALSAS</Text>
+                      {review.salsaEntries.map((s, si) => (
+                        <View key={si} style={styles.entryRow}>
+                          <Ionicons name="flame" size={14} color={s.heatLevel ? HEAT_COLOR[s.heatLevel] : colors.creamDim} style={{ marginRight: 6 }} />
+                          <Text style={styles.entryName}>{s.salsaName}</Text>
+                          <TacoRating value={s.flavorRating} readonly size={12} />
+                          {s.heatLevel && (
+                            <Text style={[styles.heatTag, { color: HEAT_COLOR[s.heatLevel] }]}>{s.heatLevel}</Text>
+                          )}
+                        </View>
+                      ))}
+                    </View>
+                  )}
+
+                  {/* Condiments */}
+                  {review.condiments.length > 0 && (
+                    <View style={styles.section}>
+                      <Text style={styles.sectionLabel}>CONDIMENTS</Text>
+                      <View style={styles.chipRow}>
+                        {review.condiments.map(c => (
+                          <View key={c} style={styles.chip}>
+                            <Text style={styles.chipText}>{c}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Notes */}
+                  {review.notes && (
+                    <View style={styles.section}>
+                      <Text style={styles.sectionLabel}>NOTES</Text>
+                      <Text style={styles.notes}>{review.notes}</Text>
+                    </View>
+                  )}
+                </>
+              )}
+            </View>
+          )
+        })}
 
         {/* Add another review */}
         <TouchableOpacity
@@ -346,8 +385,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.surfaceBorder,
   },
+  reviewCardCollapsed: {
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.xs,
+  },
   reviewHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
+  reviewHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   reviewDate: { fontSize: 11, color: colors.creamDim, fontWeight: '500' },
+  latestBadge: { backgroundColor: colors.amberSubtle, borderRadius: radius.full, paddingHorizontal: 6, paddingVertical: 2, borderWidth: 1, borderColor: colors.amberDim },
+  latestBadgeText: { fontSize: 9, fontWeight: '800', color: colors.amber, letterSpacing: 0.8 },
   reviewActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   editBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4, paddingHorizontal: spacing.sm, backgroundColor: colors.amberSubtle, borderRadius: radius.full },
   editBtnText: { color: colors.amber, fontSize: 12, fontWeight: '700' },

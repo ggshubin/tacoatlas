@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { LocalTacoEntry, LocalSalsaEntry, LocalReview, SpotType, PrivacySetting,
+import type { LocalTacoEntry, LocalSalsaEntry, LocalReview, LocalVendor, SpotType, PrivacySetting,
   LocalBurritoEntry, LocalTortaEntry } from '../types/app'
 
 export type FoodCategory = 'tacos' | 'burritos' | 'tortas' | 'salsas'
@@ -15,7 +15,7 @@ interface ReviewFormState {
   privacy: PrivacySetting
   spotNote: string
   // Step 2
-  activeCategory: FoodCategory
+  activeCategory: FoodCategory | null
   tacoEntries: LocalTacoEntry[]
   burritoEntries: LocalBurritoEntry[]
   tortaEntries: LocalTortaEntry[]
@@ -33,7 +33,7 @@ interface ReviewFormState {
   currentStep: number  // 1–3
   // Actions
   setField: <K extends keyof ReviewFormState>(key: K, value: ReviewFormState[K]) => void
-  setActiveCategory: (cat: FoodCategory) => void
+  setActiveCategory: (cat: FoodCategory | null) => void
   addTacoEntry: (entry: LocalTacoEntry) => void
   removeTacoEntry: (index: number) => void
   updateTacoEntry: (index: number, updates: Partial<LocalTacoEntry>) => void
@@ -44,7 +44,7 @@ interface ReviewFormState {
   addSalsaEntry: (entry: LocalSalsaEntry) => void
   removeSalsaEntry: (index: number) => void
   toggleCondiment: (name: string) => void
-  loadForEdit: (review: LocalReview, vendorName: string) => void
+  loadForEdit: (review: LocalReview, vendor: LocalVendor) => void
   addPhoto: (uri: string) => void
   removePhoto: (uri: string) => void
   nextStep: () => void
@@ -61,7 +61,7 @@ const initialState = {
   cityName: null,
   privacy: 'public' as PrivacySetting,
   spotNote: '',
-  activeCategory: 'tacos' as FoodCategory,
+  activeCategory: null as FoodCategory | null,
   tacoEntries: [],
   burritoEntries: [],
   tortaEntries: [],
@@ -79,7 +79,7 @@ const initialState = {
 export const useReviewFormStore = create<ReviewFormState>((set) => ({
   ...initialState,
   setField: (key, value) => set({ [key]: value } as Partial<ReviewFormState>),
-  setActiveCategory: (cat) => set({ activeCategory: cat }),
+  setActiveCategory: (cat: FoodCategory | null) => set({ activeCategory: cat }),
   addTacoEntry: (entry) => set(s => ({ tacoEntries: [...s.tacoEntries, entry] })),
   removeTacoEntry: (i) => set(s => ({ tacoEntries: s.tacoEntries.filter((_, idx) => idx !== i) })),
   updateTacoEntry: (i, updates) => set(s => ({
@@ -97,10 +97,18 @@ export const useReviewFormStore = create<ReviewFormState>((set) => ({
         ? s.condiments.filter(c => c !== name)
         : [...s.condiments, name],
     })),
-  loadForEdit: (review, vendorName) => set({
+  loadForEdit: (review, vendor) => set({
     editingReviewLocalId: review.localId,
     editingVendorLocalId: review.vendorLocalId,
-    vendorName,
+    vendorName: vendor.name,
+    spotType: vendor.spotType ?? null,
+    spotNote: vendor.spotNote ?? '',
+    lat: vendor.lat ?? null,
+    lng: vendor.lng ?? null,
+    address: vendor.address ?? null,
+    cityName: vendor.cityName ?? null,
+    privacy: vendor.privacy ?? 'public',
+    activeCategory: 'tacos' as FoodCategory,
     tacoEntries: review.tacoEntries,
     burritoEntries: review.burritoEntries ?? [],
     tortaEntries: review.tortaEntries ?? [],
@@ -111,10 +119,6 @@ export const useReviewFormStore = create<ReviewFormState>((set) => ({
     notes: review.notes ?? '',
     photoUris: review.photoUris,
     currentStep: 1,
-    lat: null,
-    lng: null,
-    address: null,
-    cityName: null,
   }),
   addPhoto: (uri) => set(s => ({ photoUris: [...s.photoUris, uri] })),
   removePhoto: (uri) => set(s => ({ photoUris: s.photoUris.filter(u => u !== uri) })),

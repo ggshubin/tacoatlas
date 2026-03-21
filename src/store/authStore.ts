@@ -11,7 +11,8 @@ interface AuthState {
   isLoading: boolean
   hasCompletedOnboarding: boolean
   signIn: (email: string, password: string) => Promise<{ error: string | null }>
-  signUp: (email: string, password: string, displayName: string) => Promise<{ error: string | null }>
+  signUp: (email: string, password: string, displayName: string) => Promise<{ error: string | null; needsConfirmation?: boolean }>
+  resendConfirmation: (email: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
   setSession: (session: Session | null) => void
   setHasCompletedOnboarding: (val: boolean) => Promise<void>
@@ -55,14 +56,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   signUp: async (email, password, displayName) => {
     const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { display_name: displayName } } })
     if (error) return { error: error.message }
-    // If email confirmation is required, session will be null
     if (!data.session) {
-      return { error: 'Check your email to confirm your account, then sign in.' }
+      return { error: null, needsConfirmation: true }
     }
     set({ session: data.session })
     await supabase.from('profiles').upsert({ id: data.session.user.id, display_name: displayName })
     await syncService.syncGuestDataToSupabase(data.session.user.id)
     await get().loadProfile()
+    return { error: null }
+  },
+
+  resendConfirmation: async (email) => {
+    const { error } = await supabase.auth.resend({ type: 'signup', email })
+    if (error) return { error: error.message }
     return { error: null }
   },
 

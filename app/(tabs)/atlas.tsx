@@ -23,7 +23,6 @@ export default function MyTacosScreen() {
   const [search, setSearch] = useState('')
   const [filterType, setFilterType] = useState<SpotType | null>(null)
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list')
-  const [sort, setSort] = useState<'recent' | 'rating' | 'name'>('recent')
   const [showActionSheet, setShowActionSheet] = useState(false)
 
   const filteredRows = rows
@@ -32,11 +31,7 @@ export default function MyTacosScreen() {
       const matchesType = filterType === null || vendor.spotType === filterType
       return matchesSearch && matchesType
     })
-    .sort((a, b) => {
-      if (sort === 'rating') return (b.avgRating ?? -1) - (a.avgRating ?? -1)
-      if (sort === 'name') return a.vendor.name.localeCompare(b.vendor.name)
-      return new Date(b.vendor.createdAt).getTime() - new Date(a.vendor.createdAt).getTime()
-    })
+    .sort((a, b) => new Date(b.vendor.createdAt).getTime() - new Date(a.vendor.createdAt).getTime())
 
   useFocusEffect(
     useCallback(() => {
@@ -96,19 +91,6 @@ export default function MyTacosScreen() {
         </View>
         {viewMode === 'list' && (
           <>
-            <View style={styles.sortRow}>
-              {(['recent', 'rating', 'name'] as const).map(s => (
-                <TouchableOpacity
-                  key={s}
-                  style={[styles.sortChip, sort === s && styles.sortChipActive]}
-                  onPress={() => setSort(s)}
-                >
-                  <Text style={[styles.sortChipText, sort === s && styles.sortChipTextActive]}>
-                    {s === 'recent' ? 'Recent' : s === 'rating' ? 'Rating' : 'Name'}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
             <View style={styles.searchRow}>
               <View style={styles.searchBar}>
                 <Ionicons name="search" size={16} color={colors.creamMuted} />
@@ -369,26 +351,6 @@ const styles = StyleSheet.create({
     borderColor: colors.amberDim,
   },
 
-  sortRow: {
-    flexDirection: 'row',
-    gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.xs,
-  },
-  sortChip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: 6,
-    borderRadius: radius.full,
-    backgroundColor: colors.surfaceRaised,
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
-  },
-  sortChipActive: {
-    backgroundColor: colors.amberSubtle,
-    borderColor: colors.amber,
-  },
-  sortChipText: { fontSize: 13, color: colors.creamMuted, fontWeight: '500' },
-  sortChipTextActive: { color: colors.amber, fontWeight: '700' },
   nVisitLabel: { fontSize: 12, color: colors.creamDim, fontStyle: 'italic' },
 
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },

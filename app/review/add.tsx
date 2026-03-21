@@ -1,9 +1,9 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet,
-  KeyboardAvoidingView, Platform, Alert, ActivityIndicator,
+  KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Image, Modal,
 } from 'react-native'
-import { router } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useReviewFormStore, FoodCategory } from '../../src/store/reviewFormStore'
 import { localStorageService } from '../../src/services/localStorage'
@@ -13,7 +13,7 @@ import { ChipScorecard } from '../../src/components/ChipScorecard'
 import { colors, spacing, radius } from '../../src/utils/theme'
 import type { SpotType, PrivacySetting, HeatLevel } from '../../src/types/app'
 
-const SPOT_TYPES: SpotType[] = ['Truck', 'Food Cart', 'Street Tent', 'House', 'Brick & Mortar', 'Restaurant']
+const SPOT_TYPES: SpotType[] = ['Truck', 'Food Cart', 'Street Tent', 'Restaurant']
 
 const PRIVACY_OPTIONS: { value: PrivacySetting; label: string; icon: string }[] = [
   { value: 'public', label: 'Public', icon: '🌎' },
@@ -24,15 +24,50 @@ const PRIVACY_OPTIONS: { value: PrivacySetting; label: string; icon: string }[] 
 const TACO_TYPES = ['Al Pastor', 'Carne Asada', 'Carnitas', 'Birria', 'Pollo', 'Fish', 'Shrimp', 'Lengua', 'Cabeza', 'Chorizo', 'Veggie', 'Other']
 const BURRITO_TYPES = ['California', 'Birria', 'Carne Asada', 'Pollo', 'Chorizo', 'Bean & Cheese', 'Wet', 'Other']
 const TORTA_TYPES = ['Milanesa', 'Cubana', 'Pierna', 'Al Pastor', 'Chorizo', 'Other']
-const CONDIMENTS = ['Guacamole', 'Queso', 'Crema', 'Onions', 'Cilantro', 'Radishes', 'Jalapeños', 'Lime', 'Pico de Gallo']
 const HEAT_LEVELS: HeatLevel[] = ['mild', 'medium', 'hot', 'fire', 'volcano']
+const HEAT_ICONS: Record<HeatLevel, string> = {
+  mild: '🌶',
+  medium: '🌶🌶',
+  hot: '🔥',
+  fire: '🔥🔥',
+  volcano: '🌋',
+}
 
 const STEP_NAMES = ['The Spot', "What'd You Have?", 'Your Verdict']
 
 export default function ReviewWizard() {
   const store = useReviewFormStore()
+  const params = useLocalSearchParams<{ vendorLocalId?: string; editReviewId?: string }>()
   const [showSpotNote, setShowSpotNote] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [showDitchModal, setShowDitchModal] = useState(false)
+
+  // Auto-expand spot note when entering edit mode if notes exist
+  useEffect(() => {
+    if (params.editReviewId && store.spotNote) setShowSpotNote(true)
+  }, [params.editReviewId])
+
+  // Pre-fill Step 1 from an existing pinned vendor when logging first visit
+  useEffect(() => {
+    const { vendorLocalId, editReviewId } = params
+    if (!vendorLocalId || editReviewId) return // edit mode handled elsewhere
+    if (store.editingVendorLocalId === vendorLocalId) return // already loaded
+
+    localStorageService.getVendors().then(vendors => {
+      const vendor = vendors.find(v => v.localId === vendorLocalId)
+      if (!vendor) return
+      store.setField('vendorName', vendor.name)
+      store.setField('spotType', vendor.spotType ?? null)
+      store.setField('lat', vendor.lat ?? null)
+      store.setField('lng', vendor.lng ?? null)
+      store.setField('address', vendor.address ?? null)
+      store.setField('cityName', vendor.cityName ?? null)
+      store.setField('privacy', vendor.privacy ?? 'public')
+      store.setField('spotNote', vendor.spotNote ?? '')
+      store.setField('editingVendorLocalId', vendorLocalId)
+      if (vendor.spotNote) setShowSpotNote(true)
+    })
+  }, [params.vendorLocalId])
 
   const litCategories: FoodCategory[] = []
   if (store.tacoEntries.length > 0) litCategories.push('tacos')
@@ -41,10 +76,7 @@ export default function ReviewWizard() {
   if (store.salsaEntries.length > 0) litCategories.push('salsas')
 
   function handleClose() {
-    Alert.alert('Ditch this visit?', 'Your progress will be lost.', [
-      { text: 'Keep editing', style: 'cancel' },
-      { text: 'Ditch it', style: 'destructive', onPress: () => { store.reset(); router.back() } },
-    ])
+    setShowDitchModal(true)
   }
 
   function handleProGate() {
@@ -85,7 +117,7 @@ export default function ReviewWizard() {
         })
       }
 
-      await localStorageService.addReview({
+      const reviewPayload = {
         vendorLocalId,
         overallRating: store.overallRating,
         returnIntent: store.returnIntent,
@@ -96,7 +128,13 @@ export default function ReviewWizard() {
         condiments: store.condiments,
         burritoEntries: store.burritoEntries,
         tortaEntries: store.tortaEntries,
-      })
+      }
+
+      if (store.editingReviewLocalId) {
+        await localStorageService.updateReview(store.editingReviewLocalId, reviewPayload)
+      } else {
+        await localStorageService.addReview(reviewPayload)
+      }
 
       store.reset()
       router.back()
@@ -112,6 +150,26 @@ export default function ReviewWizard() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      <Image source={require('../../assets/background.png')} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+
+      {/* Ditch confirmation modal */}
+      <Modal visible={showDitchModal} transparent animationType="fade" onRequestClose={() => setShowDitchModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Ditch this visit?</Text>
+            <Text style={styles.modalBody}>Your progress will be lost.</Text>
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.modalKeepBtn} onPress={() => setShowDitchModal(false)}>
+                <Text style={styles.modalKeepText}>Keep Editing</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalDitchBtn} onPress={() => { setShowDitchModal(false); store.reset(); router.back() }}>
+                <Text style={styles.modalDitchText}>Ditch It</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.closeBtn} onPress={handleClose}>
@@ -220,6 +278,14 @@ export default function ReviewWizard() {
               onProGate={handleProGate}
             />
 
+            {store.activeCategory === null && (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyStateEmoji}>🌮</Text>
+                <Text style={styles.emptyStateTitle}>What did you eat?</Text>
+                <Text style={styles.emptyStateSubtitle}>Tap a category above, then pick what you had.</Text>
+              </View>
+            )}
+
             {store.activeCategory === 'tacos' && (
               <ChipScorecard
                 presets={TACO_TYPES}
@@ -227,9 +293,9 @@ export default function ReviewWizard() {
                 onAdd={item => store.addTacoEntry({ tacoType: item.label, rating: item.rating, notes: item.notes })}
                 onRemove={store.removeTacoEntry}
                 onUpdate={(idx, updates) => store.updateTacoEntry(idx, {
-                  tacoType: updates.label !== undefined ? updates.label : undefined,
-                  rating: updates.rating,
-                  notes: updates.notes,
+                  ...(updates.label !== undefined && { tacoType: updates.label }),
+                  ...(updates.rating !== undefined && { rating: updates.rating }),
+                  ...(updates.notes !== undefined && { notes: updates.notes }),
                 })}
               />
             )}
@@ -273,8 +339,10 @@ export default function ReviewWizard() {
             {store.activeCategory === 'salsas' && (
               <ChipScorecard
                 freeform
-                items={store.salsaEntries.map(e => ({ label: e.salsaName, rating: e.flavorRating, notes: e.notes ?? null }))}
-                onAdd={item => store.addSalsaEntry({ salsaName: item.label, flavorRating: item.rating, heatLevel: null, notes: item.notes })}
+                heatLevels={HEAT_LEVELS}
+                heatLevelIcons={HEAT_ICONS}
+                items={store.salsaEntries.map(e => ({ label: e.salsaName, rating: e.flavorRating, notes: e.notes ?? null, heatLevel: e.heatLevel }))}
+                onAdd={item => store.addSalsaEntry({ salsaName: item.label, flavorRating: item.rating, heatLevel: item.heatLevel ?? null, notes: item.notes })}
                 onRemove={store.removeSalsaEntry}
                 onUpdate={(idx, updates) => {
                   // Reconstruct salsa entry on update
@@ -284,44 +352,37 @@ export default function ReviewWizard() {
                   store.setField('salsaEntries', entries)
                 }}
                 renderHeatPicker={(item, idx) => (
-                  <View style={{ flexDirection: 'row', gap: 4, marginTop: spacing.sm, flexWrap: 'wrap' }}>
-                    {HEAT_LEVELS.map(h => (
-                      <TouchableOpacity
-                        key={h}
-                        style={{
-                          paddingHorizontal: 8, paddingVertical: 4,
-                          borderRadius: radius.full, borderWidth: 1,
-                          borderColor: store.salsaEntries[idx]?.heatLevel === h ? colors.amber : colors.surfaceBorder,
-                          backgroundColor: store.salsaEntries[idx]?.heatLevel === h ? colors.amberSubtle : colors.surface,
-                        }}
-                        onPress={() => {
-                          const entries = [...store.salsaEntries]
-                          entries[idx] = { ...entries[idx], heatLevel: h }
-                          store.setField('salsaEntries', entries)
-                        }}
-                      >
-                        <Text style={{ fontSize: 11, color: store.salsaEntries[idx]?.heatLevel === h ? colors.amber : colors.creamMuted }}>
-                          {h}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
+                  <View style={{ flexDirection: 'row', gap: 6, marginTop: spacing.sm, flexWrap: 'wrap' }}>
+                    {HEAT_LEVELS.map(h => {
+                      const isActive = store.salsaEntries[idx]?.heatLevel === h
+                      return (
+                        <TouchableOpacity
+                          key={h}
+                          style={{
+                            alignItems: 'center', gap: 2,
+                            paddingHorizontal: 10, paddingVertical: 6,
+                            borderRadius: radius.md, borderWidth: 1,
+                            borderColor: isActive ? colors.amber : colors.surfaceBorder,
+                            backgroundColor: isActive ? colors.amberSubtle : colors.surface,
+                          }}
+                          onPress={() => {
+                            const entries = [...store.salsaEntries]
+                            entries[idx] = { ...entries[idx], heatLevel: h }
+                            store.setField('salsaEntries', entries)
+                          }}
+                        >
+                          <Text style={{ fontSize: 16 }}>{HEAT_ICONS[h as HeatLevel]}</Text>
+                          <Text style={{ fontSize: 10, fontWeight: '600', color: isActive ? colors.amber : colors.creamMuted }}>
+                            {h}
+                          </Text>
+                        </TouchableOpacity>
+                      )
+                    })}
                   </View>
                 )}
               />
             )}
 
-            <Text style={[styles.fieldLabel, { marginTop: spacing.md }]}>Also available</Text>
-            <View style={styles.chipGrid}>
-              {CONDIMENTS.map(c => (
-                <TouchableOpacity
-                  key={c}
-                  style={[styles.chip, store.condiments.includes(c) && styles.chipActive]}
-                  onPress={() => store.toggleCondiment(c)}
-                >
-                  <Text style={[styles.chipText, store.condiments.includes(c) && styles.chipTextActive]}>{c}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
           </View>
         )}
 
@@ -483,4 +544,52 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl, paddingVertical: spacing.sm + 4,
   },
   submitBtnText: { color: colors.cream, fontWeight: '700', fontSize: 15 },
+  emptyState: {
+    alignItems: 'center', justifyContent: 'center',
+    paddingVertical: spacing.xxl,
+    gap: spacing.sm,
+  },
+  emptyStateEmoji: { fontSize: 48 },
+  emptyStateTitle: {
+    fontSize: 20, fontWeight: '700', color: colors.cream, marginTop: spacing.sm,
+  },
+  emptyStateSubtitle: {
+    fontSize: 14, color: colors.creamMuted, textAlign: 'center',
+    paddingHorizontal: spacing.xl,
+  },
+  modalOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.65)',
+    justifyContent: 'center', alignItems: 'center',
+    paddingHorizontal: spacing.xl,
+  },
+  modalCard: {
+    width: '100%', backgroundColor: colors.surface,
+    borderRadius: radius.lg, borderWidth: 1, borderColor: colors.surfaceBorder,
+    padding: spacing.lg,
+  },
+  modalTitle: {
+    fontSize: 18, fontWeight: '800', color: colors.cream,
+    marginBottom: spacing.sm,
+  },
+  modalBody: {
+    fontSize: 14, color: colors.creamMuted, marginBottom: spacing.lg,
+  },
+  modalActions: {
+    flexDirection: 'row', gap: spacing.sm,
+  },
+  modalKeepBtn: {
+    flex: 1, paddingVertical: 12, borderRadius: radius.full,
+    borderWidth: 1, borderColor: colors.surfaceBorder,
+    backgroundColor: colors.surfaceRaised, alignItems: 'center',
+  },
+  modalKeepText: {
+    color: colors.cream, fontWeight: '600', fontSize: 14,
+  },
+  modalDitchBtn: {
+    flex: 1, paddingVertical: 12, borderRadius: radius.full,
+    backgroundColor: colors.amber, alignItems: 'center',
+  },
+  modalDitchText: {
+    color: colors.bg, fontWeight: '700', fontSize: 14,
+  },
 })

@@ -1,0 +1,249 @@
+<style>
+  body { background: #111; }
+  .q { color: #F5EDD8; font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+  .sub { color: #B5A898; font-size: 13px; margin-bottom: 24px; }
+
+  .layout { display: flex; gap: 32px; justify-content: center; align-items: flex-start; flex-wrap: wrap; }
+  .col { text-align: center; }
+  .col-label { font-size: 11px; color: #B5A898; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; font-weight: 600; }
+
+  .phone {
+    width: 210px;
+    background: #1A1209;
+    border-radius: 36px;
+    border: 2px solid #3D2B12;
+    padding: 14px 8px 16px;
+    display: inline-block;
+  }
+  .screen { border-radius: 24px; overflow: hidden; background: #1A1209; }
+
+  .tabbar { display: flex; border-top: 1px solid #3D2B12; background: #1A1209; padding: 8px 0 4px; }
+  .tab { flex: 1; text-align: center; font-size: 7px; color: #B5A898; line-height: 1.5; }
+  .tab.active { color: #F5A623; }
+
+  .s-pad { padding: 12px 10px 8px; }
+  .eyebrow { font-size: 7px; color: #B5A898; letter-spacing: 1px; text-transform: uppercase; }
+  .ttl { font-size: 17px; font-weight: 800; color: #F5EDD8; margin-bottom: 10px; }
+
+  /* Add strip */
+  .add-strip { display: flex; gap: 5px; margin-bottom: 10px; }
+  .add-btn { flex: 1; background: rgba(245,166,35,0.08); border: 1px solid #3D2B12; border-radius: 7px; padding: 6px 4px; text-align: center; font-size: 8px; color: #F5A623; font-weight: 700; line-height: 1.4; }
+
+  /* Section label */
+  .slbl { font-size: 7px; font-weight: 700; color: #B5A898; letter-spacing: 1px; text-transform: uppercase; margin: 8px 0 5px; }
+
+  /* Friend row (quiet state) */
+  .friend-row {
+    display: flex; align-items: center; gap: 7px;
+    background: #26190C; border-radius: 8px; padding: 7px 8px;
+    border: 1px solid #3D2B12; margin-bottom: 5px;
+  }
+  .av { width: 28px; height: 28px; border-radius: 14px; background: #3D2B12; border: 1.5px solid #B37318; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #F5A623; font-weight: 700; flex-shrink: 0; }
+  .av-green { border-color: #27AE60; }
+  .fname { font-size: 10px; font-weight: 600; color: #F5EDD8; }
+  .fsub { font-size: 8px; color: #B5A898; margin-top: 1px; }
+  .ping-btn { background: rgba(245,166,35,0.12); border: 1px solid #B37318; border-radius: 12px; padding: 3px 7px; font-size: 7px; color: #F5A623; font-weight: 700; flex-shrink: 0; white-space: nowrap; }
+
+  /* Activity card */
+  .act-card {
+    background: #26190C; border-radius: 9px; border: 1px solid #3D2B12;
+    margin-bottom: 6px; overflow: hidden;
+  }
+  .act-head { display: flex; align-items: center; gap: 6px; padding: 7px 8px 4px; }
+  .act-av { width: 20px; height: 20px; border-radius: 10px; background: #3D2B12; border: 1px solid #B37318; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #F5A623; font-weight: 700; flex-shrink: 0; }
+  .act-meta { font-size: 8px; color: #B5A898; flex: 1; }
+  .act-meta strong { color: #F5EDD8; }
+  .act-time { font-size: 7px; color: #555; }
+
+  .act-body { padding: 0 8px 6px; }
+  .act-spot-name { font-size: 12px; font-weight: 700; color: #F5EDD8; margin-bottom: 2px; }
+  .act-spot-type { font-size: 8px; color: #B5A898; margin-bottom: 4px; }
+  .act-stars { font-size: 9px; color: #F5A623; margin-bottom: 5px; }
+  .act-note { font-size: 9px; color: #B5A898; font-style: italic; border-left: 2px solid #3D2B12; padding-left: 5px; margin-bottom: 6px; line-height: 1.4; }
+
+  .taco-cta {
+    background: rgba(245,166,35,0.12); border-top: 1px solid #3D2B12;
+    padding: 6px 8px; display: flex; align-items: center; justify-content: center; gap: 5px;
+  }
+  .taco-cta-text { font-size: 9px; font-weight: 700; color: #F5A623; }
+
+  /* Empty/no friends state */
+  .empty-state { text-align: center; padding: 20px 10px; }
+  .empty-icon { font-size: 28px; margin-bottom: 8px; }
+  .empty-title { font-size: 12px; font-weight: 700; color: #F5EDD8; margin-bottom: 4px; }
+  .empty-sub { font-size: 9px; color: #B5A898; line-height: 1.4; }
+  .empty-btn { margin-top: 10px; background: #F5A623; border-radius: 20px; padding: 7px; font-size: 9px; font-weight: 700; color: #1A1209; }
+
+  .divider { height: 1px; background: #3D2B12; margin: 6px 0; }
+</style>
+
+<p class="q">Mi Gente Tab — Three states</p>
+<p class="sub">How the screen looks depending on who you've added and what they've shared</p>
+
+<div class="layout">
+
+  <!-- STATE 1: No friends yet -->
+  <div class="col">
+    <div class="col-label">No Friends Yet</div>
+    <div class="phone">
+      <div class="screen">
+        <div class="s-pad">
+          <div class="eyebrow">taco atlas</div>
+          <div class="ttl">Mi Gente</div>
+          <div class="empty-state">
+            <div class="empty-icon">👥</div>
+            <div class="empty-title">Find your taco crew</div>
+            <div class="empty-sub">Add friends to see where they're eating and share your spots</div>
+            <div class="empty-btn">＋ Add Friends</div>
+          </div>
+          <div class="divider"></div>
+          <div class="add-strip">
+            <div class="add-btn">🔍<br>Search</div>
+            <div class="add-btn">🔗<br>Invite Link</div>
+            <div class="add-btn">📷<br>QR Code</div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tab">🗺️<br>Atlas</div>
+          <div class="tab">🔍<br>Explore</div>
+          <div class="tab active">👥<br>Mi Gente</div>
+          <div class="tab">👤<br>Profile</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATE 2: Friends added, nothing shared yet -->
+  <div class="col">
+    <div class="col-label">Friends Added, No Activity</div>
+    <div class="phone">
+      <div class="screen">
+        <div class="s-pad">
+          <div class="eyebrow">taco atlas</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <div class="ttl" style="margin:0;">Mi Gente</div>
+            <div style="font-size:9px;color:#F5A623;border:1px solid #B37318;border-radius:12px;padding:3px 8px;">＋ Add</div>
+          </div>
+
+          <div class="slbl">Your Crew</div>
+
+          <div class="friend-row">
+            <div class="av av-green">MR</div>
+            <div style="flex:1;">
+              <div class="fname">marcos_r</div>
+              <div class="fsub">Hasn't shared yet</div>
+            </div>
+            <div class="ping-btn">🌮 Poke</div>
+          </div>
+
+          <div class="friend-row">
+            <div class="av">JL</div>
+            <div style="flex:1;">
+              <div class="fname">jlo_tacos</div>
+              <div class="fsub">Hasn't shared yet</div>
+            </div>
+            <div class="ping-btn">🌮 Poke</div>
+          </div>
+
+          <div class="friend-row">
+            <div class="av">DP</div>
+            <div style="flex:1;">
+              <div class="fname">d_perez</div>
+              <div class="fsub">Hasn't shared yet</div>
+            </div>
+            <div class="ping-btn">🌮 Poke</div>
+          </div>
+
+          <div style="background:#26190C;border:1px dashed #3D2B12;border-radius:8px;padding:10px;text-align:center;margin-top:6px;">
+            <div style="font-size:9px;color:#555;line-height:1.5;">Their drops will appear here<br>once they share a spot</div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tab">🗺️<br>Atlas</div>
+          <div class="tab">🔍<br>Explore</div>
+          <div class="tab active">👥<br>Mi Gente</div>
+          <div class="tab">👤<br>Profile</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATE 3: Active feed -->
+  <div class="col">
+    <div class="col-label">Active Feed</div>
+    <div class="phone">
+      <div class="screen">
+        <div class="s-pad">
+          <div class="eyebrow">taco atlas</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <div class="ttl" style="margin:0;">Mi Gente</div>
+            <div style="font-size:9px;color:#F5A623;border:1px solid #B37318;border-radius:12px;padding:3px 8px;">＋ Add</div>
+          </div>
+
+          <!-- Crew scroll row -->
+          <div style="display:flex;gap:8px;margin-bottom:10px;overflow:hidden;">
+            <div style="text-align:center;flex-shrink:0;">
+              <div class="av av-green" style="margin:0 auto 3px;">MR</div>
+              <div style="font-size:7px;color:#F5EDD8;">marcos</div>
+            </div>
+            <div style="text-align:center;flex-shrink:0;">
+              <div class="av" style="margin:0 auto 3px;">JL</div>
+              <div style="font-size:7px;color:#F5EDD8;">jlo</div>
+            </div>
+            <div style="text-align:center;flex-shrink:0;">
+              <div class="av av-green" style="margin:0 auto 3px;">DP</div>
+              <div style="font-size:7px;color:#F5EDD8;">d_perez</div>
+            </div>
+            <div style="text-align:center;flex-shrink:0;">
+              <div style="width:28px;height:28px;border-radius:14px;background:#26190C;border:1.5px dashed #3D2B12;display:flex;align-items:center;justify-content:center;font-size:14px;color:#555;margin:0 auto 3px;">＋</div>
+              <div style="font-size:7px;color:#555;">Add</div>
+            </div>
+          </div>
+
+          <div class="slbl">Their Drops</div>
+
+          <div class="act-card">
+            <div class="act-head">
+              <div class="act-av">MR</div>
+              <div class="act-meta"><strong>marcos_r</strong> pinned a spot</div>
+              <div class="act-time">1h</div>
+            </div>
+            <div class="act-body">
+              <div class="act-spot-name">🌮 El Paisa Truck</div>
+              <div class="act-spot-type">Truck · 0.3 mi away</div>
+              <div class="act-stars">★★★★★</div>
+              <div class="act-note">"Al pastor is unreal, go before 2pm"</div>
+            </div>
+            <div class="taco-cta">
+              <div class="taco-cta-text">🌮 Let's Get Tacos →</div>
+            </div>
+          </div>
+
+          <div class="act-card">
+            <div class="act-head">
+              <div class="act-av">DP</div>
+              <div class="act-meta"><strong>d_perez</strong> reviewed</div>
+              <div class="act-time">2d</div>
+            </div>
+            <div class="act-body">
+              <div class="act-spot-name">🥙 La Taqueria</div>
+              <div class="act-spot-type">Brick & Mortar</div>
+              <div class="act-stars">★★★★☆</div>
+            </div>
+            <div class="taco-cta">
+              <div class="taco-cta-text">🌮 Let's Get Tacos →</div>
+            </div>
+          </div>
+
+        </div>
+        <div class="tabbar">
+          <div class="tab">🗺️<br>Atlas</div>
+          <div class="tab">🔍<br>Explore</div>
+          <div class="tab active">👥<br>Mi Gente</div>
+          <div class="tab">👤<br>Profile</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>

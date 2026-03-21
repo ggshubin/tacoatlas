@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Image } from 'react-native'
 import { useFocusEffect } from 'expo-router'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
@@ -39,8 +39,10 @@ export default function ProfileScreen() {
   )
 
   return (
+    <View style={styles.container}>
+    <Image source={require('../../assets/background.png')} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
     <ScrollView
-      style={styles.container}
+      style={{ flex: 1 }}
       contentContainerStyle={[styles.content, { paddingTop: insets.top + spacing.md }]}
     >
       {/* Header row with gear */}
@@ -146,6 +148,7 @@ export default function ProfileScreen() {
         </View>
       )}
     </ScrollView>
+    </View>
   )
 }
 

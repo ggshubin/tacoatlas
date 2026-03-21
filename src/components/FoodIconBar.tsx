@@ -31,7 +31,7 @@ const CATEGORIES: FoodCategory[] = ['tacos', 'burritos', 'tortas', 'salsas']
 const ICON_SIZE = 36
 
 interface Props {
-  active: FoodCategory
+  active: FoodCategory | null
   litCategories: FoodCategory[]   // categories with at least one rated item
   onSelect: (cat: FoodCategory) => void
   onProGate: () => void           // called when a Pro-locked category is tapped by free user
@@ -44,15 +44,19 @@ export function FoodIconBar({ active, litCategories, onSelect, onProGate }: Prop
     <View style={styles.bar}>
       {CATEGORIES.map(cat => {
         const cfg = ICONS[cat]
-        const isLit = litCategories.includes(cat) || active === cat
-        const isLocked = cfg.proOnly && !isPro
+        const isInLit = litCategories.includes(cat)
         const isActive = active === cat
+        // Show Dk (colored) icon when: active, has items, or nothing selected yet
+        const isLit = isActive || isInLit || active === null
+        // Dim when another category is selected and this one has no items
+        const isDim = active !== null && !isActive && !isInLit
+        const isLocked = cfg.proOnly && !isPro
         const Icon = isLit ? cfg.Dk : cfg.Lt
 
         return (
           <TouchableOpacity
             key={cat}
-            style={[styles.iconBtn, isActive && styles.iconBtnActive, !isLit && styles.iconBtnDim]}
+            style={[styles.iconBtn, isActive && styles.iconBtnActive, isDim && styles.iconBtnDim]}
             onPress={() => isLocked ? onProGate() : onSelect(cat)}
           >
             <Icon width={ICON_SIZE} height={ICON_SIZE} />

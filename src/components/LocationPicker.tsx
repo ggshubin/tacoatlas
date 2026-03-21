@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { View, Text, TouchableOpacity, TextInput, StyleSheet, FlatList, ActivityIndicator } from 'react-native'
+import { View, Text, TouchableOpacity, TextInput, StyleSheet, FlatList, ActivityIndicator, Modal } from 'react-native'
 import MapView, { Marker } from 'react-native-maps'
 import { Ionicons } from '@expo/vector-icons'
 import { colors, spacing, radius } from '../utils/theme'
@@ -26,6 +26,7 @@ export function LocationPicker({ value, onChange }: Props) {
   const [searching, setSearching] = useState(false)
   const [showMapPicker, setShowMapPicker] = useState(false)
   const [taggingGps, setTaggingGps] = useState(false)
+  const [searchLimitHit, setSearchLimitHit] = useState(false)
 
   async function handleGps() {
     setTaggingGps(true)
@@ -50,10 +51,17 @@ export function LocationPicker({ value, onChange }: Props) {
 
   async function handleSearch(text: string) {
     setSearchQuery(text)
+    setSearchLimitHit(false)
     if (text.length < 3) { setSearchResults([]); return }
     setSearching(true)
     try {
       const { googlePlacesService } = await import('../services/googlePlacesService')
+      const remaining = await googlePlacesService.getRemainingSearches()
+      if (remaining <= 0) {
+        setSearchLimitHit(true)
+        setSearchResults([])
+        return
+      }
       const results = await googlePlacesService.searchByText(text)
       setSearchResults(results)
     } catch {
@@ -75,40 +83,37 @@ export function LocationPicker({ value, onChange }: Props) {
     setMethod('search')
   }
 
-  if (showMapPicker) {
-    return (
-      <MapPinPicker
-        onConfirm={(result) => {
-          onChange(result)
-          setMethod('map')
-          setShowMapPicker(false)
-        }}
-        onCancel={() => setShowMapPicker(false)}
-      />
-    )
-  }
-
   if (value) {
+    const locationLabel = value.address ?? (value.cityName ? value.cityName : `${value.lat.toFixed(5)}, ${value.lng.toFixed(5)}`)
     return (
-      <TouchableOpacity style={styles.mapSnapshot} onPress={() => onChange(null)}>
-        <MapView
-          style={StyleSheet.absoluteFillObject}
-          region={{ latitude: value.lat, longitude: value.lng, latitudeDelta: 0.005, longitudeDelta: 0.005 }}
-          scrollEnabled={false} zoomEnabled={false} rotateEnabled={false}
-          pitchEnabled={false} userInterfaceStyle="dark" pointerEvents="none"
-        >
-          <Marker coordinate={{ latitude: value.lat, longitude: value.lng }} />
-        </MapView>
-        <View style={styles.snapshotBadge}>
-          <Ionicons name="location" size={14} color={colors.cream} />
-          <Text style={styles.snapshotBadgeText}>Location tagged — tap to remove</Text>
+      <View style={styles.locationConfirmed}>
+        <View style={styles.locationConfirmedIcon}>
+          <Ionicons name="location" size={22} color={colors.amber} />
         </View>
-      </TouchableOpacity>
+        <View style={styles.locationConfirmedText}>
+          <Text style={styles.locationConfirmedLabel}>Location set</Text>
+          <Text style={styles.locationConfirmedAddress} numberOfLines={2}>{locationLabel}</Text>
+        </View>
+        <TouchableOpacity style={styles.locationRemoveBtn} onPress={() => onChange(null)}>
+          <Ionicons name="close-circle" size={20} color={colors.creamDim} />
+        </TouchableOpacity>
+      </View>
     )
   }
 
   return (
     <View>
+      <Modal visible={showMapPicker} animationType="slide" onRequestClose={() => setShowMapPicker(false)}>
+        <MapPinPicker
+          onConfirm={(result) => {
+            onChange(result)
+            setMethod('map')
+            setShowMapPicker(false)
+          }}
+          onCancel={() => setShowMapPicker(false)}
+        />
+      </Modal>
+
       <View style={styles.methodRow}>
         <TouchableOpacity style={styles.methodTile} onPress={handleGps} disabled={taggingGps}>
           {taggingGps ? <ActivityIndicator color={colors.amber} /> : <Ionicons name="locate" size={22} color={colors.amber} />}
@@ -135,6 +140,9 @@ export function LocationPicker({ value, onChange }: Props) {
             autoFocus
           />
           {searching && <ActivityIndicator color={colors.amber} style={{ marginTop: spacing.sm }} />}
+          {searchLimitHit && (
+            <Text style={styles.limitText}>Daily search limit reached. Try "I'm Here" or "Drop on Map" instead.</Text>
+          )}
           {searchResults.map((place, i) => (
             <TouchableOpacity key={i} style={styles.resultRow} onPress={() => handleSelectPlace(place)}>
               <Ionicons name="location-outline" size={16} color={colors.amber} />
@@ -156,14 +164,21 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md, gap: 6, borderWidth: 1, borderColor: colors.surfaceBorder,
   },
   methodLabel: { fontSize: 11, color: colors.creamMuted, fontWeight: '600' },
-  mapSnapshot: { height: 140, borderRadius: radius.md, overflow: 'hidden', marginBottom: spacing.md },
-  snapshotBadge: {
-    position: 'absolute', bottom: spacing.sm, left: spacing.sm,
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: 'rgba(24,20,15,0.85)',
-    paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: radius.full,
+  locationConfirmed: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+    backgroundColor: colors.amberSubtle, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.amberDim,
+    padding: spacing.md, marginBottom: spacing.md,
   },
-  snapshotBadgeText: { color: colors.cream, fontSize: 12 },
+  locationConfirmedIcon: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: colors.amberDim, flexShrink: 0,
+  },
+  locationConfirmedText: { flex: 1 },
+  locationConfirmedLabel: { fontSize: 11, fontWeight: '700', color: colors.amber, letterSpacing: 1, marginBottom: 2 },
+  locationConfirmedAddress: { fontSize: 13, color: colors.cream, lineHeight: 18 },
+  locationRemoveBtn: { padding: 4 },
   searchInput: {
     backgroundColor: colors.surfaceRaised, borderRadius: radius.md,
     borderWidth: 1, borderColor: colors.surfaceBorder,
@@ -176,4 +191,5 @@ const styles = StyleSheet.create({
   },
   resultText: { flex: 1, color: colors.cream, fontSize: 14 },
   resultAddress: { color: colors.creamMuted, fontSize: 12 },
+  limitText: { color: colors.creamMuted, fontSize: 13, fontStyle: 'italic', marginTop: spacing.sm, textAlign: 'center' },
 })

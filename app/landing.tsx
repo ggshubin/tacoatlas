@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
+import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native'
 import { router } from 'expo-router'
 import { colors, spacing, radius, typography } from '../src/utils/theme'
 import { useAuthStore } from '../src/store/authStore'
@@ -15,6 +15,7 @@ export default function LandingScreen() {
 
   return (
     <View style={styles.container}>
+      <Image source={require('../assets/background.png')} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
       <View style={styles.content}>
         <Text style={styles.appName}>TacoAtlas</Text>
         <Text style={styles.tagline}>Stop forgetting where the good tacos are.</Text>

@@ -1,0 +1,320 @@
+<style>
+  body { background: #111; }
+  .question { color: #F5EDD8; font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+  .subq { color: #B5A898; font-size: 14px; margin-bottom: 28px; }
+
+  .phones { display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; }
+
+  .phone {
+    width: 220px;
+    background: #1A1209;
+    border-radius: 36px;
+    border: 2px solid #3D2B12;
+    padding: 16px 10px 20px;
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    position: relative;
+  }
+  .phone:hover { border-color: #F5A623; }
+  .phone.selected { border-color: #F5A623; box-shadow: 0 0 0 3px rgba(245,166,35,0.25); }
+
+  .phone-label {
+    position: absolute;
+    top: -14px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #26190C;
+    border: 1px solid #3D2B12;
+    color: #F5A623;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 3px 12px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+
+  /* screen chrome */
+  .screen { background: #1A1209; border-radius: 24px; overflow: hidden; }
+
+  /* tab bar */
+  .tabbar {
+    display: flex;
+    border-top: 1px solid #3D2B12;
+    background: #1A1209;
+    padding: 8px 0 4px;
+  }
+  .tab { flex: 1; text-align: center; font-size: 9px; color: #B5A898; }
+  .tab.active { color: #F5A623; }
+  .tab-icon { font-size: 16px; display: block; }
+
+  /* common screen parts */
+  .s-header { padding: 12px 12px 6px; }
+  .s-eyebrow { font-size: 8px; color: #B5A898; letter-spacing: 1px; text-transform: uppercase; }
+  .s-title { font-size: 18px; font-weight: 800; color: #F5EDD8; }
+  .s-body { padding: 0 10px 10px; }
+
+  /* option A: dedicated Mi Gente screen with feed */
+  .friend-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 0;
+    border-bottom: 1px solid #3D2B12;
+  }
+  .avatar {
+    width: 28px; height: 28px; border-radius: 14px;
+    background: #3D2B12; border: 1.5px solid #F5A623;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: #F5A623; font-weight: 700; flex-shrink: 0;
+  }
+  .friend-info { flex: 1; }
+  .friend-name { font-size: 11px; color: #F5EDD8; font-weight: 600; }
+  .friend-sub { font-size: 9px; color: #B5A898; margin-top: 1px; }
+
+  .activity-item {
+    background: #26190C;
+    border-radius: 8px;
+    padding: 8px;
+    margin-bottom: 6px;
+    border: 1px solid #3D2B12;
+  }
+  .act-header { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+  .act-avatar { width: 20px; height: 20px; border-radius: 10px; background: #3D2B12; border: 1px solid #F5A623; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #F5A623; font-weight: 700; }
+  .act-meta { font-size: 9px; color: #B5A898; }
+  .act-meta strong { color: #F5EDD8; }
+  .act-spot { font-size: 11px; color: #F5EDD8; font-weight: 600; margin-bottom: 3px; }
+  .act-rating { font-size: 9px; color: #F5A623; }
+  .act-cta { margin-top: 5px; background: rgba(245,166,35,0.12); border: 1px solid #B37318; border-radius: 5px; padding: 4px 6px; text-align: center; font-size: 8px; color: #F5A623; font-weight: 700; }
+
+  /* option B: profile tab with expandable section */
+  .profile-card { background: #26190C; border-radius: 8px; border: 1px solid #3D2B12; margin-bottom: 6px; }
+  .profile-row { display: flex; align-items: center; padding: 8px; gap: 8px; }
+  .stat-row { display: flex; gap: 6px; margin-bottom: 6px; }
+  .stat-box { flex: 1; background: #26190C; border-radius: 6px; padding: 6px 4px; border: 1px solid #3D2B12; text-align: center; }
+  .stat-num { font-size: 14px; font-weight: 800; color: #F5EDD8; }
+  .stat-lbl { font-size: 7px; color: #B5A898; }
+
+  .mg-section-title { font-size: 8px; font-weight: 700; color: #B5A898; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
+  .mg-expanded {
+    background: #26190C; border-radius: 8px; border: 1px solid #3D2B12; padding: 8px;
+  }
+  .mg-add-btn {
+    display: flex; align-items: center; justify-content: center; gap: 4px;
+    border: 1px dashed #B37318; border-radius: 6px; padding: 6px;
+    font-size: 9px; color: #F5A623; margin-bottom: 6px;
+  }
+
+  /* option C: Mi Gente as its own tab */
+  .tab4bar { display: flex; border-top: 1px solid #3D2B12; background: #1A1209; padding: 8px 0 4px; }
+  .t4 { flex: 1; text-align: center; font-size: 7px; color: #B5A898; }
+  .t4.active { color: #F5A623; }
+  .t4-icon { font-size: 14px; display: block; }
+
+  .add-strip {
+    display: flex; gap: 5px; margin-bottom: 8px;
+  }
+  .add-btn {
+    flex: 1; background: rgba(245,166,35,0.1); border: 1px solid #B37318;
+    border-radius: 6px; padding: 6px 4px; text-align: center;
+    font-size: 7px; color: #F5A623; font-weight: 700;
+  }
+
+  .choice-badge {
+    position: absolute; bottom: 10px; right: 10px;
+    background: #F5A623; color: #1A1209; font-size: 9px; font-weight: 800;
+    border-radius: 10px; padding: 2px 8px; display: none;
+  }
+  .phone.selected .choice-badge { display: block; }
+
+  .desc { font-size: 11px; color: #B5A898; margin-top: 10px; text-align: center; line-height: 1.4; max-width: 200px; margin-left: auto; margin-right: auto; }
+</style>
+
+<p class="question">How should Mi Gente live in the app?</p>
+<p class="subq">Three structural approaches — click to select your preferred layout</p>
+
+<div class="phones">
+
+  <!-- OPTION A: Profile tab → Mi Gente button → dedicated screen with feed -->
+  <div style="text-align:center">
+    <div class="phone option" data-choice="a" onclick="toggleSelect(this)" style="display:inline-block; vertical-align:top;">
+      <div class="phone-label">A</div>
+      <div class="screen">
+        <div class="s-header">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+            <span style="font-size:14px;">←</span>
+            <div>
+              <div class="s-eyebrow">taco atlas</div>
+              <div class="s-title" style="font-size:16px;">Mi Gente</div>
+            </div>
+          </div>
+          <div class="add-strip">
+            <div class="add-btn">🔍 Search</div>
+            <div class="add-btn">🔗 Invite</div>
+            <div class="add-btn">📷 QR</div>
+          </div>
+        </div>
+        <div class="s-body">
+          <div class="mg-section-title">Your Crew (3)</div>
+          <div class="friend-item">
+            <div class="avatar">MR</div>
+            <div class="friend-info">
+              <div class="friend-name">marcos_r</div>
+              <div class="friend-sub">4 spots this week</div>
+            </div>
+          </div>
+          <div class="friend-item">
+            <div class="avatar">JL</div>
+            <div class="friend-info">
+              <div class="friend-name">jlo_tacos</div>
+              <div class="friend-sub">Last active 2d ago</div>
+            </div>
+          </div>
+          <div style="height:10px;"></div>
+          <div class="mg-section-title">Their Drops</div>
+          <div class="activity-item">
+            <div class="act-header">
+              <div class="act-avatar">MR</div>
+              <div class="act-meta"><strong>marcos_r</strong> pinned</div>
+            </div>
+            <div class="act-spot">🌮 El Paisa Truck</div>
+            <div class="act-rating">★★★★★ · Truck · 0.3 mi</div>
+            <div class="act-cta">🌮 Let's Get Tacos →</div>
+          </div>
+          <div class="activity-item">
+            <div class="act-header">
+              <div class="act-avatar">JL</div>
+              <div class="act-meta"><strong>jlo_tacos</strong> reviewed</div>
+            </div>
+            <div class="act-spot">🥙 La Taqueria</div>
+            <div class="act-rating">★★★★☆ · Brick & Mortar</div>
+            <div class="act-cta">🌮 Let's Get Tacos →</div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tab">🗺️<span class="tab-icon"></span>Atlas</div>
+          <div class="tab">🔍<span class="tab-icon"></span>Explore</div>
+          <div class="tab active">👤<span class="tab-icon"></span>Profile</div>
+        </div>
+      </div>
+      <div class="choice-badge">Selected</div>
+    </div>
+    <div class="desc">Dedicated screen pushed from Profile. Feed + crew list in one place.</div>
+  </div>
+
+  <!-- OPTION B: 4th tab — Mi Gente is its own tab -->
+  <div style="text-align:center">
+    <div class="phone option" data-choice="b" onclick="toggleSelect(this)" style="display:inline-block; vertical-align:top;">
+      <div class="phone-label">B</div>
+      <div class="screen">
+        <div class="s-header">
+          <div class="s-eyebrow">taco atlas</div>
+          <div class="s-title" style="font-size:16px;">Mi Gente</div>
+          <div style="height:6px;"></div>
+          <div class="add-strip">
+            <div class="add-btn">🔍 Search</div>
+            <div class="add-btn">🔗 Invite</div>
+            <div class="add-btn">📷 QR</div>
+          </div>
+        </div>
+        <div class="s-body">
+          <div class="mg-section-title">Their Drops</div>
+          <div class="activity-item">
+            <div class="act-header">
+              <div class="act-avatar">MR</div>
+              <div class="act-meta"><strong>marcos_r</strong> pinned · 1h ago</div>
+            </div>
+            <div class="act-spot">🌮 El Paisa Truck</div>
+            <div class="act-rating">★★★★★ · Truck · 0.3 mi</div>
+            <div class="act-cta">🌮 Let's Get Tacos →</div>
+          </div>
+          <div class="activity-item">
+            <div class="act-header">
+              <div class="act-avatar">JL</div>
+              <div class="act-meta"><strong>jlo_tacos</strong> reviewed · 2d ago</div>
+            </div>
+            <div class="act-spot">🥙 La Taqueria</div>
+            <div class="act-rating">★★★★☆ · Brick & Mortar</div>
+            <div class="act-cta">🌮 Let's Get Tacos →</div>
+          </div>
+          <div class="activity-item">
+            <div class="act-header">
+              <div class="act-avatar">MR</div>
+              <div class="act-meta"><strong>marcos_r</strong> reviewed · 3d ago</div>
+            </div>
+            <div class="act-spot">🌮 Tacos El Gordo</div>
+            <div class="act-rating">★★★★★ · Street Tent</div>
+            <div class="act-cta">🌮 Let's Get Tacos →</div>
+          </div>
+        </div>
+        <div class="tab4bar">
+          <div class="t4">🗺️<span class="t4-icon"></span>Atlas</div>
+          <div class="t4">🔍<span class="t4-icon"></span>Explore</div>
+          <div class="t4 active">👥<span class="t4-icon"></span>Mi Gente</div>
+          <div class="t4">👤<span class="t4-icon"></span>Profile</div>
+        </div>
+      </div>
+      <div class="choice-badge">Selected</div>
+    </div>
+    <div class="desc">4th tab in the nav bar. Mi Gente is a first-class destination.</div>
+  </div>
+
+  <!-- OPTION C: Profile tab inline expanded section -->
+  <div style="text-align:center">
+    <div class="phone option" data-choice="c" onclick="toggleSelect(this)" style="display:inline-block; vertical-align:top;">
+      <div class="phone-label">C</div>
+      <div class="screen">
+        <div class="s-header">
+          <div class="s-eyebrow">taco atlas</div>
+          <div class="s-title" style="font-size:15px;">Profile</div>
+        </div>
+        <div class="s-body">
+          <div class="profile-card">
+            <div class="profile-row">
+              <div class="avatar" style="width:32px;height:32px;border-radius:16px;font-size:12px;">GS</div>
+              <div>
+                <div style="font-size:12px;font-weight:700;color:#F5EDD8;">ggshubin</div>
+                <div style="font-size:9px;color:#F5A623;">✦ Pro Member</div>
+              </div>
+            </div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-box"><div class="stat-num">12</div><div class="stat-lbl">Spots</div></div>
+            <div class="stat-box"><div class="stat-num">8</div><div class="stat-lbl">Visits</div></div>
+            <div class="stat-box"><div class="stat-num">★4.2</div><div class="stat-lbl">Avg</div></div>
+          </div>
+          <div class="mg-section-title">Mi Gente</div>
+          <div class="mg-expanded">
+            <div class="mg-add-btn">＋ Add Friends</div>
+            <div class="friend-item" style="border-color:#3D2B12;">
+              <div class="avatar">MR</div>
+              <div class="friend-info">
+                <div class="friend-name">marcos_r</div>
+                <div class="friend-sub">Pinned El Paisa · 1h ago</div>
+              </div>
+              <div style="font-size:8px;color:#F5A623;">View →</div>
+            </div>
+            <div class="friend-item" style="border:none;">
+              <div class="avatar">JL</div>
+              <div class="friend-info">
+                <div class="friend-name">jlo_tacos</div>
+                <div class="friend-sub">Reviewed La Taqueria · 2d</div>
+              </div>
+              <div style="font-size:8px;color:#F5A623;">View →</div>
+            </div>
+            <div style="text-align:center;margin-top:5px;">
+              <span style="font-size:8px;color:#B5A898;border-bottom:1px solid #3D2B12;">See all activity →</span>
+            </div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tab">🗺️Atlas</div>
+          <div class="tab">🔍Explore</div>
+          <div class="tab active">👤Profile</div>
+        </div>
+      </div>
+      <div class="choice-badge">Selected</div>
+    </div>
+    <div class="desc">Inline in Profile. Mi Gente expands in place, no separate screen.</div>
+  </div>
+
+</div>

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet,
-  KeyboardAvoidingView, Platform, Alert,
+  KeyboardAvoidingView, Platform, Alert, Image,
 } from 'react-native'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
@@ -11,7 +11,7 @@ import { colors, spacing, radius } from '../../src/utils/theme'
 import type { SpotType, PrivacySetting } from '../../src/types/app'
 import type { LocationResult } from '../../src/components/LocationPicker'
 
-const SPOT_TYPES: SpotType[] = ['Truck', 'Food Cart', 'Street Tent', 'House', 'Brick & Mortar', 'Restaurant']
+const SPOT_TYPES: SpotType[] = ['Truck', 'Food Cart', 'Street Tent', 'Restaurant']
 
 const PRIVACY_OPTIONS: { value: PrivacySetting; label: string; icon: string }[] = [
   { value: 'public', label: 'Public', icon: '🌎' },
@@ -59,6 +59,7 @@ export default function DropPinScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      <Image source={require('../../assets/background.png')} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
       <View style={styles.header}>
         <TouchableOpacity style={styles.closeBtn} onPress={() => router.back()}>
           <Ionicons name="close" size={20} color={colors.cream} />

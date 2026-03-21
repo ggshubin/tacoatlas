@@ -1,5 +1,5 @@
 import MapView, { Marker, Callout } from 'react-native-maps'
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
+import { View, Text, Image, StyleSheet } from 'react-native'
 import { router } from 'expo-router'
 import { colors, spacing, radius } from '../utils/theme'
 import type { LocalVendor } from '../types/app'
@@ -11,13 +11,6 @@ interface VendorRow {
 
 interface Props {
   rows: VendorRow[]
-}
-
-function ratingColor(rating: number | null): string {
-  if (rating === null) return colors.creamMuted
-  if (rating >= 4) return colors.amber
-  if (rating >= 2.5) return '#E8C21A'
-  return colors.error
 }
 
 export function AtlasMapView({ rows }: Props) {
@@ -47,8 +40,15 @@ export function AtlasMapView({ rows }: Props) {
         <Marker
           key={vendor.localId}
           coordinate={{ latitude: vendor.lat, longitude: vendor.lng }}
-          pinColor={ratingColor(avgRating)}
+          anchor={{ x: 0.5, y: 0.5 }}
         >
+          <View style={styles.tacoPin}>
+            <Image
+              source={require('../../assets/taco-icon.png')}
+              style={styles.tacoPinImage}
+              resizeMode="contain"
+            />
+          </View>
           <Callout onPress={() => router.push(`/spot/${vendor.localId}`)}>
             <View style={styles.callout}>
               <Text style={styles.calloutName}>{vendor.name}</Text>
@@ -68,6 +68,25 @@ export function AtlasMapView({ rows }: Props) {
 }
 
 const styles = StyleSheet.create({
+  tacoPin: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.amberSubtle,
+    borderWidth: 2,
+    borderColor: colors.amber,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+  },
+  tacoPinImage: {
+    width: 22,
+    height: 22,
+  },
   callout: {
     padding: spacing.sm,
     minWidth: 140,

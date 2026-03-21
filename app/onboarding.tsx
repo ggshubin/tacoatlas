@@ -25,7 +25,7 @@ const FEATURES = [
 export default function OnboardingScreen() {
   async function handleGetStarted() {
     await AsyncStorage.setItem('hasSeenOnboarding', 'true')
-    router.replace('/(tabs)')
+    router.replace('/(tabs)/atlas')
   }
 
   async function handleSignIn() {
