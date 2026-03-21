@@ -1,15 +1,213 @@
-import { View, Text, StyleSheet } from 'react-native'
-import { colors } from '../../src/utils/theme'
+import { useState, useCallback } from 'react'
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native'
+import { useFocusEffect } from 'expo-router'
+import { router } from 'expo-router'
+import { Ionicons } from '@expo/vector-icons'
+import { useAuthStore } from '../../src/store/authStore'
+import { useProStore } from '../../src/store/proStore'
+import { localStorageService } from '../../src/services/localStorage'
+import { colors, spacing, radius, typography } from '../../src/utils/theme'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+
+interface Stats {
+  totalSpots: number
+  totalVisits: number
+  avgRating: number | null
+}
 
 export default function ProfileScreen() {
+  const { session } = useAuthStore()
+  const { isPro } = useProStore()
+  const insets = useSafeAreaInsets()
+  const [stats, setStats] = useState<Stats | null>(null)
+  const [showPaywall, setShowPaywall] = useState(false)
+
+  useFocusEffect(
+    useCallback(() => {
+      async function load() {
+        const vendors = await localStorageService.getVendors()
+        const reviews = await localStorageService.getReviews()
+        const ratings = reviews.filter(r => r.overallRating > 0).map(r => r.overallRating)
+        setStats({
+          totalSpots: vendors.length,
+          totalVisits: reviews.length,
+          avgRating: ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : null,
+        })
+      }
+      load()
+    }, [])
+  )
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.placeholder}>Profile — coming soon</Text>
-    </View>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={[styles.content, { paddingTop: insets.top + spacing.md }]}
+    >
+      {/* Header row with gear */}
+      <View style={styles.headerRow}>
+        <View>
+          <Text style={styles.eyebrow}>taco atlas</Text>
+          <Text style={styles.title}>Profile</Text>
+        </View>
+        <TouchableOpacity style={styles.gearBtn} onPress={() => router.push('/settings')}>
+          <Ionicons name="settings-outline" size={22} color={colors.creamMuted} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Identity card */}
+      <View style={styles.identityCard}>
+        <View style={styles.avatarCircle}>
+          <Ionicons name="person" size={32} color={colors.amber} />
+        </View>
+        <View style={styles.identityInfo}>
+          {session ? (
+            <>
+              <Text style={styles.displayName}>{session.user.email?.split('@')[0] ?? 'Taco Lover'}</Text>
+              <Text style={styles.accountType}>{isPro ? '✦ Pro Member' : 'Free Account'}</Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.displayName}>Guest</Text>
+              <Text style={styles.accountType}>No account — your data stays local</Text>
+            </>
+          )}
+        </View>
+      </View>
+
+      {/* Stats */}
+      <View style={styles.statsRow}>
+        <View style={styles.statCard}>
+          {stats ? (
+            <>
+              <Text style={styles.statNumber}>{stats.totalSpots}</Text>
+              <Text style={styles.statLabel}>Spots</Text>
+            </>
+          ) : <ActivityIndicator color={colors.amber} />}
+        </View>
+        <View style={styles.statCard}>
+          {stats ? (
+            <>
+              <Text style={styles.statNumber}>{stats.totalVisits}</Text>
+              <Text style={styles.statLabel}>Visits</Text>
+            </>
+          ) : <ActivityIndicator color={colors.amber} />}
+        </View>
+        <View style={styles.statCard}>
+          {stats ? (
+            <>
+              <Text style={styles.statNumber}>{stats.avgRating != null ? `★ ${stats.avgRating.toFixed(1)}` : '—'}</Text>
+              <Text style={styles.statLabel}>Avg Rating</Text>
+            </>
+          ) : <ActivityIndicator color={colors.amber} />}
+        </View>
+      </View>
+
+      {/* Pro upgrade card (free users only) */}
+      {!isPro && (
+        <TouchableOpacity style={styles.upgradeCard} onPress={() => setShowPaywall(true)}>
+          <View style={styles.upgradeCardInner}>
+            <Text style={styles.upgradeTitle}>Unlock TacoAtlas Pro</Text>
+            <Text style={styles.upgradePrice}>$3.99 one-time</Text>
+          </View>
+          <Text style={styles.upgradeSubtitle}>Cloud sync · Burritos & Tortas · Mi Gente · Advanced Stats</Text>
+          <View style={styles.upgradeBtn}>
+            <Text style={styles.upgradeBtnText}>Upgrade Now</Text>
+          </View>
+        </TouchableOpacity>
+      )}
+
+      {/* Mi Gente section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Mi Gente</Text>
+        {isPro ? (
+          <View style={styles.card}>
+            <Text style={styles.comingSoonText}>Friend connections coming soon.</Text>
+          </View>
+        ) : (
+          <TouchableOpacity style={styles.lockedCard} onPress={() => setShowPaywall(true)}>
+            <Ionicons name="people-outline" size={24} color={colors.creamDim} />
+            <Text style={styles.lockedCardText}>Connect with your taco crew</Text>
+            <View style={styles.proBadge}><Text style={styles.proBadgeText}>Pro</Text></View>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Sign in CTA for guests */}
+      {!session && (
+        <View style={styles.section}>
+          <TouchableOpacity style={styles.signInCard} onPress={() => router.push('/(auth)/sign-in')}>
+            <Ionicons name="cloud-upload-outline" size={22} color={colors.amber} />
+            <View style={styles.signInCardText}>
+              <Text style={styles.signInTitle}>Back up your atlas</Text>
+              <Text style={styles.signInSubtitle}>Create an account to sync across devices</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.creamDim} />
+          </TouchableOpacity>
+        </View>
+      )}
+    </ScrollView>
   )
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center' },
-  placeholder: { color: colors.creamMuted, fontSize: 16 },
+  container: { flex: 1, backgroundColor: colors.bg },
+  content: { paddingHorizontal: spacing.md, paddingBottom: 100 },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.lg },
+  eyebrow: { fontSize: 11, color: colors.creamDim, letterSpacing: 1, textTransform: 'uppercase', fontWeight: '600' },
+  title: { fontSize: 28, fontWeight: '800', color: colors.cream, letterSpacing: -0.5 },
+  gearBtn: { padding: spacing.sm, marginTop: spacing.xs },
+  identityCard: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
+    backgroundColor: colors.surface, borderRadius: radius.md,
+    padding: spacing.md, borderWidth: 1, borderColor: colors.surfaceBorder,
+    marginBottom: spacing.md,
+  },
+  avatarCircle: {
+    width: 56, height: 56, borderRadius: 28,
+    backgroundColor: colors.amberSubtle, borderWidth: 1, borderColor: colors.amberDim,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  identityInfo: { flex: 1 },
+  displayName: { fontSize: 17, fontWeight: '700', color: colors.cream },
+  accountType: { fontSize: 12, color: colors.creamMuted, marginTop: 2 },
+  statsRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
+  statCard: {
+    flex: 1, backgroundColor: colors.surface, borderRadius: radius.md,
+    padding: spacing.md, alignItems: 'center', borderWidth: 1, borderColor: colors.surfaceBorder,
+  },
+  statNumber: { fontSize: 22, fontWeight: '800', color: colors.cream },
+  statLabel: { fontSize: 11, color: colors.creamMuted, marginTop: 2 },
+  upgradeCard: {
+    backgroundColor: colors.amberSubtle, borderRadius: radius.md, padding: spacing.md,
+    borderWidth: 1, borderColor: colors.amberDim, marginBottom: spacing.md,
+  },
+  upgradeCardInner: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm, marginBottom: 4 },
+  upgradeTitle: { fontSize: 16, fontWeight: '700', color: colors.cream },
+  upgradePrice: { fontSize: 13, color: colors.amber, fontWeight: '600' },
+  upgradeSubtitle: { fontSize: 12, color: colors.creamMuted, marginBottom: spacing.sm },
+  upgradeBtn: {
+    backgroundColor: colors.amber, borderRadius: radius.full,
+    paddingVertical: 10, alignItems: 'center',
+  },
+  upgradeBtnText: { color: colors.cream, fontWeight: '700', fontSize: 14 },
+  section: { marginBottom: spacing.md },
+  sectionTitle: { fontSize: 11, fontWeight: '700', color: colors.creamDim, letterSpacing: 1, textTransform: 'uppercase', marginBottom: spacing.sm },
+  card: { backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: colors.surfaceBorder },
+  comingSoonText: { color: colors.creamMuted, fontSize: 14, textAlign: 'center' },
+  lockedCard: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
+    backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md,
+    borderWidth: 1, borderColor: colors.surfaceBorder,
+  },
+  lockedCardText: { flex: 1, color: colors.creamMuted, fontSize: 14 },
+  proBadge: { backgroundColor: colors.amber, borderRadius: radius.full, paddingHorizontal: 8, paddingVertical: 2 },
+  proBadgeText: { fontSize: 10, fontWeight: '800', color: colors.bg },
+  signInCard: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
+    backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md,
+    borderWidth: 1, borderColor: colors.surfaceBorder,
+  },
+  signInCardText: { flex: 1 },
+  signInTitle: { fontSize: 15, fontWeight: '700', color: colors.cream },
+  signInSubtitle: { fontSize: 12, color: colors.creamMuted, marginTop: 2 },
 })
