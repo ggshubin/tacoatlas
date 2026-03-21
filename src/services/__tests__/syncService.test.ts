@@ -42,11 +42,11 @@ describe('syncService', () => {
   })
 
   it('creates vendors and reviews in Supabase', async () => {
-    const vendor = localStorageService.addVendor({
-      name: 'El Gordo', lat: 33.4, lng: -112.0,
+    const vendor = await localStorageService.addVendor({
+      name: 'El Gordo', spotType: null, lat: 33.4, lng: -112.0,
       address: null, cityName: 'Phoenix', hours: null, photoUri: null,
     })
-    localStorageService.addReview({
+    await localStorageService.addReview({
       vendorLocalId: vendor.localId,
       overallRating: 5, returnIntent: 'yes',
       notes: 'Amazing', photoUris: [],
@@ -64,8 +64,8 @@ describe('syncService', () => {
   })
 
   it('clears local storage after sync', async () => {
-    localStorageService.addVendor({
-      name: 'Test', lat: 0, lng: 0,
+    await localStorageService.addVendor({
+      name: 'Test', spotType: null, lat: 0, lng: 0,
       address: null, cityName: null, hours: null, photoUri: null,
     })
 

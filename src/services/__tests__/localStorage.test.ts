@@ -17,6 +17,7 @@ describe('localStorageService', () => {
   it('adds and retrieves a vendor', async () => {
     const vendor = await localStorageService.addVendor({
       name: 'El Gordo',
+      spotType: null,
       lat: 33.4,
       lng: -112.0,
       address: null,
@@ -33,7 +34,7 @@ describe('localStorageService', () => {
 
   it('adds a review and retrieves it by vendor', async () => {
     const vendor = await localStorageService.addVendor({
-      name: 'El Gordo', lat: 33.4, lng: -112.0,
+      name: 'El Gordo', spotType: null, lat: 33.4, lng: -112.0,
       address: null, cityName: null, hours: null, photoUri: null,
     })
 
@@ -56,7 +57,7 @@ describe('localStorageService', () => {
 
   it('clearAll removes all vendors and reviews', async () => {
     await localStorageService.addVendor({
-      name: 'Test', lat: 0, lng: 0, address: null, cityName: null, hours: null, photoUri: null,
+      name: 'Test', spotType: null, lat: 0, lng: 0, address: null, cityName: null, hours: null, photoUri: null,
     })
     await localStorageService.clearAll()
     const vendors = await localStorageService.getVendors()
@@ -93,6 +94,7 @@ describe('localStorageService', () => {
     it('updateVendor modifies vendor fields', async () => {
       const vendor = await localStorageService.addVendor({
         name: 'Test Spot',
+        spotType: null,
         lat: 0, lng: 0,
         address: null, cityName: null, hours: null, photoUri: null,
       })
@@ -112,6 +114,7 @@ describe('localStorageService', () => {
     it('markVendorVisited sets isVisited to true', async () => {
       const vendor = await localStorageService.addVendor({
         name: 'Test Spot',
+        spotType: null,
         lat: 0, lng: 0,
         address: null, cityName: null, hours: null, photoUri: null,
       })

@@ -17,10 +17,10 @@ describe('reviewFormStore', () => {
     expect(useReviewFormStore.getState().currentStep).toBe(1)
   })
 
-  it('nextStep does not exceed 5', () => {
+  it('nextStep does not exceed 3', () => {
     const store = useReviewFormStore.getState()
     for (let i = 0; i < 10; i++) store.nextStep()
-    expect(useReviewFormStore.getState().currentStep).toBe(5)
+    expect(useReviewFormStore.getState().currentStep).toBe(3)
   })
 
   it('toggleCondiment adds condiment', () => {

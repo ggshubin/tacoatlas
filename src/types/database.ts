@@ -1,6 +1,6 @@
 export type VendorStatus = 'pending' | 'approved'
 export type ReturnIntent = 'yes' | 'maybe' | 'no'
-export type HeatLevel = 'mild' | 'medium' | 'hot' | 'fire'
+export type HeatLevel = 'mild' | 'medium' | 'hot' | 'fire' | 'volcano'
 
 export interface City {
   id: string
