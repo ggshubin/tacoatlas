@@ -9,7 +9,7 @@ import { proService } from '../src/services/proService'
 import { useProStore } from '../src/store/proStore'
 
 export default function RootLayout() {
-  const { setSession, loadProfile } = useAuthStore()
+  const { setSession, loadProfile, setHasCompletedOnboarding } = useAuthStore()
   const { checkPro } = useProStore()
   const [ready, setReady] = useState(false)
 
@@ -27,13 +27,19 @@ export default function RootLayout() {
 
   useEffect(() => {
     async function init() {
-      const [{ data: { session } }, seenOnboarding] = await Promise.all([
+      const [{ data: { session } }, seenOnboarding, storedOnboarding] = await Promise.all([
         supabase.auth.getSession(),
         AsyncStorage.getItem('hasSeenOnboarding'),
+        AsyncStorage.getItem('has_completed_onboarding'),
       ])
 
       setSession(session)
       if (session) loadProfile()
+
+      // Hydrate hasCompletedOnboarding from AsyncStorage
+      if (storedOnboarding === 'true') {
+        await setHasCompletedOnboarding(true)
+      }
 
       if (!seenOnboarding) {
         router.replace('/onboarding')

@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { supabase } from '../services/supabase'
 import { syncService } from '../services/syncService'
 import type { Profile } from '../types/database'
@@ -13,7 +14,7 @@ interface AuthState {
   signUp: (email: string, password: string, displayName: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
   setSession: (session: Session | null) => void
-  setHasCompletedOnboarding: (val: boolean) => void
+  setHasCompletedOnboarding: (val: boolean) => Promise<void>
   loadProfile: () => Promise<void>
 }
 
@@ -25,7 +26,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   setSession: (session) => set({ session, isLoading: false }),
 
-  setHasCompletedOnboarding: (val) => set({ hasCompletedOnboarding: val }),
+  setHasCompletedOnboarding: async (val) => {
+    set({ hasCompletedOnboarding: val })
+    await AsyncStorage.setItem('has_completed_onboarding', JSON.stringify(val))
+  },
 
   loadProfile: async () => {
     const { session } = get()
