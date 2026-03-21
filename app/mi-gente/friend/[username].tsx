@@ -1,5 +1,3 @@
-'use client'
-
 import { useState } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
