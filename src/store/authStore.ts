@@ -8,10 +8,12 @@ interface AuthState {
   session: Session | null
   profile: Profile | null
   isLoading: boolean
+  hasCompletedOnboarding: boolean
   signIn: (email: string, password: string) => Promise<{ error: string | null }>
   signUp: (email: string, password: string, displayName: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
   setSession: (session: Session | null) => void
+  setHasCompletedOnboarding: (val: boolean) => void
   loadProfile: () => Promise<void>
 }
 
@@ -19,8 +21,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   session: null,
   profile: null,
   isLoading: true,
+  hasCompletedOnboarding: false,
 
   setSession: (session) => set({ session, isLoading: false }),
+
+  setHasCompletedOnboarding: (val) => set({ hasCompletedOnboarding: val }),
 
   loadProfile: async () => {
     const { session } = get()
