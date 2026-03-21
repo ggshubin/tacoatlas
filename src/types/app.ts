@@ -1,6 +1,9 @@
 // Local (guest) versions of entities — no UUIDs yet
 
 export type SpotType = 'Truck' | 'Food Cart' | 'Street Tent' | 'House' | 'Brick & Mortar' | 'Restaurant'
+export type PrivacySetting = 'public' | 'friends' | 'private'
+export type HeatLevel = 'mild' | 'medium' | 'hot' | 'fire' | 'volcano'
+export type ReturnIntent = 'yes' | 'maybe' | 'no'
 
 export interface LocalVendor {
   localId: string
@@ -13,19 +16,26 @@ export interface LocalVendor {
   hours: string | null
   photoUri: string | null
   createdAt: string
+  // New fields (safe defaults: undefined treated as 'public' / null / false)
+  privacy?: PrivacySetting        // default 'public' when undefined
+  spotNote?: string | null        // "About This Spot" — persists across visits
+  isVisited?: boolean             // false = drop-a-pin only, true = has at least one review
 }
 
 export interface LocalReview {
   localId: string
   vendorLocalId: string
   overallRating: number
-  returnIntent: 'yes' | 'maybe' | 'no' | null
+  returnIntent: ReturnIntent | null
   notes: string | null
   photoUris: string[]
   tacoEntries: LocalTacoEntry[]
   salsaEntries: LocalSalsaEntry[]
   condiments: string[]
   createdAt: string
+  // New fields
+  burritoEntries?: LocalBurritoEntry[]   // Pro only, default []
+  tortaEntries?: LocalTortaEntry[]       // Pro only, default []
 }
 
 export interface LocalTacoEntry {
@@ -34,8 +44,23 @@ export interface LocalTacoEntry {
   notes: string | null
 }
 
+// New: burrito entries mirror taco entries
+export interface LocalBurritoEntry {
+  burritoType: string
+  rating: number
+  notes: string | null
+}
+
+// New: torta entries
+export interface LocalTortaEntry {
+  tortaType: string
+  rating: number
+  notes: string | null
+}
+
 export interface LocalSalsaEntry {
   salsaName: string
   flavorRating: number
-  heatLevel: 'mild' | 'medium' | 'hot' | 'fire' | 'volcano' | null
+  heatLevel: HeatLevel | null
+  notes?: string | null    // New: quick note per salsa
 }
