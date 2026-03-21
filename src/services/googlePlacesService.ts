@@ -108,4 +108,49 @@ export const googlePlacesService = {
       }
     })
   },
+
+  async searchByText(query: string): Promise<GooglePlace[]> {
+    if (!API_KEY) {
+      console.warn('EXPO_PUBLIC_GOOGLE_PLACES_API_KEY is not set')
+      return []
+    }
+
+    const remaining = await this.getRemainingSearches()
+    if (remaining <= 0) return []
+
+    const body = {
+      textQuery: query,
+      maxResultCount: 20,
+    }
+
+    const res = await fetch('https://maps.googleapis.com/maps/api/place/textsearch/json', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': API_KEY,
+      },
+      body: JSON.stringify(body),
+    })
+
+    if (!res.ok) {
+      console.error('Google Places API error:', await res.text())
+      return []
+    }
+
+    const data = await res.json()
+    await this.recordSearch()
+
+    return (data.results ?? []).map((p: any): GooglePlace => {
+      return {
+        id: p.place_id,
+        name: p.name ?? 'Unknown',
+        address: p.formatted_address ?? null,
+        city: null, // Text Search API doesn't provide city directly; can parse from address if needed
+        lat: p.geometry?.location?.lat ?? 0,
+        lng: p.geometry?.location?.lng ?? 0,
+        rating: p.rating ?? null,
+        types: p.types ?? [],
+      }
+    })
+  },
 }
