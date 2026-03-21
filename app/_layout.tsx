@@ -62,6 +62,8 @@ export default function RootLayout() {
       <Stack.Screen name="onboarding" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+      <Stack.Screen name="landing" options={{ headerShown: false }} />
+      <Stack.Screen name="settings" options={{ headerShown: false }} />
       <Stack.Screen name="spot/[localId]" options={{ headerShown: false }} />
       <Stack.Screen name="vendor/[id]" options={{ title: 'Vendor', headerStyle: { backgroundColor: '#241C16' }, headerTintColor: '#F5EDD8' }} />
       <Stack.Screen name="review/add" options={{ title: 'Add Review', presentation: 'modal', headerStyle: { backgroundColor: '#241C16' }, headerTintColor: '#F5EDD8' }} />
