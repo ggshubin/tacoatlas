@@ -28,9 +28,11 @@ import { syncService } from '../syncService'
 import { localStorageService } from '../localStorage'
 import { vendorRepository } from '../vendorRepository'
 import { reviewRepository } from '../reviewRepository'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
-beforeEach(() => {
-  localStorageService.clearAll()
+beforeEach(async () => {
+  await localStorageService.clearAll()
+  await AsyncStorage.clear()
   Object.keys(mockStorageStore).forEach(k => delete mockStorageStore[k])
   jest.clearAllMocks()
 })
@@ -70,6 +72,7 @@ describe('syncService', () => {
     })
 
     await syncService.syncGuestDataToSupabase('user-1')
-    expect(localStorageService.getVendors()).toHaveLength(0)
+    const vendors = await localStorageService.getVendors()
+    expect(vendors).toHaveLength(0)
   })
 })
