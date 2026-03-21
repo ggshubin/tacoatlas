@@ -69,6 +69,9 @@ export interface Profile {
   id: string
   display_name: string | null
   avatar_url: string | null
+  bio: string | null
+  home_city: string | null
+  favorite_taco: string | null
   is_admin: boolean
   created_at: string
 }
