@@ -5,9 +5,32 @@ import type { LocalVendor, LocalReview } from '../types/app'
 const VENDORS_KEY = 'local_vendors'
 const REVIEWS_KEY = 'local_reviews'
 
+// Normalize persisted vendor data — fills in missing new fields with safe defaults
+function normalizeVendor(v: any): LocalVendor {
+  return {
+    ...v,
+    privacy: v.privacy ?? 'public',
+    spotNote: v.spotNote ?? null,
+    isVisited: v.isVisited ?? true,  // default true for existing data (they have reviews)
+  }
+}
+
+// Normalize persisted review data
+function normalizeReview(r: any): LocalReview {
+  return {
+    ...r,
+    burritoEntries: r.burritoEntries ?? [],
+    tortaEntries: r.tortaEntries ?? [],
+    salsaEntries: (r.salsaEntries ?? []).map((s: any) => ({
+      ...s,
+      notes: s.notes ?? null,
+    })),
+  }
+}
+
 async function getVendors(): Promise<LocalVendor[]> {
   const raw = await AsyncStorage.getItem(VENDORS_KEY)
-  return raw ? JSON.parse(raw) : []
+  return raw ? JSON.parse(raw).map(normalizeVendor) : []
 }
 
 async function saveVendors(vendors: LocalVendor[]): Promise<void> {
@@ -16,7 +39,7 @@ async function saveVendors(vendors: LocalVendor[]): Promise<void> {
 
 async function getReviews(): Promise<LocalReview[]> {
   const raw = await AsyncStorage.getItem(REVIEWS_KEY)
-  return raw ? JSON.parse(raw) : []
+  return raw ? JSON.parse(raw).map(normalizeReview) : []
 }
 
 async function saveReviews(reviews: LocalReview[]): Promise<void> {
@@ -42,6 +65,19 @@ export const localStorageService = {
   async getVendorByLocalId(localId: string): Promise<LocalVendor | null> {
     const vendors = await getVendors()
     return vendors.find(v => v.localId === localId) ?? null
+  },
+
+  async updateVendor(localId: string, updates: Partial<Omit<LocalVendor, 'localId' | 'createdAt'>>): Promise<void> {
+    const vendors = await getVendors()
+    const idx = vendors.findIndex(v => v.localId === localId)
+    if (idx !== -1) {
+      vendors[idx] = { ...vendors[idx], ...updates }
+      await saveVendors(vendors)
+    }
+  },
+
+  async markVendorVisited(localId: string): Promise<void> {
+    await this.updateVendor(localId, { isVisited: true })
   },
 
   async addReview(review: Omit<LocalReview, 'localId' | 'createdAt'>): Promise<LocalReview> {
