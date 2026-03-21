@@ -3,16 +3,32 @@ import type { FoodCategory } from '../store/reviewFormStore'
 import { colors, spacing, radius } from '../utils/theme'
 import { useProStore } from '../store/proStore'
 
-// Icon representations — will use SVG assets when available
-// For now using emoji fallback since SVG assets are pending
-const ICONS: Record<FoodCategory, { emoji: string; proOnly?: boolean }> = {
-  tacos:    { emoji: '🌮' },
-  burritos: { emoji: '🌯', proOnly: true },
-  tortas:   { emoji: '🥪', proOnly: true },
-  salsas:   { emoji: '🌶️' },
+// SVG icon assets — dk = active/lit variant, lt = inactive/dim variant
+import TacoDk   from '../../assets/taco-dk.svg'
+import TacoLt   from '../../assets/taco-lt.svg'
+import BurritoDk from '../../assets/burrito-dk.svg'
+import BurritoLt from '../../assets/burrito-lt.svg'
+import TortaDk  from '../../assets/torta-dk.svg'
+import TortaLt  from '../../assets/torta-lt.svg'
+import SalsaDk  from '../../assets/salsa-dk.svg'
+import SalsaLt  from '../../assets/salsa-lt.svg'
+
+type IconPair = {
+  Dk: React.FC<{ width?: number; height?: number }>
+  Lt: React.FC<{ width?: number; height?: number }>
+  proOnly?: boolean
+}
+
+const ICONS: Record<FoodCategory, IconPair> = {
+  tacos:    { Dk: TacoDk,    Lt: TacoLt },
+  burritos: { Dk: BurritoDk, Lt: BurritoLt, proOnly: true },
+  tortas:   { Dk: TortaDk,   Lt: TortaLt,   proOnly: true },
+  salsas:   { Dk: SalsaDk,   Lt: SalsaLt },
 }
 
 const CATEGORIES: FoodCategory[] = ['tacos', 'burritos', 'tortas', 'salsas']
+
+const ICON_SIZE = 36
 
 interface Props {
   active: FoodCategory
@@ -31,6 +47,7 @@ export function FoodIconBar({ active, litCategories, onSelect, onProGate }: Prop
         const isLit = litCategories.includes(cat) || active === cat
         const isLocked = cfg.proOnly && !isPro
         const isActive = active === cat
+        const Icon = isLit ? cfg.Dk : cfg.Lt
 
         return (
           <TouchableOpacity
@@ -38,7 +55,7 @@ export function FoodIconBar({ active, litCategories, onSelect, onProGate }: Prop
             style={[styles.iconBtn, isActive && styles.iconBtnActive, !isLit && styles.iconBtnDim]}
             onPress={() => isLocked ? onProGate() : onSelect(cat)}
           >
-            <Text style={[styles.iconEmoji, !isLit && styles.iconDim]}>{cfg.emoji}</Text>
+            <Icon width={ICON_SIZE} height={ICON_SIZE} />
             {isLocked && (
               <View style={styles.proBadge}>
                 <Text style={styles.proBadgeText}>Pro</Text>
@@ -78,8 +95,6 @@ const styles = StyleSheet.create({
   iconBtnDim: {
     opacity: 0.4,
   },
-  iconEmoji: { fontSize: 28 },
-  iconDim: { opacity: 0.5 },
   proBadge: {
     position: 'absolute',
     top: 2, right: 2,
