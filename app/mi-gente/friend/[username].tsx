@@ -20,7 +20,7 @@ export default function FriendProfileScreen() {
 
   if (!friend) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top + spacing.md }]}>
+      <View style={[styles.container, { paddingTop: insets.top + spacing.md, paddingHorizontal: spacing.md }]}>
         <Text style={styles.errorText}>Friend not found.</Text>
       </View>
     )

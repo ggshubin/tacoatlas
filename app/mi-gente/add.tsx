@@ -11,6 +11,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAuthStore } from '../../src/store/authStore'
 import { colors, spacing, radius } from '../../src/utils/theme'
 
+const SECTION_OFFSETS: Record<string, number> = { search: 0, invite: 200, qr: 420 }
+
 export default function AddFriendsScreen() {
   const insets = useSafeAreaInsets()
   const { method } = useLocalSearchParams<{ method?: 'search' | 'invite' | 'qr' }>()
@@ -20,13 +22,10 @@ export default function AddFriendsScreen() {
   const username = session?.user.email?.split('@')[0] ?? 'guest'
   const inviteUrl = `tacooatlas.app/join/${username}`
 
-  // Scroll to the pre-selected method section on mount
-  const sectionOffsets: Record<string, number> = { search: 0, invite: 200, qr: 420 }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (method && sectionOffsets[method] !== undefined) {
+    if (method && SECTION_OFFSETS[method] !== undefined) {
       setTimeout(() => {
-        scrollRef.current?.scrollTo({ y: sectionOffsets[method], animated: true })
+        scrollRef.current?.scrollTo({ y: SECTION_OFFSETS[method], animated: true })
       }, 300) // brief delay to let layout settle
     }
   }, [method])

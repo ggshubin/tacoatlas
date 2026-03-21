@@ -9,7 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useProStore } from '../../src/store/proStore'
 import { STUB_FRIENDS, STUB_ACTIVITY, type ActivityStub } from '../../src/data/mi-gente-stubs'
 import { openMapsNavigation } from '../../src/utils/mapsNavigation'
-import { colors, spacing, radius, typography } from '../../src/utils/theme'
+import { colors, spacing, radius } from '../../src/utils/theme'
 
 export default function MiGenteScreen() {
   const { isPro } = useProStore()
@@ -21,7 +21,7 @@ export default function MiGenteScreen() {
   // --- Pro gate ---
   if (!isPro) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top + spacing.md }]}>
+      <View style={[styles.container, { paddingTop: insets.top + spacing.md, paddingHorizontal: spacing.md }]}>
         <Text style={styles.eyebrow}>taco atlas</Text>
         <Text style={styles.title}>Mi Gente</Text>
         <View style={styles.lockedCard}>
@@ -215,7 +215,7 @@ const styles = StyleSheet.create({
   addPillText: { fontSize: 12, color: colors.amber, fontWeight: '700' },
   sectionLabel: { fontSize: 11, fontWeight: '700', color: colors.creamDim, letterSpacing: 1, textTransform: 'uppercase', marginTop: spacing.sm, marginBottom: spacing.sm },
   // Crew strip
-  crewStrip: { flexDirection: 'row', marginBottom: spacing.md },
+  crewStrip: { marginBottom: spacing.md },
   crewItem: { alignItems: 'center', marginRight: spacing.md, width: 44 },
   crewAv: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.amberSubtle, borderWidth: 2, borderColor: colors.amberDim, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
   crewAvActive: { borderColor: colors.green },

@@ -6,7 +6,7 @@ import { buildMapsUrl } from '../mapsNavigation'
 describe('buildMapsUrl', () => {
   it('returns maps:// scheme for ios', () => {
     const url = buildMapsUrl({ lat: 33.44, lng: -112.07, name: 'El Paisa', platform: 'ios' })
-    expect(url).toBe('maps://?daddr=33.44,-112.07&dirflg=d')
+    expect(url).toBe('maps://?daddr=33.44,-112.07&q=El%20Paisa&dirflg=d')
   })
 
   it('returns geo: scheme for android', () => {

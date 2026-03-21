@@ -75,7 +75,7 @@ export default function FriendMapScreen() {
       </MapView>
 
       {/* Bottom panel */}
-      <View style={styles.panel}>
+      <View style={[styles.panel, { paddingBottom: spacing.md + insets.bottom }]}>
         <Text style={styles.panelLabel}>Showing {pins.length} of {username}'s pins</Text>
         {PANEL_PINS.map(pin => (
           <View key={pin.id} style={styles.panelRow}>
@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 20, fontWeight: '800', color: colors.cream },
   subtitle: { fontSize: 12, color: colors.creamMuted },
   map: { flex: 1 },
-  panel: { backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.surfaceBorder, padding: spacing.md, paddingBottom: spacing.xl },
+  panel: { backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.surfaceBorder, padding: spacing.md },
   panelLabel: { fontSize: 11, color: colors.creamMuted, marginBottom: spacing.sm },
   panelRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.amber },

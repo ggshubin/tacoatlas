@@ -1,4 +1,4 @@
-// src/types/__tests__/mi-gente-stubs.test.ts
+// src/data/__tests__/mi-gente-stubs.test.ts
 /**
  * @jest-environment node
  */

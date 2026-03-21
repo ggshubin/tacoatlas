@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Image } from 'react-native'
-import { useFocusEffect } from 'expo-router'
-import { router } from 'expo-router'
+import { useFocusEffect, router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useAuthStore } from '../../src/store/authStore'
 import { useProStore } from '../../src/store/proStore'
