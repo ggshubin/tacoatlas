@@ -9,12 +9,10 @@ import { STUB_FRIENDS, STUB_ACTIVITY } from '../../../src/data/mi-gente-stubs'
 import { openMapsNavigation } from '../../../src/utils/mapsNavigation'
 import { colors, spacing, radius } from '../../../src/utils/theme'
 
-interface Coords { latitude: number; longitude: number }
-
 export default function FriendMapScreen() {
   const insets = useSafeAreaInsets()
   const { username } = useLocalSearchParams<{ username: string }>()
-  const [userLocation, setUserLocation] = useState<Coords | null>(null)
+  const [locationGranted, setLocationGranted] = useState(false)
 
   const friend = STUB_FRIENDS.find(f => f.username === username)
   const pins = STUB_ACTIVITY.filter(a => a.friend.username === username)
@@ -23,9 +21,7 @@ export default function FriendMapScreen() {
     ;(async () => {
       // Check existing permission — do NOT request (per spec: no prompt on this screen)
       const { status } = await Location.getForegroundPermissionsAsync()
-      if (status !== 'granted') return  // silently omit blue dot
-      const loc = await Location.getCurrentPositionAsync({})
-      setUserLocation({ latitude: loc.coords.latitude, longitude: loc.coords.longitude })
+      if (status === 'granted') setLocationGranted(true)  // silently omit blue dot if denied
     })()
   }, [])
 
@@ -65,6 +61,7 @@ export default function FriendMapScreen() {
       <MapView
         style={styles.map}
         initialRegion={{ latitude: avgLat, longitude: avgLng, latitudeDelta: 0.05, longitudeDelta: 0.05 }}
+        showsUserLocation={locationGranted}
       >
         {pins.map(pin => (
           <Marker
@@ -75,13 +72,6 @@ export default function FriendMapScreen() {
             pinColor={pin.type === 'reviewed' ? colors.amber : '#B37318'}
           />
         ))}
-        {userLocation && (
-          <Marker
-            coordinate={userLocation}
-            title="You"
-            pinColor="#3498DB"
-          />
-        )}
       </MapView>
 
       {/* Bottom panel */}
