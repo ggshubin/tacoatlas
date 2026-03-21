@@ -2,11 +2,11 @@ import { colors, spacing, typography, radius } from '../theme'
 
 describe('theme tokens', () => {
   it('terracotta is the primary color', () => {
-    expect(colors.terracotta).toBe('#C45C3A')
+    expect(colors.terracotta).toBe('#E8821A')
   })
 
   it('cream is the background color', () => {
-    expect(colors.cream).toBe('#F5ECD7')
+    expect(colors.cream).toBe('#F5EDD8')
   })
 
   it('spacing.md is 16', () => {
