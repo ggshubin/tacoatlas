@@ -67,6 +67,7 @@ export default function RootLayout() {
       <Stack.Screen name="spot/[localId]" options={{ headerShown: false }} />
       <Stack.Screen name="vendor/[id]" options={{ title: 'Vendor', headerStyle: { backgroundColor: '#241C16' }, headerTintColor: '#F5EDD8' }} />
       <Stack.Screen name="review/add" options={{ title: 'Add Review', presentation: 'modal', headerStyle: { backgroundColor: '#241C16' }, headerTintColor: '#F5EDD8' }} />
+      <Stack.Screen name="pin/add" options={{ headerShown: false, presentation: 'modal' }} />
     </Stack>
   )
 }
