@@ -6,6 +6,7 @@ import { useAuthStore } from '../../src/store/authStore'
 import { localStorageService } from '../../src/services/localStorage'
 import { TacoRating } from '../../src/components/TacoRating'
 import { AtlasMapView } from '../../src/components/AtlasMapView'
+import { QuickActionSheet } from '../../src/components/QuickActionSheet'
 import { colors, spacing, radius } from '../../src/utils/theme'
 import type { LocalVendor, SpotType } from '../../src/types/app'
 
@@ -22,12 +23,20 @@ export default function MyTacosScreen() {
   const [search, setSearch] = useState('')
   const [filterType, setFilterType] = useState<SpotType | null>(null)
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list')
+  const [sort, setSort] = useState<'recent' | 'rating' | 'name'>('recent')
+  const [showActionSheet, setShowActionSheet] = useState(false)
 
-  const filteredRows = rows.filter(({ vendor }) => {
-    const matchesSearch = vendor.name.toLowerCase().includes(search.toLowerCase())
-    const matchesType = filterType === null || vendor.spotType === filterType
-    return matchesSearch && matchesType
-  })
+  const filteredRows = rows
+    .filter(({ vendor }) => {
+      const matchesSearch = vendor.name.toLowerCase().includes(search.toLowerCase())
+      const matchesType = filterType === null || vendor.spotType === filterType
+      return matchesSearch && matchesType
+    })
+    .sort((a, b) => {
+      if (sort === 'rating') return (b.avgRating ?? -1) - (a.avgRating ?? -1)
+      if (sort === 'name') return a.vendor.name.localeCompare(b.vendor.name)
+      return new Date(b.vendor.createdAt).getTime() - new Date(a.vendor.createdAt).getTime()
+    })
 
   useFocusEffect(
     useCallback(() => {
@@ -59,11 +68,9 @@ export default function MyTacosScreen() {
 
       {/* Static header — always visible */}
       <View style={styles.staticHeader}>
-        <Text style={styles.headerEyebrow}>
-          {profile?.display_name ? `${profile.display_name.toUpperCase()}'S COLLECTION` : 'YOUR COLLECTION'}
-        </Text>
+        <Text style={styles.headerEyebrow}>taco atlas</Text>
         <Text style={styles.headerTitle}>
-          {profile?.display_name ? `${profile.display_name}'s Tacos` : 'My Tacos'}
+          {profile?.display_name ? `${profile.display_name}'s Atlas` : 'My Atlas'}
         </Text>
         <View style={styles.statsRow}>
           <View style={styles.statPill}>
@@ -88,24 +95,39 @@ export default function MyTacosScreen() {
           </TouchableOpacity>
         </View>
         {viewMode === 'list' && (
-          <View style={styles.searchRow}>
-            <View style={styles.searchBar}>
-              <Ionicons name="search" size={16} color={colors.creamMuted} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search spots..."
-                placeholderTextColor={colors.creamMuted}
-                value={search}
-                onChangeText={setSearch}
-                returnKeyType="search"
-              />
-              {search.length > 0 && (
-                <TouchableOpacity onPress={() => setSearch('')}>
-                  <Ionicons name="close-circle" size={16} color={colors.creamMuted} />
+          <>
+            <View style={styles.sortRow}>
+              {(['recent', 'rating', 'name'] as const).map(s => (
+                <TouchableOpacity
+                  key={s}
+                  style={[styles.sortChip, sort === s && styles.sortChipActive]}
+                  onPress={() => setSort(s)}
+                >
+                  <Text style={[styles.sortChipText, sort === s && styles.sortChipTextActive]}>
+                    {s === 'recent' ? 'Recent' : s === 'rating' ? 'Rating' : 'Name'}
+                  </Text>
                 </TouchableOpacity>
-              )}
+              ))}
             </View>
-          </View>
+            <View style={styles.searchRow}>
+              <View style={styles.searchBar}>
+                <Ionicons name="search" size={16} color={colors.creamMuted} />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search spots..."
+                  placeholderTextColor={colors.creamMuted}
+                  value={search}
+                  onChangeText={setSearch}
+                  returnKeyType="search"
+                />
+                {search.length > 0 && (
+                  <TouchableOpacity onPress={() => setSearch('')}>
+                    <Ionicons name="close-circle" size={16} color={colors.creamMuted} />
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          </>
         )}
       </View>
 
@@ -116,7 +138,7 @@ export default function MyTacosScreen() {
           data={filteredRows}
           keyExtractor={r => r.vendor.localId}
           renderItem={({ item: { vendor, visitCount, avgRating } }) => (
-            <TouchableOpacity style={styles.card} onPress={() => router.push(`/spot/${vendor.localId}`)}>
+            <TouchableOpacity style={[styles.card, vendor.isVisited === false && styles.cardUnvisited]} onPress={() => router.push(`/spot/${vendor.localId}`)}>
               <View style={styles.cardLeft}>
                 <View style={styles.tacoIcon}>
                   <Image
@@ -144,25 +166,22 @@ export default function MyTacosScreen() {
                 )}
               </View>
               <View style={styles.cardRight}>
-                <Text style={styles.reviewCount}>{visitCount}</Text>
-                <Text style={styles.reviewLabel}>visit{visitCount !== 1 ? 's' : ''}</Text>
+                {vendor.isVisited === false ? (
+                  <Text style={styles.nVisitLabel}>pin</Text>
+                ) : (
+                  <>
+                    <Text style={styles.reviewCount}>{visitCount}</Text>
+                    <Text style={styles.reviewLabel}>visit{visitCount !== 1 ? 's' : ''}</Text>
+                  </>
+                )}
               </View>
             </TouchableOpacity>
           )}
           ListEmptyComponent={
             loaded ? (
               <View style={styles.emptyState}>
-                <Image
-                  source={require('../../assets/taco-icon.png')}
-                  style={styles.emptyIcon}
-                  resizeMode="contain"
-                />
-                <Text style={styles.emptyTitle}>No taco spots yet</Text>
-                <Text style={styles.emptySubtitle}>Start building your taco atlas by logging your first spot.</Text>
-                <TouchableOpacity style={styles.emptyBtn} onPress={() => router.push('/review/add')}>
-                  <Ionicons name="add" size={20} color={colors.cream} />
-                  <Text style={styles.emptyBtnText}>Log Your First Spot</Text>
-                </TouchableOpacity>
+                <Text style={styles.emptyTitle}>Your atlas is empty</Text>
+                <Text style={styles.emptySubtitle}>Tap + to log your first spot.</Text>
               </View>
             ) : null
           }
@@ -173,11 +192,18 @@ export default function MyTacosScreen() {
       {/* FAB */}
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => router.push('/review/add')}
-        accessibilityLabel="Add a taco spot"
+        onPress={() => setShowActionSheet(true)}
+        accessibilityLabel="Quick actions"
       >
         <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>
+
+      <QuickActionSheet
+        visible={showActionSheet}
+        onClose={() => setShowActionSheet(false)}
+        onLogVisit={() => router.push('/review/add')}
+        onDropPin={() => router.push('/pin/add')}
+      />
 
       {/* Sign up nudge */}
       {!session && (
@@ -272,17 +298,6 @@ const styles = StyleSheet.create({
   statNumber: { color: colors.amber, fontWeight: '700', fontSize: 14 },
   statLabel: { color: colors.creamMuted, fontSize: 13 },
 
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(36, 28, 22, 0.88)',
-    marginHorizontal: spacing.md,
-    marginBottom: spacing.sm,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: 'rgba(61, 46, 34, 0.7)',
-  },
   cardLeft: { marginRight: spacing.sm },
   tacoIcon: {
     width: 48,
@@ -338,23 +353,45 @@ const styles = StyleSheet.create({
   bannerText: { color: colors.cream, fontSize: 13, flex: 1 },
   bannerLink: { color: colors.amber, fontWeight: '700', fontSize: 13 },
 
-  emptyState: {
-    alignItems: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xl,
-    paddingBottom: spacing.xxl,
-  },
-  emptyIcon: { width: 80, height: 80, marginBottom: spacing.lg, opacity: 0.6 },
-  emptyTitle: { fontSize: 22, fontWeight: '800', color: colors.cream, marginBottom: spacing.sm, textAlign: 'center' },
-  emptySubtitle: { fontSize: 14, color: colors.creamMuted, textAlign: 'center', lineHeight: 20, marginBottom: spacing.xl },
-  emptyBtn: {
+  card: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
-    backgroundColor: colors.amber,
-    borderRadius: radius.full,
-    paddingVertical: spacing.sm + 4,
-    paddingHorizontal: spacing.xl,
+    backgroundColor: 'rgba(36, 28, 22, 0.88)',
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(61, 46, 34, 0.7)',
   },
-  emptyBtnText: { color: colors.cream, fontWeight: '700', fontSize: 16 },
+  cardUnvisited: {
+    borderStyle: 'dashed',
+    borderColor: colors.amberDim,
+  },
+
+  sortRow: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.xs,
+  },
+  sortChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    borderRadius: radius.full,
+    backgroundColor: colors.surfaceRaised,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
+  },
+  sortChipActive: {
+    backgroundColor: colors.amberSubtle,
+    borderColor: colors.amber,
+  },
+  sortChipText: { fontSize: 13, color: colors.creamMuted, fontWeight: '500' },
+  sortChipTextActive: { color: colors.amber, fontWeight: '700' },
+  nVisitLabel: { fontSize: 12, color: colors.creamDim, fontStyle: 'italic' },
+
+  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: colors.cream, marginBottom: spacing.xs },
+  emptySubtitle: { fontSize: 14, color: colors.creamMuted },
 })
