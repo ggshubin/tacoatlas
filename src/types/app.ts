@@ -1,6 +1,6 @@
 // Local (guest) versions of entities — no UUIDs yet
 
-export type SpotType = 'Truck' | 'Food Cart' | 'Street Tent' | 'House' | 'Brick & Mortar' | 'Restaurant'
+export type SpotType = 'Truck' | 'Food Cart' | 'Street Tent' | 'Restaurant' | 'House' | 'Brick & Mortar'
 export type PrivacySetting = 'public' | 'friends' | 'private'
 export type HeatLevel = 'mild' | 'medium' | 'hot' | 'fire' | 'volcano'
 export type ReturnIntent = 'yes' | 'maybe' | 'no'
