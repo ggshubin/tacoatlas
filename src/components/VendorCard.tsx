@@ -72,9 +72,7 @@ const styles = StyleSheet.create({
   photoEmoji: { fontSize: 56 },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'transparent',
-    // Simulate gradient: dark at bottom, transparent at top
-    background: 'linear-gradient(transparent, rgba(0,0,0,0.85))',
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   content: {
     position: 'absolute',
