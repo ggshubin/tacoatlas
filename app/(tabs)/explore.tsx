@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { View, FlatList, Text, Image, StyleSheet, ActivityIndicator, TouchableOpacity, RefreshControl } from 'react-native'
 import { router } from 'expo-router'
+import { Ionicons } from '@expo/vector-icons'
 import { locationService } from '../../src/services/locationService'
 import { vendorRepository } from '../../src/services/vendorRepository'
 import { reviewRepository } from '../../src/services/reviewRepository'
@@ -22,6 +23,8 @@ export default function HomeScreen() {
   const [remainingSearches, setRemainingSearches] = useState<number>(5)
   const [searchesLoaded, setSearchesLoaded] = useState(false)
   const [addedNames, setAddedNames] = useState<Set<string>>(new Set())
+  const [locationSubtitle, setLocationSubtitle] = useState<string | null>('Finding your location...')
+  const [locationDenied, setLocationDenied] = useState(false)
 
   useEffect(() => {
     loadNearbyVendors()
@@ -30,8 +33,22 @@ export default function HomeScreen() {
   async function loadNearbyVendors(isRefresh = false) {
     if (!isRefresh) setLoading(true)
     setError(null)
+    setLocationDenied(false)
     try {
       const coords = await locationService.getCurrentLocation()
+
+      // Handle location denied
+      if (!coords) {
+        setLocationDenied(true)
+        setLocationSubtitle(null)
+      } else {
+        // Get city name from coordinates
+        const address = await locationService.reverseGeocode(coords)
+        const cityMatch = address?.split(' ')?.pop()
+        const cityName = cityMatch || 'your location'
+        setLocationSubtitle(`Near ${cityName}`)
+      }
+
       // If no location, use a global radius so all vendors load
       const nearby = await vendorRepository.getNearbyVendors(
         coords?.lat ?? 0,
@@ -87,6 +104,16 @@ export default function HomeScreen() {
     )
   }
 
+  if (locationDenied) {
+    return (
+      <View style={styles.center}>
+        <Ionicons name="location-outline" size={48} color={colors.creamDim} />
+        <Text style={styles.emptyTitle}>Location needed</Text>
+        <Text style={styles.emptySubtext}>Enable location in Settings to find spots near you.</Text>
+      </View>
+    )
+  }
+
   return (
     <View style={styles.container}>
       <Image
@@ -105,10 +132,23 @@ export default function HomeScreen() {
           />
         )}
         ListHeaderComponent={
-          <View style={styles.header}>
-            <Text style={styles.headerEyebrow}>TACO ATLAS</Text>
-            <Text style={styles.headerTitle}>Find My Tacos</Text>
-          </View>
+          <>
+            <View style={styles.header}>
+              <Text style={styles.headerEyebrow}>taco atlas</Text>
+              <Text style={styles.headerTitle}>Explore</Text>
+              {locationSubtitle && (
+                <View style={styles.locationRow}>
+                  <Ionicons name="location-sharp" size={12} color={colors.amber} />
+                  <Text style={styles.locationText}>{locationSubtitle}</Text>
+                </View>
+              )}
+            </View>
+            {vendors.length > 0 && (
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>In the Atlas</Text>
+              </View>
+            )}
+          </>
         }
         ListEmptyComponent={
           <View style={styles.empty}>
@@ -131,10 +171,7 @@ export default function HomeScreen() {
           googlePlaces.length > 0 ? (
             <View>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Nearby on Google</Text>
-                {searchesLoaded && (
-                  <Text style={styles.searchesLeft}>{remainingSearches} searches left today</Text>
-                )}
+                <Text style={styles.sectionTitle}>On Google</Text>
               </View>
               {googlePlaces.map(place => (
                 <GooglePlaceCard
@@ -183,7 +220,7 @@ const styles = StyleSheet.create({
   headerEyebrow: {
     fontSize: 11,
     fontWeight: '700',
-    color: colors.amber,
+    color: colors.creamDim,
     letterSpacing: 2,
     marginBottom: 4,
   },
@@ -192,6 +229,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: colors.cream,
     letterSpacing: -0.5,
+    marginBottom: 4,
   },
   empty: {
     flex: 1,
@@ -224,17 +262,18 @@ const styles = StyleSheet.create({
     fontSize: 15,
     letterSpacing: 0.3,
   },
+  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+  locationText: { fontSize: 12, color: colors.creamMuted },
+
   sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xs,
   },
   sectionTitle: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '700',
-    color: colors.amber,
+    color: colors.creamDim,
     letterSpacing: 1,
     textTransform: 'uppercase',
   },
