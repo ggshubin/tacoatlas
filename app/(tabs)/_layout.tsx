@@ -20,27 +20,37 @@ export default function TabsLayout() {
         tabBarLabelStyle: {
           fontSize: 10,
           fontWeight: '600',
-          letterSpacing: 1,
+          letterSpacing: 0.5,
         },
       }}
     >
       <Tabs.Screen
         name="atlas"
         options={{
-          title: 'MY TACOS',
+          title: 'Atlas',
           headerShown: false,
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="map" size={size} color={color} />
+            <Ionicons name="map-outline" size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="index"
+        name="explore"
         options={{
-          title: 'FIND MY TACOS',
+          title: 'Explore',
           headerShown: false,
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="location" size={size} color={color} />
+            <Ionicons name="location-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person-outline" size={size} color={color} />
           ),
         }}
       />
