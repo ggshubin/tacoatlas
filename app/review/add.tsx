@@ -1,231 +1,110 @@
-import { useState, useEffect } from 'react'
+import { useState, useCallback } from 'react'
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  ScrollView,
-  StyleSheet,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  Image,
+  View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet,
+  KeyboardAvoidingView, Platform, Alert, ActivityIndicator,
 } from 'react-native'
-import { router, useLocalSearchParams } from 'expo-router'
-import * as ImagePicker from 'expo-image-picker'
-import { useReviewFormStore } from '../../src/store/reviewFormStore'
-import { useAuthStore } from '../../src/store/authStore'
-import { localStorageService } from '../../src/services/localStorage'
-import { locationService } from '../../src/services/locationService'
+import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
-import { TacoRating } from '../../src/components/TacoRating'
-import { colors, spacing, typography, radius } from '../../src/utils/theme'
-import { ProPaywallModal } from '../../src/components/ProPaywallModal'
-import MapView, { Marker } from 'react-native-maps'
+import { useReviewFormStore, FoodCategory } from '../../src/store/reviewFormStore'
+import { localStorageService } from '../../src/services/localStorage'
+import { LocationPicker } from '../../src/components/LocationPicker'
+import { FoodIconBar } from '../../src/components/FoodIconBar'
+import { ChipScorecard } from '../../src/components/ChipScorecard'
+import { colors, spacing, radius } from '../../src/utils/theme'
+import type { SpotType, PrivacySetting, HeatLevel } from '../../src/types/app'
 
-const HEAT_CONFIG: Record<string, { icon: 'thermometer-outline' | 'thermometer'; color: string; label: string; flame?: boolean; volcano?: boolean }> = {
-  mild:    { icon: 'thermometer-outline', color: '#64B5F6', label: 'Mild' },
-  medium:  { icon: 'thermometer-outline', color: '#FFC107', label: 'Medium' },
-  hot:     { icon: 'thermometer',         color: '#FF7043', label: 'Hot' },
-  fire:    { icon: 'thermometer',         color: '#FF1744', label: 'Fire',    flame: true },
-  volcano: { icon: 'thermometer',         color: '#B71C1C', label: 'Volcano', volcano: true },
-}
+const SPOT_TYPES: SpotType[] = ['Truck', 'Food Cart', 'Street Tent', 'House', 'Brick & Mortar', 'Restaurant']
 
-function HeatIcon({ level, size = 24 }: { level: string; size?: number }) {
-  const cfg = HEAT_CONFIG[level]
-  if (!cfg) return null
-
-  if (cfg.volcano) {
-    return (
-      <View style={{ width: size * 1.4, height: size * 1.4, alignItems: 'center', justifyContent: 'center' }}>
-        <Ionicons name="bonfire" size={size * 1.2} color="#B71C1C" style={{ position: 'absolute', opacity: 0.6 }} />
-        <Ionicons name={cfg.icon} size={size * 0.75} color={cfg.color} />
-      </View>
-    )
-  }
-
-  if (cfg.flame) {
-    return (
-      <View style={{ width: size * 1.4, height: size * 1.4, alignItems: 'center', justifyContent: 'center' }}>
-        <Ionicons name="flame" size={size * 1.2} color="#FF6D00" style={{ position: 'absolute', opacity: 0.7 }} />
-        <Ionicons name={cfg.icon} size={size * 0.75} color={cfg.color} />
-      </View>
-    )
-  }
-
-  return <Ionicons name={cfg.icon} size={size} color={cfg.color} />
-}
-
-const SPOT_TYPES = ['Truck', 'Food Cart', 'Street Tent', 'House', 'Brick & Mortar', 'Restaurant'] as const
-
-// Preset options
-const TACO_TYPES = [
-  'Al Pastor',
-  'Carne Asada',
-  'Birria',
-  'Barbacoa',
-  'Pollo',
-  'Chorizo',
-  'Carnitas',
-  'Pescado',
-  'Camarón',
-  'Lengua',
-  'Other',
-]
-const HEAT_LEVELS = ['mild', 'medium', 'hot', 'fire', 'volcano'] as const
-const CONDIMENT_OPTIONS = [
-  'Cilantro',
-  'Onions',
-  'Radishes',
-  'Lime',
-  'Crema',
-  'Guacamole',
-  'Pickled Jalapeños',
-  'Pickled Onions',
-  'Cucumber',
-  'Pineapple',
+const PRIVACY_OPTIONS: { value: PrivacySetting; label: string; icon: string }[] = [
+  { value: 'public', label: 'Public', icon: '🌎' },
+  { value: 'friends', label: 'Mi Gente', icon: '👥' },
+  { value: 'private', label: 'Just Me', icon: '🔒' },
 ]
 
-export default function AddReviewModal() {
-  const params = useLocalSearchParams<{ vendorId?: string; vendorName?: string; editReviewId?: string; vendorLocalId?: string; prefillName?: string; prefillAddress?: string; prefillLat?: string; prefillLng?: string; prefillCity?: string }>()
+const TACO_TYPES = ['Al Pastor', 'Carne Asada', 'Carnitas', 'Birria', 'Pollo', 'Fish', 'Shrimp', 'Lengua', 'Cabeza', 'Chorizo', 'Veggie', 'Other']
+const BURRITO_TYPES = ['California', 'Birria', 'Carne Asada', 'Pollo', 'Chorizo', 'Bean & Cheese', 'Wet', 'Other']
+const TORTA_TYPES = ['Milanesa', 'Cubana', 'Pierna', 'Al Pastor', 'Chorizo', 'Other']
+const CONDIMENTS = ['Guacamole', 'Queso', 'Crema', 'Onions', 'Cilantro', 'Radishes', 'Jalapeños', 'Lime', 'Pico de Gallo']
+const HEAT_LEVELS: HeatLevel[] = ['mild', 'medium', 'hot', 'fire', 'volcano']
+
+const STEP_NAMES = ['The Spot', "What'd You Have?", 'Your Verdict']
+
+export default function ReviewWizard() {
   const store = useReviewFormStore()
-  const { session } = useAuthStore()
-  const isEditing = !!store.editingReviewLocalId
-  const [showPaywall, setShowPaywall] = useState(false)
-  const [prefillCoords, setPrefillCoords] = useState<{ lat: number; lng: number; address: string | null } | null>(null)
+  const [showSpotNote, setShowSpotNote] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
 
-  useEffect(() => {
-    async function checkLimit() {
-      const atLimit = await localStorageService.isAtFreeLimit()
-      if (atLimit) setShowPaywall(true)
-    }
-    if (!isEditing) {
-      checkLimit()
-    }
-  }, [isEditing])
+  const litCategories: FoodCategory[] = []
+  if (store.tacoEntries.length > 0) litCategories.push('tacos')
+  if (store.burritoEntries.length > 0) litCategories.push('burritos')
+  if (store.tortaEntries.length > 0) litCategories.push('tortas')
+  if (store.salsaEntries.length > 0) litCategories.push('salsas')
 
-  // Initialize from params if coming from vendor detail (new review only)
-  useState(() => {
-    if (params.vendorName && !store.vendorName && !store.editingReviewLocalId) {
-      store.setField('vendorName', params.vendorName)
-    }
-  })
-
-  useEffect(() => {
-    if (params.prefillName && !store.vendorName && !store.editingReviewLocalId) {
-      store.setField('vendorName', params.prefillName)
-    }
-    if (params.prefillCity) {
-      store.setField('cityName', params.prefillCity)
-    }
-    if (params.prefillLat && params.prefillLng) {
-      setPrefillCoords({
-        lat: parseFloat(params.prefillLat),
-        lng: parseFloat(params.prefillLng),
-        address: params.prefillAddress ?? null,
-      })
-      store.setField('lat', parseFloat(params.prefillLat))
-      store.setField('lng', parseFloat(params.prefillLng))
-    }
-  }, [])
-
-  async function handleGpsTag() {
-    const coords = await locationService.getCurrentLocation()
-    if (coords) {
-      store.setField('lat', coords.lat)
-      store.setField('lng', coords.lng)
-      // Auto-populate city from reverse geocode (only if not already set manually)
-      try {
-        const results = await (await import('expo-location')).reverseGeocodeAsync({
-          latitude: coords.lat,
-          longitude: coords.lng,
-        })
-        if (results.length && results[0].city) {
-          store.setField('cityName', results[0].city)
-        }
-      } catch {}
-    }
+  function handleClose() {
+    Alert.alert('Ditch this visit?', 'Your progress will be lost.', [
+      { text: 'Keep editing', style: 'cancel' },
+      { text: 'Ditch it', style: 'destructive', onPress: () => { store.reset(); router.back() } },
+    ])
   }
 
-  async function handleTakePhoto() {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync()
-    if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Camera access is required to take photos.')
-      return
-    }
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ['images'],
-      quality: 0.8,
-      allowsEditing: true,
-      aspect: [4, 3],
-    })
-    if (!result.canceled && result.assets[0]) {
-      store.addPhoto(result.assets[0].uri)
-    }
-  }
-
-  async function handlePickPhoto() {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
-    if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Photo library access is required.')
-      return
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      quality: 0.8,
-      allowsMultipleSelection: true,
-      selectionLimit: 6,
-    })
-    if (!result.canceled) {
-      result.assets.forEach(a => store.addPhoto(a.uri))
-    }
+  function handleProGate() {
+    Alert.alert('Pro Feature', 'Upgrade to TacoAtlas Pro to rate burritos and tortas!')
   }
 
   async function handleSubmit() {
-    if (!store.vendorName.trim() && !isEditing) {
-      Alert.alert('Missing info', 'Enter the taco spot name.')
+    if (!store.vendorName.trim()) {
+      Alert.alert('Missing name', 'Give this spot a name.')
       return
     }
+    setSubmitting(true)
+    try {
+      let vendorLocalId = store.editingVendorLocalId
 
-    if (isEditing && store.editingReviewLocalId) {
-      await localStorageService.updateReview(store.editingReviewLocalId, {
-        overallRating: store.overallRating || 3,
+      if (!vendorLocalId) {
+        // New vendor
+        const vendor = await localStorageService.addVendor({
+          name: store.vendorName.trim(),
+          spotType: store.spotType,
+          lat: store.lat ?? 0,
+          lng: store.lng ?? 0,
+          address: store.address,
+          cityName: store.cityName,
+          hours: null,
+          photoUri: null,
+          privacy: store.privacy,
+          spotNote: store.spotNote.trim() || null,
+          isVisited: true,
+        })
+        vendorLocalId = vendor.localId
+      } else {
+        // Updating existing — update spotNote/privacy if changed
+        await localStorageService.updateVendor(vendorLocalId, {
+          spotNote: store.spotNote.trim() || null,
+          privacy: store.privacy,
+          isVisited: true,
+        })
+      }
+
+      await localStorageService.addReview({
+        vendorLocalId,
+        overallRating: store.overallRating,
         returnIntent: store.returnIntent,
-        notes: store.notes || null,
+        notes: store.notes.trim() || null,
         photoUris: store.photoUris,
-        tacoEntries: store.tacoEntries,
+        tacoEntries: store.tacoEntries.map(e => ({ tacoType: e.tacoType || '', rating: e.rating, notes: e.notes })),
         salsaEntries: store.salsaEntries,
         condiments: store.condiments,
+        burritoEntries: store.burritoEntries,
+        tortaEntries: store.tortaEntries,
       })
+
       store.reset()
       router.back()
-      return
+    } catch (e) {
+      Alert.alert('Error', 'Could not save your review. Try again.')
+    } finally {
+      setSubmitting(false)
     }
-
-    const vendor = await localStorageService.addVendor({
-      name: store.vendorName.trim(),
-      spotType: store.spotType,
-      lat: store.lat ?? prefillCoords?.lat ?? 0,
-      lng: store.lng ?? prefillCoords?.lng ?? 0,
-      address: store.address ?? prefillCoords?.address ?? null,
-      cityName: store.cityName,
-      hours: null,
-      photoUri: null,
-    })
-
-    await localStorageService.addReview({
-      vendorLocalId: params.vendorLocalId ?? vendor.localId,
-      overallRating: store.overallRating || 3,
-      returnIntent: store.returnIntent,
-      notes: store.notes || null,
-      photoUris: store.photoUris,
-      tacoEntries: store.tacoEntries,
-      salsaEntries: store.salsaEntries,
-      condiments: store.condiments,
-    })
-
-    store.reset()
-    router.back()
   }
 
   return (
@@ -233,564 +112,375 @@ export default function AddReviewModal() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <Image
-        source={require('../../assets/background.png')}
-        style={StyleSheet.absoluteFillObject}
-        resizeMode="cover"
-      />
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.closeBtn} onPress={handleClose}>
+          <Ionicons name="close" size={20} color={colors.cream} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Log a Visit</Text>
+        <View style={{ width: 36 }} />
+      </View>
 
       {/* Step indicator */}
       <View style={styles.stepRow}>
-        {[1, 2, 3, 4, 5].map(n => (
-          <View
-            key={n}
-            style={[styles.stepDot, store.currentStep >= n && styles.stepDotActive]}
-          />
-        ))}
+        {STEP_NAMES.map((label, i) => {
+          const step = i + 1
+          const isActive = store.currentStep === step
+          return (
+            <View key={step} style={styles.stepItem}>
+              <View style={[styles.stepDot, isActive && styles.stepDotActive]} />
+              <Text style={[styles.stepLabel, isActive && styles.stepLabelActive]}>{label}</Text>
+            </View>
+          )
+        })}
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        {/* Step 1: Vendor Info */}
+
+        {/* === STEP 1: The Spot === */}
         {store.currentStep === 1 && (
           <View>
-            <Text style={styles.stepTitle}>The Spot</Text>
             <TextInput
-              style={styles.input}
+              style={styles.nameInput}
               placeholder="Taco spot name"
               placeholderTextColor={colors.creamDim}
               value={store.vendorName}
               onChangeText={v => store.setField('vendorName', v)}
+              autoFocus
             />
+
             <Text style={styles.fieldLabel}>Type of Spot</Text>
-            <View style={styles.spotTypeGrid}>
+            <View style={styles.chipGrid}>
               {SPOT_TYPES.map(t => (
                 <TouchableOpacity
                   key={t}
-                  style={[styles.spotTypeChip, store.spotType === t && styles.spotTypeChipActive]}
+                  style={[styles.chip, store.spotType === t && styles.chipActive]}
                   onPress={() => store.setField('spotType', store.spotType === t ? null : t)}
                 >
-                  <Text style={[styles.spotTypeText, store.spotType === t && styles.spotTypeTextActive]}>{t}</Text>
+                  <Text style={[styles.chipText, store.spotType === t && styles.chipTextActive]}>{t}</Text>
                 </TouchableOpacity>
               ))}
             </View>
 
-            <TextInput
-              style={styles.input}
-              placeholder="City (optional)"
-              placeholderTextColor={colors.creamDim}
-              value={store.cityName ?? ''}
-              onChangeText={v => store.setField('cityName', v || null)}
+            <Text style={styles.fieldLabel}>Location</Text>
+            <LocationPicker
+              value={store.lat !== null ? { lat: store.lat, lng: store.lng ?? 0, address: store.address, cityName: store.cityName } : null}
+              onChange={loc => {
+                store.setField('lat', loc?.lat ?? null)
+                store.setField('lng', loc?.lng ?? null)
+                store.setField('address', loc?.address ?? null)
+                store.setField('cityName', loc?.cityName ?? null)
+              }}
             />
 
-            <TouchableOpacity style={styles.gpsButton} onPress={handleGpsTag}>
-              {store.lat && store.lng ? (
-                <View style={styles.mapSnapshot}>
-                  <MapView
-                    style={StyleSheet.absoluteFillObject}
-                    region={{
-                      latitude: store.lat,
-                      longitude: store.lng,
-                      latitudeDelta: 0.005,
-                      longitudeDelta: 0.005,
-                    }}
-                    scrollEnabled={false}
-                    zoomEnabled={false}
-                    rotateEnabled={false}
-                    pitchEnabled={false}
-                    userInterfaceStyle="dark"
-                    pointerEvents="none"
-                  >
-                    <Marker coordinate={{ latitude: store.lat, longitude: store.lng }} />
-                  </MapView>
-                  <View style={styles.mapSnapshotBadge}>
-                    <Ionicons name="location" size={14} color={colors.cream} />
-                    <Text style={styles.mapSnapshotBadgeText}>Location tagged — tap to retag</Text>
-                  </View>
-                </View>
-              ) : (
-                <View style={styles.gpsButtonInner}>
-                  <Ionicons name="location-outline" size={18} color={colors.amber} />
-                  <Text style={styles.gpsButtonText}>Tag Location (optional)</Text>
-                </View>
-              )}
+            <Text style={styles.fieldLabel}>Who can see this?</Text>
+            <View style={styles.privacyRow}>
+              {PRIVACY_OPTIONS.map(opt => (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={[styles.privacyBtn, store.privacy === opt.value && styles.privacyBtnActive]}
+                  onPress={() => store.setField('privacy', opt.value)}
+                >
+                  <Text style={styles.privacyIcon}>{opt.icon}</Text>
+                  <Text style={[styles.privacyLabel, store.privacy === opt.value && styles.privacyLabelActive]}>
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TouchableOpacity
+              style={styles.noteToggle}
+              onPress={() => setShowSpotNote(s => !s)}
+            >
+              <Ionicons name={showSpotNote ? 'chevron-down' : 'chevron-forward'} size={14} color={colors.creamMuted} />
+              <Text style={styles.noteToggleText}>About this spot</Text>
             </TouchableOpacity>
+            {showSpotNote && (
+              <TextInput
+                style={styles.noteInput}
+                placeholder="Cash only, opens at 3pm..."
+                placeholderTextColor={colors.creamDim}
+                value={store.spotNote}
+                onChangeText={v => store.setField('spotNote', v)}
+                multiline
+                numberOfLines={3}
+              />
+            )}
           </View>
         )}
 
-        {/* Step 2: Tacos */}
+        {/* === STEP 2: What'd You Have? === */}
         {store.currentStep === 2 && (
           <View>
-            <Text style={styles.stepTitle}>The Tacos</Text>
-            {store.tacoEntries.map((entry, i) => (
-              <View key={i} style={styles.entryRow}>
-                <Text style={styles.entryLabel}>{entry.tacoType}</Text>
-                <TacoRating value={entry.rating} readonly size={16} />
-                <TouchableOpacity onPress={() => store.removeTacoEntry(i)}>
-                  <Text style={styles.removeBtn}>✕</Text>
-                </TouchableOpacity>
-              </View>
-            ))}
-            <AddTacoEntry onAdd={entry => store.addTacoEntry(entry)} />
-          </View>
-        )}
+            <FoodIconBar
+              active={store.activeCategory}
+              litCategories={litCategories}
+              onSelect={store.setActiveCategory}
+              onProGate={handleProGate}
+            />
 
-        {/* Step 3: Salsas */}
-        {store.currentStep === 3 && (
-          <View>
-            <Text style={styles.stepTitle}>The Salsas</Text>
-            {store.salsaEntries.map((entry, i) => (
-              <View key={i} style={styles.entryRow}>
-                <Text style={styles.entryLabel}>{entry.salsaName}</Text>
-                <TacoRating value={entry.flavorRating} readonly size={16} />
-                {entry.heatLevel ? (
-                  <HeatIcon level={entry.heatLevel} size={16} />
-                ) : null}
-                <TouchableOpacity onPress={() => store.removeSalsaEntry(i)}>
-                  <Text style={styles.removeBtn}>✕</Text>
-                </TouchableOpacity>
-              </View>
-            ))}
-            <AddSalsaEntry onAdd={entry => store.addSalsaEntry(entry)} />
-          </View>
-        )}
+            {store.activeCategory === 'tacos' && (
+              <ChipScorecard
+                presets={TACO_TYPES}
+                items={store.tacoEntries.map(e => ({ label: e.tacoType, rating: e.rating, notes: e.notes }))}
+                onAdd={item => store.addTacoEntry({ tacoType: item.label, rating: item.rating, notes: item.notes })}
+                onRemove={store.removeTacoEntry}
+                onUpdate={(idx, updates) => store.updateTacoEntry(idx, {
+                  tacoType: updates.label !== undefined ? updates.label : undefined,
+                  rating: updates.rating,
+                  notes: updates.notes,
+                })}
+              />
+            )}
 
-        {/* Step 4: Condiments */}
-        {store.currentStep === 4 && (
-          <View>
-            <Text style={styles.stepTitle}>Condiments Available</Text>
-            <View style={styles.condimentGrid}>
-              {CONDIMENT_OPTIONS.map(c => (
+            {store.activeCategory === 'burritos' && (
+              <ChipScorecard
+                presets={BURRITO_TYPES}
+                items={store.burritoEntries.map(e => ({ label: e.burritoType, rating: e.rating, notes: e.notes }))}
+                onAdd={item => store.addBurritoEntry({ burritoType: item.label, rating: item.rating, notes: item.notes })}
+                onRemove={store.removeBurritoEntry}
+                onUpdate={(idx, updates) => {
+                  const current = store.burritoEntries[idx]
+                  store.removeBurritoEntry(idx)
+                  store.addBurritoEntry({
+                    burritoType: updates.label ?? current.burritoType,
+                    rating: updates.rating ?? current.rating,
+                    notes: updates.notes !== undefined ? updates.notes : current.notes,
+                  })
+                }}
+              />
+            )}
+
+            {store.activeCategory === 'tortas' && (
+              <ChipScorecard
+                presets={TORTA_TYPES}
+                items={store.tortaEntries.map(e => ({ label: e.tortaType, rating: e.rating, notes: e.notes }))}
+                onAdd={item => store.addTortaEntry({ tortaType: item.label, rating: item.rating, notes: item.notes })}
+                onRemove={store.removeTortaEntry}
+                onUpdate={(idx, updates) => {
+                  const current = store.tortaEntries[idx]
+                  store.removeTortaEntry(idx)
+                  store.addTortaEntry({
+                    tortaType: updates.label ?? current.tortaType,
+                    rating: updates.rating ?? current.rating,
+                    notes: updates.notes !== undefined ? updates.notes : current.notes,
+                  })
+                }}
+              />
+            )}
+
+            {store.activeCategory === 'salsas' && (
+              <ChipScorecard
+                freeform
+                items={store.salsaEntries.map(e => ({ label: e.salsaName, rating: e.flavorRating, notes: e.notes ?? null }))}
+                onAdd={item => store.addSalsaEntry({ salsaName: item.label, flavorRating: item.rating, heatLevel: null, notes: item.notes })}
+                onRemove={store.removeSalsaEntry}
+                onUpdate={(idx, updates) => {
+                  // Reconstruct salsa entry on update
+                  const entries = [...store.salsaEntries]
+                  if (updates.rating !== undefined) entries[idx] = { ...entries[idx], flavorRating: updates.rating }
+                  if (updates.notes !== undefined) entries[idx] = { ...entries[idx], notes: updates.notes }
+                  store.setField('salsaEntries', entries)
+                }}
+                renderHeatPicker={(item, idx) => (
+                  <View style={{ flexDirection: 'row', gap: 4, marginTop: spacing.sm, flexWrap: 'wrap' }}>
+                    {HEAT_LEVELS.map(h => (
+                      <TouchableOpacity
+                        key={h}
+                        style={{
+                          paddingHorizontal: 8, paddingVertical: 4,
+                          borderRadius: radius.full, borderWidth: 1,
+                          borderColor: store.salsaEntries[idx]?.heatLevel === h ? colors.amber : colors.surfaceBorder,
+                          backgroundColor: store.salsaEntries[idx]?.heatLevel === h ? colors.amberSubtle : colors.surface,
+                        }}
+                        onPress={() => {
+                          const entries = [...store.salsaEntries]
+                          entries[idx] = { ...entries[idx], heatLevel: h }
+                          store.setField('salsaEntries', entries)
+                        }}
+                      >
+                        <Text style={{ fontSize: 11, color: store.salsaEntries[idx]?.heatLevel === h ? colors.amber : colors.creamMuted }}>
+                          {h}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              />
+            )}
+
+            <Text style={[styles.fieldLabel, { marginTop: spacing.md }]}>Also available</Text>
+            <View style={styles.chipGrid}>
+              {CONDIMENTS.map(c => (
                 <TouchableOpacity
                   key={c}
                   style={[styles.chip, store.condiments.includes(c) && styles.chipActive]}
                   onPress={() => store.toggleCondiment(c)}
                 >
-                  <Text
-                    style={[
-                      styles.chipText,
-                      store.condiments.includes(c) && styles.chipTextActive,
-                    ]}
-                  >
-                    {c}
-                  </Text>
+                  <Text style={[styles.chipText, store.condiments.includes(c) && styles.chipTextActive]}>{c}</Text>
                 </TouchableOpacity>
               ))}
             </View>
           </View>
         )}
 
-        {/* Step 5: Summary */}
-        {store.currentStep === 5 && (
+        {/* === STEP 3: Your Verdict === */}
+        {store.currentStep === 3 && (
           <View>
-            <Text style={styles.stepTitle}>Your Verdict</Text>
-
             <Text style={styles.fieldLabel}>Overall Rating</Text>
-            <TacoRating value={store.overallRating} onChange={v => store.setField('overallRating', v)} size={36} />
-
-            <Text style={styles.fieldLabel}>Would you come back?</Text>
-            <View style={styles.intentRow}>
-              {(['yes', 'maybe', 'no'] as const).map(intent => (
-                <TouchableOpacity
-                  key={intent}
-                  style={[styles.intentBtn, store.returnIntent === intent && styles.intentBtnActive]}
-                  onPress={() => store.setField('returnIntent', intent)}
-                >
-                  <Text
-                    style={[
-                      styles.intentText,
-                      store.returnIntent === intent && styles.intentTextActive,
-                    ]}
-                  >
-                    {intent === 'yes' ? '✓ Yes' : intent === 'maybe' ? '~ Maybe' : '✗ No'}
-                  </Text>
+            <View style={{ flexDirection: 'row', gap: 4, marginBottom: spacing.md }}>
+              {[1,2,3,4,5].map(n => (
+                <TouchableOpacity key={n} onPress={() => store.setField('overallRating', n)}>
+                  <Text style={{ fontSize: 32, color: n <= store.overallRating ? colors.amber : colors.creamDim }}>★</Text>
                 </TouchableOpacity>
               ))}
             </View>
 
+            <Text style={styles.fieldLabel}>Would you come back?</Text>
+            <View style={styles.intentRow}>
+              {(['yes', 'maybe', 'no'] as const).map(intent => {
+                const label = intent === 'yes' ? 'Hell yes 🤙' : intent === 'maybe' ? 'Maybe' : 'Nah'
+                return (
+                  <TouchableOpacity
+                    key={intent}
+                    style={[styles.intentBtn, store.returnIntent === intent && styles.intentBtnActive]}
+                    onPress={() => store.setField('returnIntent', intent)}
+                  >
+                    <Text style={[styles.intentText, store.returnIntent === intent && styles.intentTextActive]}>
+                      {label}
+                    </Text>
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
+
             <Text style={styles.fieldLabel}>Notes</Text>
             <TextInput
-              style={[styles.input, styles.notesInput]}
-              placeholder="What stood out?"
+              style={styles.noteInput}
+              placeholder="Anything else worth remembering..."
               placeholderTextColor={colors.creamDim}
               value={store.notes}
               onChangeText={v => store.setField('notes', v)}
               multiline
               numberOfLines={4}
             />
-
-            <Text style={styles.fieldLabel}>Photos</Text>
-            <View style={styles.photoGrid}>
-              {store.photoUris.map((uri, i) => (
-                <View key={i} style={styles.photoThumb}>
-                  <Image source={{ uri }} style={styles.photoThumbImg} />
-                  <TouchableOpacity style={styles.photoRemove} onPress={() => store.removePhoto(uri)}>
-                    <Ionicons name="close-circle" size={20} color={colors.error} />
-                  </TouchableOpacity>
-                </View>
-              ))}
-            </View>
-            <View style={styles.photoActions}>
-              <TouchableOpacity style={styles.photoBtn} onPress={handleTakePhoto}>
-                <Ionicons name="camera" size={20} color={colors.amber} />
-                <Text style={styles.photoBtnText}>Camera</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.photoBtn} onPress={handlePickPhoto}>
-                <Ionicons name="images" size={20} color={colors.amber} />
-                <Text style={styles.photoBtnText}>Library</Text>
-              </TouchableOpacity>
-            </View>
           </View>
         )}
+
       </ScrollView>
 
-      {/* Navigation */}
-      <View style={styles.navRow}>
-        {store.currentStep > 1 ? (
+      {/* Footer nav */}
+      <View style={styles.footer}>
+        {store.currentStep > 1 && (
           <TouchableOpacity style={styles.backBtn} onPress={store.prevStep}>
+            <Ionicons name="chevron-back" size={18} color={colors.creamMuted} />
             <Text style={styles.backBtnText}>Back</Text>
           </TouchableOpacity>
-        ) : (
-          <View />
         )}
-        {store.currentStep < 5 ? (
+        <View style={{ flex: 1 }} />
+        {store.currentStep < 3 ? (
           <TouchableOpacity style={styles.nextBtn} onPress={store.nextStep}>
             <Text style={styles.nextBtnText}>Next</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.cream} />
           </TouchableOpacity>
         ) : (
-          <TouchableOpacity style={styles.nextBtn} onPress={handleSubmit}>
-            <Text style={styles.nextBtnText}>Save</Text>
+          <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit} disabled={submitting}>
+            {submitting
+              ? <ActivityIndicator color={colors.cream} />
+              : <Text style={styles.submitBtnText}>Save Visit</Text>}
           </TouchableOpacity>
         )}
       </View>
-      <ProPaywallModal
-        visible={showPaywall}
-        onClose={() => { setShowPaywall(false); router.back() }}
-      />
     </KeyboardAvoidingView>
-  )
-}
-
-// Sub-component: add a taco entry
-function AddTacoEntry({
-  onAdd,
-}: {
-  onAdd: (entry: { tacoType: string; rating: number; notes: null }) => void
-}) {
-  const [type, setType] = useState('')
-  const [rating, setRating] = useState(0)
-  const [showTypes, setShowTypes] = useState(false)
-
-  function handleAdd() {
-    if (!type || !rating) return
-    onAdd({ tacoType: type, rating, notes: null })
-    setType('')
-    setRating(0)
-    setShowTypes(false)
-  }
-
-  return (
-    <View style={styles.addEntry}>
-      <TouchableOpacity style={styles.typeSelector} onPress={() => setShowTypes(!showTypes)}>
-        <Text style={type ? styles.typeSelectorText : styles.typeSelectorPlaceholder}>
-          {type || 'Select taco type'}
-        </Text>
-      </TouchableOpacity>
-      {showTypes && (
-        <ScrollView style={styles.typeList} nestedScrollEnabled>
-          {TACO_TYPES.map(t => (
-            <TouchableOpacity
-              key={t}
-              style={styles.typeOption}
-              onPress={() => {
-                setType(t)
-                setShowTypes(false)
-              }}
-            >
-              <Text style={styles.typeOptionText}>{t}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      )}
-      <TacoRating value={rating} onChange={setRating} />
-      <TouchableOpacity
-        style={[styles.addEntryBtn, (!type || !rating) && styles.addEntryBtnDisabled]}
-        onPress={handleAdd}
-        disabled={!type || !rating}
-      >
-        <Text style={styles.addEntryBtnText}>Add Taco</Text>
-      </TouchableOpacity>
-    </View>
-  )
-}
-
-// Sub-component: add a salsa entry
-function AddSalsaEntry({
-  onAdd,
-}: {
-  onAdd: (entry: {
-    salsaName: string
-    flavorRating: number
-    heatLevel: 'mild' | 'medium' | 'hot' | 'fire' | 'volcano' | null
-  }) => void
-}) {
-  const [name, setName] = useState('')
-  const [rating, setRating] = useState(0)
-  const [heat, setHeat] = useState<'mild' | 'medium' | 'hot' | 'fire' | 'volcano' | null>(null)
-
-  function handleAdd() {
-    if (!name.trim() || !rating) return
-    onAdd({ salsaName: name.trim(), flavorRating: rating, heatLevel: heat })
-    setName('')
-    setRating(0)
-    setHeat(null)
-  }
-
-  return (
-    <View style={styles.addEntry}>
-      <TextInput
-        style={styles.input}
-        placeholder="Salsa name (e.g. Salsa Verde)"
-        placeholderTextColor={colors.creamDim}
-        value={name}
-        onChangeText={setName}
-      />
-      <Text style={styles.fieldLabel}>Flavor</Text>
-      <TacoRating value={rating} onChange={setRating} />
-      <Text style={styles.fieldLabel}>Heat Level</Text>
-      <View style={styles.heatRow}>
-        {HEAT_LEVELS.map(h => {
-          const cfg = HEAT_CONFIG[h]
-          const active = heat === h
-          return (
-            <TouchableOpacity
-              key={h}
-              style={[styles.heatBtn, active && { borderColor: cfg.color, backgroundColor: 'rgba(0,0,0,0.3)' }]}
-              onPress={() => setHeat(h)}
-            >
-              <HeatIcon level={h} size={28} />
-              <Text style={[styles.heatBtnLabel, active && { color: cfg.color }]}>{cfg.label}</Text>
-            </TouchableOpacity>
-          )
-        })}
-      </View>
-      <TouchableOpacity
-        style={[styles.addEntryBtn, (!name.trim() || !rating) && styles.addEntryBtnDisabled]}
-        onPress={handleAdd}
-        disabled={!name.trim() || !rating}
-      >
-        <Text style={styles.addEntryBtnText}>Add Salsa</Text>
-      </TouchableOpacity>
-    </View>
   )
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
-  stepRow: { flexDirection: 'row', justifyContent: 'center', gap: spacing.sm, paddingVertical: spacing.md },
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingTop: 56, paddingHorizontal: spacing.md, paddingBottom: spacing.sm,
+  },
+  closeBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: colors.surfaceRaised,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: colors.surfaceBorder,
+  },
+  headerTitle: { fontSize: 17, fontWeight: '700', color: colors.cream },
+  stepRow: {
+    flexDirection: 'row', justifyContent: 'center', gap: spacing.lg,
+    paddingHorizontal: spacing.md, paddingBottom: spacing.md,
+  },
+  stepItem: { alignItems: 'center', gap: 4 },
   stepDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.surfaceBorder },
   stepDotActive: { backgroundColor: colors.amber },
-  scroll: { padding: spacing.md, paddingBottom: spacing.xxl },
-  stepTitle: {
-    fontSize: typography.fontSizeXxl,
-    fontWeight: typography.fontWeightBold,
-    color: colors.cream,
-    marginBottom: spacing.lg,
+  stepLabel: { fontSize: 10, color: colors.creamDim, fontWeight: '500' },
+  stepLabelActive: { color: colors.amber, fontWeight: '700' },
+  scroll: { paddingHorizontal: spacing.md, paddingBottom: 120 },
+  nameInput: {
+    backgroundColor: colors.surface, borderRadius: radius.md,
+    padding: spacing.md, fontSize: 18, fontWeight: '700', color: colors.cream,
+    borderWidth: 1, borderColor: colors.surfaceBorder, marginBottom: spacing.md,
   },
-  input: {
-    backgroundColor: 'rgba(36, 28, 22, 0.85)',
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    fontSize: typography.fontSizeLg,
-    color: colors.cream,
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
-  },
-  notesInput: { height: 100, textAlignVertical: 'top' },
-  gpsButton: {
-    backgroundColor: 'rgba(36, 28, 22, 0.85)',
-    borderRadius: radius.md,
-    marginBottom: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
-    overflow: 'hidden',
-  },
-  gpsButtonInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    padding: spacing.md,
-  },
-  gpsButtonText: { color: colors.creamMuted, fontSize: typography.fontSizeMd },
-  mapSnapshot: {
-    height: 140,
-    borderRadius: radius.md,
-    overflow: 'hidden',
-  },
-  mapSnapshotBadge: {
-    position: 'absolute',
-    bottom: spacing.sm,
-    left: spacing.sm,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(24, 20, 15, 0.8)',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: radius.full,
-  },
-  mapSnapshotBadgeText: { color: colors.cream, fontSize: 12 },
-  entryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.sm,
-    backgroundColor: 'rgba(36, 28, 22, 0.85)',
-    padding: spacing.sm,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
-  },
-  entryLabel: { flex: 1, fontSize: typography.fontSizeMd, color: colors.cream },
-  removeBtn: { color: colors.error, fontSize: 16, padding: spacing.xs },
-  heatLabel: { fontSize: typography.fontSizeSm, color: colors.amber },
-  addEntry: { marginTop: spacing.md },
-  typeSelector: {
-    backgroundColor: 'rgba(36, 28, 22, 0.85)',
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
-  },
-  typeSelectorText: { color: colors.cream, fontSize: typography.fontSizeMd },
-  typeSelectorPlaceholder: { color: colors.creamDim, fontSize: typography.fontSizeMd },
-  typeList: {
-    maxHeight: 200,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
-    marginBottom: spacing.sm,
-  },
-  typeOption: { padding: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.surfaceBorder },
-  typeOptionText: { color: colors.cream, fontSize: typography.fontSizeMd },
-  fieldLabel: {
-    fontSize: typography.fontSizeMd,
-    fontWeight: typography.fontWeightMedium,
-    color: colors.creamMuted,
-    marginBottom: spacing.sm,
-    marginTop: spacing.sm,
-  },
-  intentRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md, flexWrap: 'wrap' },
-  intentBtn: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
-  },
-  intentBtnActive: { backgroundColor: colors.amber, borderColor: colors.amber },
-  intentText: { color: colors.creamMuted, fontSize: typography.fontSizeMd },
-  intentTextActive: { color: colors.cream, fontWeight: typography.fontWeightBold },
-  condimentGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  fieldLabel: { fontSize: 12, fontWeight: '600', color: colors.creamMuted, marginBottom: spacing.sm, marginTop: spacing.sm },
+  chipGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
   chip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
-    backgroundColor: 'rgba(36, 28, 22, 0.7)',
+    paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
+    borderRadius: radius.full, borderWidth: 1, borderColor: colors.surfaceBorder,
+    backgroundColor: colors.surfaceRaised,
   },
   chipActive: { backgroundColor: colors.amber, borderColor: colors.amber },
-  chipText: { color: colors.creamMuted, fontSize: typography.fontSizeMd },
-  chipTextActive: { color: colors.cream, fontWeight: typography.fontWeightBold },
-  navRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.surfaceBorder,
-    backgroundColor: 'rgba(24, 20, 15, 0.9)',
+  chipText: { color: colors.creamMuted, fontSize: 13, fontWeight: '600' },
+  chipTextActive: { color: colors.cream },
+  privacyRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
+  privacyBtn: {
+    flex: 1, alignItems: 'center', paddingVertical: spacing.sm + 4,
+    borderRadius: radius.md, borderWidth: 1, borderColor: colors.surfaceBorder,
+    backgroundColor: colors.surfaceRaised,
   },
-  backBtn: { paddingVertical: spacing.sm, paddingHorizontal: spacing.md },
-  backBtnText: { color: colors.creamMuted, fontSize: typography.fontSizeLg },
+  privacyBtnActive: { borderColor: colors.amber, backgroundColor: colors.amberSubtle },
+  privacyIcon: { fontSize: 18, marginBottom: 4 },
+  privacyLabel: { fontSize: 11, color: colors.creamMuted, fontWeight: '600' },
+  privacyLabelActive: { color: colors.amber },
+  noteToggle: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: spacing.sm },
+  noteToggleText: { color: colors.creamMuted, fontSize: 13 },
+  noteInput: {
+    backgroundColor: colors.surfaceRaised, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.surfaceBorder,
+    padding: spacing.md, color: colors.cream, fontSize: 14,
+    textAlignVertical: 'top', minHeight: 80, marginBottom: spacing.md,
+  },
+  intentRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
+  intentBtn: {
+    flex: 1, alignItems: 'center', paddingVertical: spacing.md,
+    borderRadius: radius.md, borderWidth: 1, borderColor: colors.surfaceBorder,
+    backgroundColor: colors.surfaceRaised,
+  },
+  intentBtnActive: { borderColor: colors.amber, backgroundColor: colors.amberSubtle },
+  intentText: { fontSize: 13, color: colors.creamMuted, fontWeight: '600' },
+  intentTextActive: { color: colors.amber },
+  footer: {
+    flexDirection: 'row', alignItems: 'center',
+    padding: spacing.md, paddingBottom: 36,
+    borderTopWidth: 1, borderTopColor: colors.surfaceBorder,
+    backgroundColor: colors.bg,
+  },
+  backBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
+  },
+  backBtnText: { color: colors.creamMuted, fontSize: 15, fontWeight: '600' },
   nextBtn: {
-    backgroundColor: colors.amber,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.full,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: colors.amber, borderRadius: radius.full,
+    paddingHorizontal: spacing.lg, paddingVertical: spacing.sm + 4,
   },
-  nextBtnText: {
-    color: colors.cream,
-    fontWeight: typography.fontWeightBold,
-    fontSize: typography.fontSizeLg,
+  nextBtnText: { color: colors.cream, fontWeight: '700', fontSize: 15 },
+  submitBtn: {
+    backgroundColor: colors.amber, borderRadius: radius.full,
+    paddingHorizontal: spacing.xl, paddingVertical: spacing.sm + 4,
   },
-  spotTypeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
-  spotTypeChip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
-    backgroundColor: 'rgba(36,28,22,0.6)',
-  },
-  spotTypeChipActive: { backgroundColor: colors.amber, borderColor: colors.amber },
-  spotTypeText: { color: colors.creamMuted, fontSize: 13, fontWeight: '600' },
-  spotTypeTextActive: { color: colors.cream },
-
-  heatRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-    flexWrap: 'wrap',
-  },
-  heatBtn: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.sm,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
-    backgroundColor: 'rgba(36, 28, 22, 0.6)',
-    minWidth: 58,
-  },
-  heatBtnLabel: {
-    color: colors.creamMuted,
-    fontSize: 10,
-    fontWeight: '600',
-    letterSpacing: 0.5,
-    marginTop: 4,
-    textTransform: 'uppercase',
-  },
-  addEntryBtn: {
-    backgroundColor: colors.amber,
-    borderRadius: radius.md,
-    padding: spacing.sm,
-    alignItems: 'center',
-    marginTop: spacing.sm,
-  },
-  addEntryBtnDisabled: { opacity: 0.4 },
-  addEntryBtnText: { color: colors.cream, fontWeight: typography.fontWeightBold },
-
-  photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.sm },
-  photoThumb: { position: 'relative' },
-  photoThumbImg: { width: 90, height: 90, borderRadius: radius.md },
-  photoRemove: { position: 'absolute', top: -6, right: -6 },
-  photoActions: { flexDirection: 'row', gap: spacing.sm },
-  photoBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    backgroundColor: 'rgba(36,28,22,0.85)',
-    borderRadius: radius.md,
-    padding: spacing.sm + 2,
-    borderWidth: 1,
-    borderColor: colors.amberDim,
-  },
-  photoBtnText: { color: colors.amber, fontWeight: '600', fontSize: 14 },
+  submitBtnText: { color: colors.cream, fontWeight: '700', fontSize: 15 },
 })
