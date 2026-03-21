@@ -1,21 +1,27 @@
 import { create } from 'zustand'
-import type { LocalTacoEntry, LocalSalsaEntry, LocalReview, SpotType } from '../types/app'
+import type { LocalTacoEntry, LocalSalsaEntry, LocalReview, SpotType, PrivacySetting,
+  LocalBurritoEntry, LocalTortaEntry } from '../types/app'
+
+export type FoodCategory = 'tacos' | 'burritos' | 'tortas' | 'salsas'
 
 interface ReviewFormState {
-  // Step 1: Vendor info
+  // Step 1
   vendorName: string
   spotType: SpotType | null
   lat: number | null
   lng: number | null
   address: string | null
   cityName: string | null
-  // Step 2: Tacos
+  privacy: PrivacySetting
+  spotNote: string
+  // Step 2
+  activeCategory: FoodCategory
   tacoEntries: LocalTacoEntry[]
-  // Step 3: Salsas
+  burritoEntries: LocalBurritoEntry[]
+  tortaEntries: LocalTortaEntry[]
   salsaEntries: LocalSalsaEntry[]
-  // Step 4: Condiments
   condiments: string[]
-  // Step 5: Summary
+  // Step 3
   overallRating: number
   returnIntent: 'yes' | 'maybe' | 'no' | null
   notes: string
@@ -24,11 +30,17 @@ interface ReviewFormState {
   editingReviewLocalId: string | null
   editingVendorLocalId: string | null
   // Navigation
-  currentStep: number
+  currentStep: number  // 1–3
   // Actions
   setField: <K extends keyof ReviewFormState>(key: K, value: ReviewFormState[K]) => void
+  setActiveCategory: (cat: FoodCategory) => void
   addTacoEntry: (entry: LocalTacoEntry) => void
   removeTacoEntry: (index: number) => void
+  updateTacoEntry: (index: number, updates: Partial<LocalTacoEntry>) => void
+  addBurritoEntry: (entry: LocalBurritoEntry) => void
+  removeBurritoEntry: (index: number) => void
+  addTortaEntry: (entry: LocalTortaEntry) => void
+  removeTortaEntry: (index: number) => void
   addSalsaEntry: (entry: LocalSalsaEntry) => void
   removeSalsaEntry: (index: number) => void
   toggleCondiment: (name: string) => void
@@ -47,7 +59,12 @@ const initialState = {
   lng: null,
   address: null,
   cityName: null,
+  privacy: 'public' as PrivacySetting,
+  spotNote: '',
+  activeCategory: 'tacos' as FoodCategory,
   tacoEntries: [],
+  burritoEntries: [],
+  tortaEntries: [],
   salsaEntries: [],
   condiments: [],
   overallRating: 0,
@@ -62,8 +79,16 @@ const initialState = {
 export const useReviewFormStore = create<ReviewFormState>((set) => ({
   ...initialState,
   setField: (key, value) => set({ [key]: value } as Partial<ReviewFormState>),
+  setActiveCategory: (cat) => set({ activeCategory: cat }),
   addTacoEntry: (entry) => set(s => ({ tacoEntries: [...s.tacoEntries, entry] })),
   removeTacoEntry: (i) => set(s => ({ tacoEntries: s.tacoEntries.filter((_, idx) => idx !== i) })),
+  updateTacoEntry: (i, updates) => set(s => ({
+    tacoEntries: s.tacoEntries.map((e, idx) => idx === i ? { ...e, ...updates } : e),
+  })),
+  addBurritoEntry: (entry) => set(s => ({ burritoEntries: [...s.burritoEntries, entry] })),
+  removeBurritoEntry: (i) => set(s => ({ burritoEntries: s.burritoEntries.filter((_, idx) => idx !== i) })),
+  addTortaEntry: (entry) => set(s => ({ tortaEntries: [...s.tortaEntries, entry] })),
+  removeTortaEntry: (i) => set(s => ({ tortaEntries: s.tortaEntries.filter((_, idx) => idx !== i) })),
   addSalsaEntry: (entry) => set(s => ({ salsaEntries: [...s.salsaEntries, entry] })),
   removeSalsaEntry: (i) => set(s => ({ salsaEntries: s.salsaEntries.filter((_, idx) => idx !== i) })),
   toggleCondiment: (name) =>
@@ -77,6 +102,8 @@ export const useReviewFormStore = create<ReviewFormState>((set) => ({
     editingVendorLocalId: review.vendorLocalId,
     vendorName,
     tacoEntries: review.tacoEntries,
+    burritoEntries: review.burritoEntries ?? [],
+    tortaEntries: review.tortaEntries ?? [],
     salsaEntries: review.salsaEntries,
     condiments: review.condiments,
     overallRating: review.overallRating,
@@ -91,7 +118,7 @@ export const useReviewFormStore = create<ReviewFormState>((set) => ({
   }),
   addPhoto: (uri) => set(s => ({ photoUris: [...s.photoUris, uri] })),
   removePhoto: (uri) => set(s => ({ photoUris: s.photoUris.filter(u => u !== uri) })),
-  nextStep: () => set(s => ({ currentStep: Math.min(s.currentStep + 1, 5) })),
+  nextStep: () => set(s => ({ currentStep: Math.min(s.currentStep + 1, 3) })),
   prevStep: () => set(s => ({ currentStep: Math.max(1, s.currentStep - 1) })),
   reset: () => set(initialState),
 }))
