@@ -62,6 +62,10 @@ export const localStorageService = {
     return getVendors()
   },
 
+  async getReviews(): Promise<LocalReview[]> {
+    return getReviews()
+  },
+
   async getVendorByLocalId(localId: string): Promise<LocalVendor | null> {
     const vendors = await getVendors()
     return vendors.find(v => v.localId === localId) ?? null

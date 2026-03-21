@@ -59,6 +59,7 @@ export default function VendorDetailScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      {/* Zone 1 — The Spot */}
       {vendor.photo_url && (
         <Image source={{ uri: vendor.photo_url }} style={styles.heroPhoto} />
       )}
@@ -78,13 +79,14 @@ export default function VendorDetailScreen() {
         </View>
       )}
 
+      {/* Zone 2 — The Verdict */}
       {Object.keys(returnCounts).length > 0 && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Would Come Back?</Text>
           <View style={styles.returnRow}>
-            {returnCounts.yes && <Text style={styles.returnYes}>✓ Yes ({returnCounts.yes})</Text>}
-            {returnCounts.maybe && <Text style={styles.returnMaybe}>~ Maybe ({returnCounts.maybe})</Text>}
-            {returnCounts.no && <Text style={styles.returnNo}>✗ No ({returnCounts.no})</Text>}
+            {returnCounts.yes && <Text style={styles.returnYes}>Hell yes 🤙 ({returnCounts.yes})</Text>}
+            {returnCounts.maybe && <Text style={styles.returnMaybe}>Maybe ({returnCounts.maybe})</Text>}
+            {returnCounts.no && <Text style={styles.returnNo}>Nah ({returnCounts.no})</Text>}
           </View>
         </View>
       )}
@@ -133,27 +135,27 @@ export default function VendorDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.cream },
+  container: { flex: 1, backgroundColor: colors.bg },
   content: { paddingBottom: spacing.xxl },
   loader: { flex: 1 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   notFound: { color: colors.gray500 },
   heroPhoto: { width: '100%', height: 200 },
   header: { padding: spacing.md },
-  name: { fontSize: typography.fontSizeXxl, fontWeight: typography.fontWeightBold, color: colors.brown },
-  city: { fontSize: typography.fontSizeMd, color: colors.gray500, marginTop: spacing.xs },
-  hours: { fontSize: typography.fontSizeMd, color: colors.gray500, marginTop: spacing.xs },
+  name: { fontSize: typography.fontSizeXxl, fontWeight: typography.fontWeightBold, color: colors.cream },
+  city: { fontSize: typography.fontSizeMd, color: colors.creamMuted, marginTop: spacing.xs },
+  hours: { fontSize: typography.fontSizeMd, color: colors.creamMuted, marginTop: spacing.xs },
   ratingSection: { paddingHorizontal: spacing.md, paddingBottom: spacing.md, alignItems: 'flex-start', gap: spacing.xs },
-  avgText: { fontSize: typography.fontSizeMd, color: colors.gray700 },
-  section: { marginHorizontal: spacing.md, marginBottom: spacing.md, backgroundColor: colors.white, borderRadius: radius.md, padding: spacing.md },
-  sectionTitle: { fontSize: typography.fontSizeLg, fontWeight: typography.fontWeightBold, color: colors.brown, marginBottom: spacing.sm },
+  avgText: { fontSize: typography.fontSizeMd, color: colors.cream },
+  section: { marginHorizontal: spacing.md, marginBottom: spacing.md, backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md },
+  sectionTitle: { fontSize: typography.fontSizeLg, fontWeight: typography.fontWeightBold, color: colors.cream, marginBottom: spacing.sm },
   returnRow: { flexDirection: 'row', gap: spacing.md, flexWrap: 'wrap' },
   returnYes: { color: colors.success, fontWeight: typography.fontWeightMedium },
   returnMaybe: { color: colors.warning, fontWeight: typography.fontWeightMedium },
   returnNo: { color: colors.error, fontWeight: typography.fontWeightMedium },
   tacoRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs },
-  tacoType: { flex: 1, fontSize: typography.fontSizeMd, color: colors.brownLight },
-  tacoAvg: { fontSize: typography.fontSizeSm, color: colors.gray500 },
+  tacoType: { flex: 1, fontSize: typography.fontSizeMd, color: colors.cream },
+  tacoAvg: { fontSize: typography.fontSizeSm, color: colors.creamMuted },
   heatBadge: { fontSize: typography.fontSizeSm, color: colors.terracotta, fontWeight: typography.fontWeightMedium },
   reviewButton: {
     margin: spacing.md,
@@ -162,5 +164,5 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     alignItems: 'center',
   },
-  reviewButtonText: { color: colors.white, fontWeight: typography.fontWeightBold, fontSize: typography.fontSizeLg },
+  reviewButtonText: { color: colors.cream, fontWeight: typography.fontWeightBold, fontSize: typography.fontSizeLg },
 })
