@@ -219,9 +219,18 @@ export default function MiGenteScreen() {
         <Text style={styles.title}>Mi Gente</Text>
         <View style={styles.lockedCard}>
           <Ionicons name="people-outline" size={28} color={colors.creamMuted} />
-          <Text style={styles.lockedText}>Connect with your taco crew</Text>
-          <View style={styles.proBadge}><Text style={styles.proBadgeText}>Pro</Text></View>
+          <Text style={styles.lockedText}>Connect with your taco crew — see where your friends are eating, share your spots, and build your crew.</Text>
         </View>
+        <TouchableOpacity style={styles.upgradeCard} onPress={() => {}}>
+          <View style={styles.upgradeCardInner}>
+            <Text style={styles.upgradeTitle}>Unlock TacoAtlas Pro</Text>
+            <Text style={styles.upgradePrice}>$3.99 one-time</Text>
+          </View>
+          <Text style={styles.upgradeSubtitle}>Mi Gente · Cloud Sync · Burritos & Tortas · Advanced Stats</Text>
+          <View style={styles.upgradeBtn}>
+            <Text style={styles.upgradeBtnText}>Upgrade Now</Text>
+          </View>
+        </TouchableOpacity>
       </View>
     )
   }
@@ -761,8 +770,13 @@ const styles = StyleSheet.create({
   },
   toastText: { fontSize: 13, color: colors.cream, fontWeight: '600' },
   // Pro gate
-  lockedCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: colors.surfaceBorder, marginTop: spacing.md },
-  lockedText: { flex: 1, color: colors.creamMuted, fontSize: 14 },
-  proBadge: { backgroundColor: colors.amber, borderRadius: radius.full, paddingHorizontal: 8, paddingVertical: 2 },
-  proBadgeText: { fontSize: 10, fontWeight: '800', color: colors.bg },
+  lockedCard: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md, backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: colors.surfaceBorder, marginTop: spacing.md, marginBottom: spacing.md },
+  lockedText: { flex: 1, color: colors.creamMuted, fontSize: 14, lineHeight: 20 },
+  upgradeCard: { backgroundColor: colors.amberSubtle, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: colors.amberDim },
+  upgradeCardInner: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm, marginBottom: 4 },
+  upgradeTitle: { fontSize: 16, fontWeight: '700', color: colors.cream },
+  upgradePrice: { fontSize: 13, color: colors.amber, fontWeight: '600' },
+  upgradeSubtitle: { fontSize: 12, color: colors.creamMuted, marginBottom: spacing.sm },
+  upgradeBtn: { backgroundColor: colors.amber, borderRadius: radius.full, paddingVertical: 10, alignItems: 'center' },
+  upgradeBtnText: { color: colors.bg, fontWeight: '700', fontSize: 14 },
 })
