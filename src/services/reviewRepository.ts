@@ -44,6 +44,9 @@ export const reviewRepository = {
 
     if (error) throw new Error(error.message)
 
+    const burritoEntries = input.burritoEntries ?? []
+    const tortaEntries = input.tortaEntries ?? []
+
     await Promise.all([
       input.tacoEntries.length > 0
         ? supabase.from('taco_entries').insert(
@@ -60,14 +63,14 @@ export const reviewRepository = {
             input.condiments.map(name => ({ name, review_id: review.id }))
           )
         : Promise.resolve(),
-      (input.burritoEntries ?? []).length > 0
+      burritoEntries.length > 0
         ? supabase.from('burrito_entries').insert(
-            (input.burritoEntries ?? []).map(b => ({ ...b, review_id: review.id }))
+            burritoEntries.map(b => ({ ...b, review_id: review.id }))
           )
         : Promise.resolve(),
-      (input.tortaEntries ?? []).length > 0
+      tortaEntries.length > 0
         ? supabase.from('torta_entries').insert(
-            (input.tortaEntries ?? []).map(t => ({ ...t, review_id: review.id }))
+            tortaEntries.map(t => ({ ...t, review_id: review.id }))
           )
         : Promise.resolve(),
     ])
@@ -88,30 +91,35 @@ export const reviewRepository = {
   },
 
   async updateReview(id: string, input: UpdateReviewInput): Promise<void> {
-    await supabase.from('reviews').update({
+    const { error: updateError } = await supabase.from('reviews').update({
       ...(input.overallRating !== undefined && { overall_rating: input.overallRating }),
       ...(input.returnIntent !== undefined && { return_intent: input.returnIntent }),
       ...(input.notes !== undefined && { notes: input.notes }),
       ...(input.privacy !== undefined && { privacy: input.privacy, is_public: input.privacy === 'public' }),
     }).eq('id', id)
+    if (updateError) throw new Error(updateError.message)
 
     // Replace burrito entries if provided
     if (input.burritoEntries !== undefined) {
-      await supabase.from('burrito_entries').delete().eq('review_id', id)
+      const { error: burritoDeleteError } = await supabase.from('burrito_entries').delete().eq('review_id', id)
+      if (burritoDeleteError) throw new Error(burritoDeleteError.message)
       if (input.burritoEntries.length > 0) {
-        await supabase.from('burrito_entries').insert(
+        const { error: burritoInsertError } = await supabase.from('burrito_entries').insert(
           input.burritoEntries.map(b => ({ ...b, review_id: id }))
         )
+        if (burritoInsertError) throw new Error(burritoInsertError.message)
       }
     }
 
     // Replace torta entries if provided
     if (input.tortaEntries !== undefined) {
-      await supabase.from('torta_entries').delete().eq('review_id', id)
+      const { error: tortaDeleteError } = await supabase.from('torta_entries').delete().eq('review_id', id)
+      if (tortaDeleteError) throw new Error(tortaDeleteError.message)
       if (input.tortaEntries.length > 0) {
-        await supabase.from('torta_entries').insert(
+        const { error: tortaInsertError } = await supabase.from('torta_entries').insert(
           input.tortaEntries.map(t => ({ ...t, review_id: id }))
         )
+        if (tortaInsertError) throw new Error(tortaInsertError.message)
       }
     }
   },
