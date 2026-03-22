@@ -122,6 +122,8 @@ export const syncService = {
         .eq('status', 'personal')
       if (vErr || !vendors) return { success: false }
 
+      let hadError = false
+
       for (const v of vendors) {
         // Fetch reviews for this vendor
         const { data: reviews, error: rErr } = await supabase
@@ -131,6 +133,7 @@ export const syncService = {
           .eq('user_id', userId)
         if (rErr) {
           console.warn('[syncService] restoreFromCloud: reviews query failed for vendor', v.id, rErr)
+          hadError = true
         }
         const hasReviews = reviews && reviews.length > 0
 
@@ -197,7 +200,7 @@ export const syncService = {
         }
       }
       console.log('[syncService] restoreFromCloud complete:', vendors.length, 'vendors processed')
-      return { success: true }
+      return { success: !hadError }
     } catch (e) {
       console.warn('[syncService] restoreFromCloud failed:', e)
       return { success: false }
@@ -209,6 +212,7 @@ export const syncService = {
     if (localVendors.length === 0) return { synced: 0 }
 
     let synced = 0
+    let failed = 0
 
     for (const localVendor of localVendors) {
       try {
@@ -261,12 +265,17 @@ export const syncService = {
 
         synced++
       } catch (e) {
-        console.warn('[syncService] syncGuestDataToSupabase failed for vendor:', localVendor.localId, e)
+        console.warn('[syncService] failed to sync vendor', localVendor.localId, e)
+        failed++
       }
     }
 
-    // Clear local data after successful sync
-    await localStorageService.clearAll()
+    if (failed === 0) {
+      await localStorageService.clearAll()
+      console.log('[syncService] syncGuestDataToSupabase complete:', synced, 'vendors synced')
+    } else {
+      console.warn('[syncService] syncGuestDataToSupabase partial failure:', failed, 'vendors not synced, local data preserved')
+    }
     return { synced }
   },
 

@@ -13,6 +13,8 @@ import { useNotificationStore } from '../src/store/notificationStore'
 import { syncService } from '../src/services/syncService'
 import { RestorePromptModal } from '../src/components/RestorePromptModal'
 
+let restoreCheckDone = false
+
 export default function RootLayout() {
   const { setSession, loadProfile, setHasCompletedOnboarding, setShowRestorePrompt } = useAuthStore()
   const { checkPro, isPro } = useProStore()
@@ -82,7 +84,8 @@ export default function RootLayout() {
         loadProfile()
         getPendingRequests(session.user.id).then(p => setPendingFriendCount(p.length))
         ;(async () => {
-          if (event === 'SIGNED_IN') {
+          if (event === 'SIGNED_IN' && !restoreCheckDone) {
+            restoreCheckDone = true
             const localCount = await localStorageService.getVendorCount()
             if (localCount === 0) {
               syncService.hasCloudData(session.user.id).then(hasData => {
@@ -93,6 +96,7 @@ export default function RootLayout() {
           }
         })()
       } else {
+        restoreCheckDone = false
         setPendingFriendCount(0)
       }
     })
