@@ -2,7 +2,7 @@ import { vendorRepository } from './vendorRepository'
 import { reviewRepository } from './reviewRepository'
 import { localStorageService } from './localStorage'
 import { supabase } from './supabase'
-import type { LocalReview } from '../types/app'
+import type { LocalVendor, LocalReview } from '../types/app'
 
 export const syncService = {
   /**
@@ -39,6 +39,12 @@ export const syncService = {
           returnIntent: localReview.returnIntent,
           notes: localReview.notes,
           privacy: (vendor.privacy ?? 'public') as any,
+          burritoEntries: (localReview.burritoEntries ?? []).map(b => ({
+            burrito_type: b.burritoType, rating: b.rating, notes: b.notes,
+          })),
+          tortaEntries: (localReview.tortaEntries ?? []).map(t => ({
+            torta_type: t.tortaType, rating: t.rating, notes: t.notes,
+          })),
         })
       } else {
         const sbReview = await reviewRepository.createReview({
@@ -56,6 +62,12 @@ export const syncService = {
             salsa_name: s.salsaName, flavor_rating: s.flavorRating, heat_level: s.heatLevel,
           })),
           condiments: localReview.condiments,
+          burritoEntries: (localReview.burritoEntries ?? []).map(b => ({
+            burrito_type: b.burritoType, rating: b.rating, notes: b.notes,
+          })),
+          tortaEntries: (localReview.tortaEntries ?? []).map(t => ({
+            torta_type: t.tortaType, rating: t.rating, notes: t.notes,
+          })),
         })
         await localStorageService.updateReview(localReview.localId, { supabaseReviewId: sbReview.id })
       }
@@ -91,7 +103,7 @@ export const syncService = {
    * Only runs if local storage is empty — never overwrites existing local data.
    * Fire-and-forget safe — never throws.
    */
-  async restoreFromCloud(userId: string): Promise<void> {
+  async restoreFromCloud(userId: string): Promise<{ success: boolean }> {
     try {
       // Build a map of supabaseVendorId → localId for already-restored vendors
       const existingVendors = await localStorageService.getVendors()
@@ -108,7 +120,7 @@ export const syncService = {
         .select('id, name, lat, lng, address, spot_type, hours')
         .eq('submitted_by', userId)
         .eq('status', 'personal')
-      if (vErr || !vendors) return
+      if (vErr || !vendors) return { success: false }
 
       for (const v of vendors) {
         // Fetch reviews for this vendor
@@ -148,10 +160,18 @@ export const syncService = {
         for (const r of reviews!) {
           if (existingReviewIds.has(r.id)) continue  // already restored
           // Fetch nested entries separately to avoid RLS issues on join tables
-          const [{ data: tacoEntries }, { data: salsaEntries }, { data: condiments }] = await Promise.all([
+          const [
+            { data: tacoEntries },
+            { data: salsaEntries },
+            { data: condiments },
+            { data: burritoEntries },
+            { data: tortaEntries },
+          ] = await Promise.all([
             supabase.from('taco_entries').select('taco_type, rating, notes').eq('review_id', r.id),
             supabase.from('salsa_entries').select('salsa_name, flavor_rating, heat_level').eq('review_id', r.id),
             supabase.from('condiments').select('name').eq('review_id', r.id),
+            supabase.from('burrito_entries').select('burrito_type, rating, notes').eq('review_id', r.id),
+            supabase.from('torta_entries').select('torta_type, rating, notes').eq('review_id', r.id),
           ])
           await localStorageService.addReview({
             vendorLocalId,
@@ -166,13 +186,21 @@ export const syncService = {
               salsaName: s.salsa_name, flavorRating: s.flavor_rating, heatLevel: s.heat_level,
             })),
             condiments: (condiments ?? []).map((c: any) => c.name),
+            burritoEntries: (burritoEntries ?? []).map((b: any) => ({
+              burritoType: b.burrito_type, rating: b.rating, notes: b.notes ?? null,
+            })),
+            tortaEntries: (tortaEntries ?? []).map((t: any) => ({
+              tortaType: t.torta_type, rating: t.rating, notes: t.notes ?? null,
+            })),
             supabaseReviewId: r.id,
           })
         }
       }
       console.log('[syncService] restoreFromCloud complete:', vendors.length, 'vendors processed')
+      return { success: true }
     } catch (e) {
       console.warn('[syncService] restoreFromCloud failed:', e)
+      return { success: false }
     }
   },
 
@@ -217,6 +245,16 @@ export const syncService = {
               heat_level: s.heatLevel,
             })),
             condiments: r.condiments,
+            burritoEntries: (r.burritoEntries ?? []).map(b => ({
+              burrito_type: b.burritoType,
+              rating: b.rating,
+              notes: b.notes,
+            })),
+            tortaEntries: (r.tortaEntries ?? []).map(t => ({
+              torta_type: t.tortaType,
+              rating: t.rating,
+              notes: t.notes,
+            })),
           })
         }
 
@@ -229,5 +267,40 @@ export const syncService = {
     // Clear local data after successful sync
     await localStorageService.clearAll()
     return { synced }
+  },
+
+  async hasCloudData(userId: string): Promise<boolean> {
+    try {
+      const { data, error } = await supabase
+        .from('vendors')
+        .select('id')
+        .eq('submitted_by', userId)
+        .eq('status', 'personal')
+        .limit(1)
+      return !error && (data?.length ?? 0) > 0
+    } catch {
+      return false
+    }
+  },
+
+  async syncVendorOnly(vendor: LocalVendor, userId: string): Promise<void> {
+    try {
+      const supabaseVendorId = await vendorRepository.upsertPersonalVendor(
+        vendor.supabaseVendorId ?? null,
+        {
+          name: vendor.name,
+          lat: vendor.lat ?? 0,
+          lng: vendor.lng ?? 0,
+          address: vendor.address,
+          spot_type: vendor.spotType,
+          submitted_by: userId,
+        }
+      )
+      if (!vendor.supabaseVendorId) {
+        await localStorageService.updateVendor(vendor.localId, { supabaseVendorId })
+      }
+    } catch (e) {
+      console.warn('[syncService] syncVendorOnly failed:', e)
+    }
   },
 }
