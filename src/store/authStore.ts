@@ -17,6 +17,9 @@ interface AuthState {
   signOut: () => Promise<void>
   setSession: (session: Session | null) => void
   setHasCompletedOnboarding: (val: boolean) => Promise<void>
+  showRestorePrompt: boolean
+  setShowRestorePrompt: (value: boolean) => void
+  dismissRestorePrompt: () => void
   loadProfile: () => Promise<void>
   updateProfile: (updates: Partial<Pick<Profile, 'display_name' | 'username' | 'avatar_url' | 'bio' | 'home_city' | 'favorite_taco'>>) => Promise<{ error: string | null }>
   changePassword: (newPassword: string) => Promise<{ error: string | null }>
@@ -29,6 +32,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   profile: null,
   isLoading: true,
   hasCompletedOnboarding: false,
+  showRestorePrompt: false,
 
   setSession: (session) => {
     setUserScope(session?.user.id ?? null)
@@ -39,6 +43,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ hasCompletedOnboarding: val })
     await AsyncStorage.setItem('has_completed_onboarding', JSON.stringify(val))
   },
+
+  setShowRestorePrompt: (value) => set({ showRestorePrompt: value }),
+  dismissRestorePrompt: () => set({ showRestorePrompt: false }),
 
   loadProfile: async () => {
     const { session } = get()
