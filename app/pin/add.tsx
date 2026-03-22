@@ -7,6 +7,8 @@ import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { localStorageService } from '../../src/services/localStorage'
+import { useAuthStore } from '../../src/store/authStore'
+import { syncService } from '../../src/services/syncService'
 import { LocationPicker } from '../../src/components/LocationPicker'
 import { colors, spacing, radius } from '../../src/utils/theme'
 import type { SpotType, PrivacySetting } from '../../src/types/app'
@@ -22,6 +24,7 @@ const PRIVACY_OPTIONS: { value: PrivacySetting; label: string; icon: string }[] 
 
 export default function DropPinScreen() {
   const insets = useSafeAreaInsets()
+  const { session } = useAuthStore()
   const [name, setName] = useState('')
   const [spotType, setSpotType] = useState<SpotType | null>(null)
   const [location, setLocation] = useState<LocationResult | null>(null)
@@ -39,7 +42,7 @@ export default function DropPinScreen() {
     }
     setSaving(true)
     try {
-      await localStorageService.addVendor({
+      const savedVendor = await localStorageService.addVendor({
         name: name.trim(),
         spotType,
         lat: location?.lat ?? 0,
@@ -52,6 +55,10 @@ export default function DropPinScreen() {
         spotNote: spotNote.trim() || null,
         isVisited: false,
       })
+      // Fire-and-forget: sync pin to Supabase immediately if signed in
+      if (session?.user.id) {
+        syncService.syncVendorOnly(savedVendor, session.user.id)
+      }
       router.back()
     } finally {
       setSaving(false)
