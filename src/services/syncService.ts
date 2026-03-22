@@ -226,7 +226,7 @@ export const syncService = {
 
         const localReviews = await localStorageService.getReviewsForVendor(localVendor.localId)
         for (const r of localReviews) {
-          await reviewRepository.createReview({
+          const createdReview = await reviewRepository.createReview({
             vendorId: supabaseVendorId,
             userId,
             overallRating: r.overallRating,
@@ -256,6 +256,7 @@ export const syncService = {
               notes: t.notes,
             })),
           })
+          await localStorageService.updateReview(r.localId, { supabaseReviewId: createdReview.id })
         }
 
         synced++
