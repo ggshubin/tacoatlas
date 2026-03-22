@@ -58,4 +58,30 @@ export const vendorRepository = {
 
     if (error) throw new Error(error.message)
   },
+
+  async upsertPersonalVendor(id: string | null, data: {
+    name: string; lat: number; lng: number; address: string | null
+    spot_type: string | null; submitted_by: string
+  }): Promise<string> {
+    if (id) {
+      // Update existing personal vendor
+      await supabase.from('vendors').update({
+        name: data.name, lat: data.lat, lng: data.lng,
+        address: data.address, spot_type: data.spot_type,
+      }).eq('id', id)
+      return id
+    }
+    // Create new personal vendor (status 'personal' = not shown on community map)
+    const { data: row, error } = await supabase
+      .from('vendors')
+      .insert({ ...data, status: 'personal', city_id: null, hours: null, photo_url: null })
+      .select('id')
+      .single()
+    if (error) throw new Error(error.message)
+    return row.id
+  },
+
+  async deletePersonalVendor(id: string): Promise<void> {
+    await supabase.from('vendors').delete().eq('id', id)
+  },
 }

@@ -20,6 +20,7 @@ export interface LocalVendor {
   privacy?: PrivacySetting        // default 'public' when undefined
   spotNote?: string | null        // "About This Spot" — persists across visits
   isVisited?: boolean             // false = drop-a-pin only, true = has at least one review
+  supabaseVendorId?: string       // Supabase UUID once synced
 }
 
 export interface LocalReview {
@@ -36,6 +37,7 @@ export interface LocalReview {
   // New fields
   burritoEntries?: LocalBurritoEntry[]   // Pro only, default []
   tortaEntries?: LocalTortaEntry[]       // Pro only, default []
+  supabaseReviewId?: string              // Supabase UUID once synced
 }
 
 export interface LocalTacoEntry {

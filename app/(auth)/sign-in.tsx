@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { View, Text, Image, TextInput, TouchableOpacity, StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView, Dimensions } from 'react-native'
+import { View, Text, Image, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Dimensions } from 'react-native'
 import { router } from 'expo-router'
+import { Ionicons } from '@expo/vector-icons'
 import { useAuthStore } from '../../src/store/authStore'
 import { colors, spacing, radius } from '../../src/utils/theme'
 
@@ -8,18 +9,20 @@ export default function SignInScreen() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const signIn = useAuthStore(s => s.signIn)
 
   async function handleSignIn() {
+    setErrorMsg(null)
     if (!email.trim() || !password) {
-      Alert.alert('Missing fields', 'Enter your email and password.')
+      setErrorMsg('Enter your email and password.')
       return
     }
     setLoading(true)
     const { error } = await signIn(email.trim().toLowerCase(), password)
     setLoading(false)
     if (error) {
-      Alert.alert('Sign In Failed', error)
+      setErrorMsg(error)
       return
     }
     router.replace('/(tabs)/atlas')
@@ -66,6 +69,13 @@ export default function SignInScreen() {
             secureTextEntry
             autoComplete="password"
           />
+
+          {errorMsg && (
+            <View style={styles.errorBanner}>
+              <Ionicons name="alert-circle" size={16} color={colors.error} />
+              <Text style={styles.errorText}>{errorMsg}</Text>
+            </View>
+          )}
 
           <TouchableOpacity
             style={[styles.button, loading && styles.buttonDisabled]}
@@ -128,6 +138,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     letterSpacing: 0.3,
   },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: '#3A1A1A',
+    borderWidth: 1,
+    borderColor: colors.error,
+    borderRadius: radius.md,
+    padding: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  errorText: { flex: 1, color: colors.error, fontSize: 13 },
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: spacing.lg },
   footerText: { color: colors.creamMuted, fontSize: 14 },
   link: { color: colors.amber, fontWeight: '700', fontSize: 14 },

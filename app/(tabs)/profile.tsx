@@ -1,10 +1,15 @@
 import { useState, useCallback } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Image } from 'react-native'
+import {
+  View, Text, ScrollView, TouchableOpacity, StyleSheet,
+  ActivityIndicator, Image, Modal, TextInput, KeyboardAvoidingView, Platform, Alert,
+} from 'react-native'
 import { useFocusEffect, router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useAuthStore } from '../../src/store/authStore'
 import { useProStore } from '../../src/store/proStore'
 import { localStorageService } from '../../src/services/localStorage'
+import { photoService } from '../../src/services/photoService'
+import { getFriends } from '../../src/services/miGenteService'
 import { colors, spacing, radius } from '../../src/utils/theme'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -12,29 +17,142 @@ interface Stats {
   totalSpots: number
   totalVisits: number
   avgRating: number | null
+  friendCount: number
+}
+
+function getInitials(name: string): string {
+  if (!name) return '?'
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
+  return (name.trim().slice(0, 2) || '?').toUpperCase()
 }
 
 export default function ProfileScreen() {
-  const { session } = useAuthStore()
+  const { session, profile, loadProfile, updateProfile, changeEmail } = useAuthStore()
   const { isPro } = useProStore()
   const insets = useSafeAreaInsets()
   const [stats, setStats] = useState<Stats | null>(null)
 
+  // Edit profile state
+  const [editMode, setEditMode] = useState(false)
+  const [editDisplayName, setEditDisplayName] = useState('')
+  const [editUsername, setEditUsername] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
+
+  // Avatar state
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false)
+  const [avatarUploading, setAvatarUploading] = useState(false)
+  const [avatarError, setAvatarError] = useState<string | null>(null)
+
+  // Change email state
+  const [showEmailModal, setShowEmailModal] = useState(false)
+  const [newEmail, setNewEmail] = useState('')
+  const [emailSending, setEmailSending] = useState(false)
+  const [emailError, setEmailError] = useState<string | null>(null)
+  const [emailSent, setEmailSent] = useState(false)
+
   useFocusEffect(
     useCallback(() => {
       async function load() {
-        const vendors = await localStorageService.getVendors()
-        const reviews = await localStorageService.getReviews()
+        if (session) loadProfile()
+        const [vendors, reviews, friends] = await Promise.all([
+          localStorageService.getVendors(),
+          localStorageService.getReviews(),
+          session ? getFriends(session.user.id) : Promise.resolve([]),
+        ])
         const ratings = reviews.filter(r => r.overallRating > 0).map(r => r.overallRating)
         setStats({
           totalSpots: vendors.length,
           totalVisits: reviews.length,
           avgRating: ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : null,
+          friendCount: friends.length,
         })
       }
       load()
-    }, [])
+    }, [session])
   )
+
+  function startEdit() {
+    setEditDisplayName(profile?.display_name ?? '')
+    setEditUsername(profile?.username ?? '')
+    setEditError(null)
+    setEditMode(true)
+  }
+
+  function cancelEdit() {
+    setEditMode(false)
+    setEditError(null)
+  }
+
+  async function handleSaveProfile() {
+    setEditError(null)
+    const trimmedUsername = editUsername.trim().toLowerCase().replace(/[^a-z0-9_]/g, '')
+    if (!trimmedUsername) {
+      setEditError('Username cannot be empty.')
+      return
+    }
+    setSaving(true)
+    const { error } = await updateProfile({
+      display_name: editDisplayName.trim() || null,
+      username: trimmedUsername,
+    })
+    setSaving(false)
+    if (error) {
+      setEditError(error)
+    } else {
+      setEditMode(false)
+    }
+  }
+
+  async function handlePickAvatar(source: 'library' | 'camera') {
+    if (!session) return
+    setShowAvatarPicker(false)
+    setAvatarError(null)
+    const uri = source === 'library'
+      ? await photoService.pickFromLibrary()
+      : await photoService.takePhoto()
+    if (!uri) return
+    setAvatarUploading(true)
+    try {
+      const url = await photoService.uploadAvatar(uri, session.user.id)
+      const { error } = await updateProfile({ avatar_url: url })
+      if (error) {
+        setAvatarError(error)
+        Alert.alert('Avatar Error', error)
+      }
+    } catch (e: any) {
+      const msg = e?.message ?? 'Upload failed'
+      setAvatarError(msg)
+      Alert.alert('Avatar Upload Error', msg)
+    } finally {
+      setAvatarUploading(false)
+    }
+  }
+
+  function openEmailModal() {
+    setNewEmail('')
+    setEmailError(null)
+    setEmailSent(false)
+    setShowEmailModal(true)
+  }
+
+  async function handleChangeEmail() {
+    setEmailError(null)
+    const trimmed = newEmail.trim().toLowerCase()
+    if (!trimmed.includes('@')) {
+      setEmailError('Enter a valid email address.')
+      return
+    }
+    setEmailSending(true)
+    const { error } = await changeEmail(trimmed)
+    setEmailSending(false)
+    if (error) {
+      setEmailError(error)
+    } else {
+      setEmailSent(true)
+    }
+  }
 
   async function handleSignOut() {
     const { signOut } = useAuthStore.getState()
@@ -44,121 +162,289 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.container}>
-    <Image source={require('../../assets/background.png')} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
-    <ScrollView
-      style={{ flex: 1 }}
-      contentContainerStyle={[styles.content, { paddingTop: insets.top + spacing.md }]}
-    >
-      {/* Header */}
-      <View style={styles.headerRow}>
-        <View>
-          <Text style={styles.eyebrow}>taco atlas</Text>
-          <Text style={styles.title}>Profile</Text>
-        </View>
-      </View>
+      <Image source={require('../../assets/background.png')} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={[styles.content, { paddingTop: insets.top }]}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Header */}
+        <Image source={require('../../images/tacoatlas-logo-horz.png')} style={styles.headerLogo} resizeMode="contain" />
+        <Text style={styles.title}>Profile</Text>
 
-      {/* Identity card */}
-      <View style={styles.identityCard}>
-        <View style={styles.avatarCircle}>
-          <Ionicons name="person" size={32} color={colors.amber} />
-        </View>
-        <View style={styles.identityInfo}>
+        {/* Identity card */}
+        <View style={styles.identityCard}>
+          <TouchableOpacity
+            style={styles.avatarCircle}
+            onPress={() => session && setShowAvatarPicker(true)}
+            disabled={avatarUploading}
+            activeOpacity={0.8}
+          >
+            {avatarUploading ? (
+              <ActivityIndicator color={colors.amber} size="small" />
+            ) : profile?.avatar_url ? (
+              <>
+                <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
+                <View style={styles.avatarOverlay}>
+                  <Ionicons name="camera" size={14} color="#fff" />
+                </View>
+              </>
+            ) : (
+              <>
+                {session ? (
+                  <Text style={styles.avatarInitials}>
+                    {getInitials(profile?.display_name || profile?.username || session.user.email?.split('@')[0] || '?')}
+                  </Text>
+                ) : (
+                  <Ionicons name="person" size={32} color={colors.amber} />
+                )}
+                {session && (
+                  <View style={styles.avatarOverlay}>
+                    <Ionicons name="camera" size={14} color="#fff" />
+                  </View>
+                )}
+              </>
+            )}
+          </TouchableOpacity>
           {session ? (
-            <>
-              <Text style={styles.displayName}>{session.user.email?.split('@')[0] ?? 'Taco Lover'}</Text>
-              <Text style={styles.accountType}>{isPro ? '✦ Pro Member' : 'Free Account'}</Text>
-            </>
+            editMode ? (
+              <View style={styles.editFields}>
+                <TextInput
+                  style={styles.editInput}
+                  value={editDisplayName}
+                  onChangeText={setEditDisplayName}
+                  placeholder="Display name"
+                  placeholderTextColor={colors.creamDim}
+                  autoCapitalize="words"
+                />
+                <View style={styles.usernameRow}>
+                  <Text style={styles.atSign}>@</Text>
+                  <TextInput
+                    style={[styles.editInput, { flex: 1 }]}
+                    value={editUsername}
+                    onChangeText={setEditUsername}
+                    placeholder="username"
+                    placeholderTextColor={colors.creamDim}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                </View>
+                {editError && <Text style={styles.fieldError}>{editError}</Text>}
+                <View style={styles.editActions}>
+                  <TouchableOpacity style={styles.cancelBtn} onPress={cancelEdit} disabled={saving}>
+                    <Text style={styles.cancelBtnText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.saveBtn} onPress={handleSaveProfile} disabled={saving}>
+                    {saving
+                      ? <ActivityIndicator color={colors.cream} size="small" />
+                      : <Text style={styles.saveBtnText}>Save</Text>}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <>
+                <View style={styles.identityInfo}>
+                  <Text style={styles.displayName}>{profile?.display_name ?? session.user.email?.split('@')[0] ?? 'Taco Lover'}</Text>
+                  {profile?.username && <Text style={styles.username}>@{profile.username}</Text>}
+                  <Text style={styles.accountType}>{isPro ? '✦ Pro Member' : 'Free Account'}</Text>
+                </View>
+                <TouchableOpacity style={styles.editIconBtn} onPress={startEdit}>
+                  <Ionicons name="pencil-outline" size={18} color={colors.amber} />
+                </TouchableOpacity>
+              </>
+            )
           ) : (
-            <>
+            <View style={styles.identityInfo}>
               <Text style={styles.displayName}>Guest</Text>
               <Text style={styles.accountType}>No account — your data stays local</Text>
-            </>
+            </View>
           )}
         </View>
-      </View>
+        {avatarError && <Text style={styles.avatarError}>{avatarError}</Text>}
 
-      {/* Stats */}
-      <View style={styles.statsRow}>
-        <View style={styles.statCard}>
-          {stats ? (
-            <>
-              <Text style={styles.statNumber}>{stats.totalSpots}</Text>
-              <Text style={styles.statLabel}>Spots</Text>
-            </>
-          ) : <ActivityIndicator color={colors.amber} />}
-        </View>
-        <View style={styles.statCard}>
-          {stats ? (
-            <>
-              <Text style={styles.statNumber}>{stats.totalVisits}</Text>
-              <Text style={styles.statLabel}>Visits</Text>
-            </>
-          ) : <ActivityIndicator color={colors.amber} />}
-        </View>
-        <View style={styles.statCard}>
-          {stats ? (
-            <>
-              <Text style={styles.statNumber}>{stats.avgRating != null ? `★ ${stats.avgRating.toFixed(1)}` : '—'}</Text>
-              <Text style={styles.statLabel}>Avg Rating</Text>
-            </>
-          ) : <ActivityIndicator color={colors.amber} />}
-        </View>
-      </View>
-
-      {/* Pro upgrade card (free users only) */}
-      {!isPro && (
-        <TouchableOpacity style={styles.upgradeCard} onPress={() => {}}>
-          <View style={styles.upgradeCardInner}>
-            <Text style={styles.upgradeTitle}>Unlock TacoAtlas Pro</Text>
-            <Text style={styles.upgradePrice}>$3.99 one-time</Text>
+        {/* Stats */}
+        <View style={styles.statsRow}>
+          <View style={styles.statCard}>
+            {stats ? (
+              <>
+                <Text style={styles.statNumber}>{stats.totalSpots}</Text>
+                <Text style={styles.statLabel}>Spots</Text>
+              </>
+            ) : <ActivityIndicator color={colors.amber} />}
           </View>
-          <Text style={styles.upgradeSubtitle}>Cloud sync · Burritos & Tortas · Mi Gente · Advanced Stats</Text>
-          <View style={styles.upgradeBtn}>
-            <Text style={styles.upgradeBtnText}>Upgrade Now</Text>
+          <View style={styles.statCard}>
+            {stats ? (
+              <>
+                <Text style={styles.statNumber}>{stats.totalVisits}</Text>
+                <Text style={styles.statLabel}>Visits</Text>
+              </>
+            ) : <ActivityIndicator color={colors.amber} />}
           </View>
-        </TouchableOpacity>
-      )}
-
-      {/* Account section */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Account</Text>
-        {session ? (
-          <View style={styles.card}>
-            <View style={styles.accountRow}>
-              <Ionicons name="mail-outline" size={18} color={colors.creamMuted} />
-              <View style={styles.accountRowText}>
-                <Text style={styles.accountEmail}>{session.user.email}</Text>
-                <Text style={styles.accountSub}>Signed in</Text>
-              </View>
+          <View style={styles.statCard}>
+            {stats ? (
+              <>
+                <Text style={styles.statNumber}>{stats.avgRating != null ? stats.avgRating.toFixed(1) : '—'}</Text>
+                <Text style={styles.statLabel}>Avg Rating</Text>
+              </>
+            ) : <ActivityIndicator color={colors.amber} />}
+          </View>
+          {session && (
+            <View style={styles.statCard}>
+              {stats ? (
+                <>
+                  <Text style={styles.statNumber}>{stats.friendCount}</Text>
+                  <Text style={styles.statLabel}>Crew</Text>
+                </>
+              ) : <ActivityIndicator color={colors.amber} />}
             </View>
-            <TouchableOpacity style={styles.accountRow} onPress={handleSignOut}>
-              <Ionicons name="log-out-outline" size={18} color={colors.error} />
-              <Text style={[styles.accountEmail, { color: colors.error }]}>Sign Out</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <TouchableOpacity style={styles.signInCard} onPress={() => router.push('/(auth)/sign-in')}>
-            <Ionicons name="cloud-upload-outline" size={22} color={colors.amber} />
-            <View style={styles.signInCardText}>
-              <Text style={styles.signInTitle}>Back up your atlas</Text>
-              <Text style={styles.signInSubtitle}>Create an account to sync across devices</Text>
+          )}
+        </View>
+
+        {/* Pro upgrade card */}
+        {!isPro && (
+          <TouchableOpacity style={styles.upgradeCard} onPress={() => {}}>
+            <View style={styles.upgradeCardInner}>
+              <Text style={styles.upgradeTitle}>Unlock TacoAtlas Pro</Text>
+              <Text style={styles.upgradePrice}>$3.99 one-time</Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.creamDim} />
+            <Text style={styles.upgradeSubtitle}>Cloud sync · Burritos & Tortas · Mi Gente · Advanced Stats</Text>
+            <View style={styles.upgradeBtn}>
+              <Text style={styles.upgradeBtnText}>Upgrade Now</Text>
+            </View>
           </TouchableOpacity>
         )}
-      </View>
 
-      {/* App section */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>App</Text>
-        <View style={styles.card}>
-          <View style={styles.accountRow}>
-            <Ionicons name="information-circle-outline" size={18} color={colors.creamMuted} />
-            <Text style={styles.accountEmail}>TacoAtlas v1.0</Text>
+        {/* Account section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Account</Text>
+          {session ? (
+            <View style={styles.card}>
+              {/* Email row */}
+              <View style={[styles.accountRow, styles.accountRowBorder]}>
+                <Ionicons name="mail-outline" size={18} color={colors.creamMuted} />
+                <View style={styles.accountRowText}>
+                  <Text style={styles.accountLabel}>{session.user.email}</Text>
+                  <Text style={styles.accountSub}>Current email</Text>
+                </View>
+                <TouchableOpacity style={styles.changeBtn} onPress={openEmailModal}>
+                  <Text style={styles.changeBtnText}>Change</Text>
+                </TouchableOpacity>
+              </View>
+              {/* Sign out row */}
+              <TouchableOpacity style={styles.accountRow} onPress={handleSignOut}>
+                <Ionicons name="log-out-outline" size={18} color={colors.error} />
+                <Text style={[styles.accountLabel, { color: colors.error }]}>Sign Out</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity style={styles.signInCard} onPress={() => router.push('/(auth)/sign-in')}>
+              <Ionicons name="cloud-upload-outline" size={22} color={colors.amber} />
+              <View style={styles.signInCardText}>
+                <Text style={styles.signInTitle}>Back up your atlas</Text>
+                <Text style={styles.signInSubtitle}>Create an account to sync across devices</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.creamDim} />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* App section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>App</Text>
+          <View style={styles.card}>
+            <View style={styles.accountRow}>
+              <Ionicons name="information-circle-outline" size={18} color={colors.creamMuted} />
+              <Text style={styles.accountLabel}>TacoAtlas v1.0</Text>
+            </View>
           </View>
         </View>
-      </View>
-    </ScrollView>
+      </ScrollView>
+
+      {/* Avatar source picker */}
+      <Modal visible={showAvatarPicker} transparent animationType="slide" onRequestClose={() => setShowAvatarPicker(false)}>
+        <TouchableOpacity style={styles.sheetOverlay} activeOpacity={1} onPress={() => setShowAvatarPicker(false)}>
+          <View style={styles.sheetCard}>
+            <Text style={styles.sheetTitle}>Change Profile Photo</Text>
+            <TouchableOpacity style={styles.sheetOption} onPress={() => handlePickAvatar('library')}>
+              <Ionicons name="images-outline" size={20} color={colors.cream} />
+              <Text style={styles.sheetOptionText}>Choose from Library</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.sheetOption} onPress={() => handlePickAvatar('camera')}>
+              <Ionicons name="camera-outline" size={20} color={colors.cream} />
+              <Text style={styles.sheetOptionText}>Take Photo</Text>
+            </TouchableOpacity>
+            {profile?.avatar_url && (
+              <TouchableOpacity style={styles.sheetOption} onPress={async () => {
+                setShowAvatarPicker(false)
+                setAvatarUploading(true)
+                await updateProfile({ avatar_url: null })
+                setAvatarUploading(false)
+              }}>
+                <Ionicons name="trash-outline" size={20} color={colors.error} />
+                <Text style={[styles.sheetOptionText, { color: colors.error }]}>Remove Photo</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity style={styles.sheetCancel} onPress={() => setShowAvatarPicker(false)}>
+              <Text style={styles.sheetCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Change email modal */}
+      <Modal visible={showEmailModal} transparent animationType="fade" onRequestClose={() => setShowEmailModal(false)}>
+        <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <View style={styles.modalCard}>
+            {emailSent ? (
+              <>
+                <View style={styles.modalSuccessIcon}>
+                  <Ionicons name="checkmark-circle" size={36} color={colors.amber} />
+                </View>
+                <Text style={styles.modalTitle}>Check your inbox</Text>
+                <Text style={styles.modalBody}>
+                  A verification link was sent to{' '}
+                  <Text style={styles.modalHighlight}>{newEmail.trim().toLowerCase()}</Text>
+                  . Your email will update once you click it.
+                </Text>
+                <TouchableOpacity style={styles.modalPrimaryBtn} onPress={() => setShowEmailModal(false)}>
+                  <Text style={styles.modalPrimaryBtnText}>Done</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Text style={styles.modalTitle}>Change Email</Text>
+                <Text style={styles.modalBody}>Enter your new email. We'll send a verification link to confirm.</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={newEmail}
+                  onChangeText={setNewEmail}
+                  placeholder="New email address"
+                  placeholderTextColor={colors.creamDim}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                {emailError && (
+                  <View style={styles.modalError}>
+                    <Ionicons name="alert-circle-outline" size={14} color={colors.error} />
+                    <Text style={styles.modalErrorText}>{emailError}</Text>
+                  </View>
+                )}
+                <View style={styles.modalActions}>
+                  <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setShowEmailModal(false)} disabled={emailSending}>
+                    <Text style={styles.modalCancelText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.modalPrimaryBtn} onPress={handleChangeEmail} disabled={emailSending}>
+                    {emailSending
+                      ? <ActivityIndicator color={colors.cream} size="small" />
+                      : <Text style={styles.modalPrimaryBtnText}>Send Link</Text>}
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   )
 }
@@ -167,10 +453,11 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   content: { paddingHorizontal: spacing.md, paddingBottom: 100 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.lg },
-  eyebrow: { fontSize: 11, color: colors.creamDim, letterSpacing: 1, textTransform: 'uppercase', fontWeight: '600' },
+  headerLogo: { height: 28, width: 160, alignSelf: 'center', marginBottom: 4 },
   title: { fontSize: 28, fontWeight: '800', color: colors.cream, letterSpacing: -0.5 },
+
   identityCard: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
+    flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md,
     backgroundColor: colors.surface, borderRadius: radius.md,
     padding: spacing.md, borderWidth: 1, borderColor: colors.surfaceBorder,
     marginBottom: spacing.md,
@@ -178,11 +465,54 @@ const styles = StyleSheet.create({
   avatarCircle: {
     width: 56, height: 56, borderRadius: 28,
     backgroundColor: colors.amberSubtle, borderWidth: 1, borderColor: colors.amberDim,
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+    overflow: 'hidden',
+  },
+  avatarImage: { width: 56, height: 56, borderRadius: 28 },
+  avatarInitials: { fontSize: 20, fontWeight: '700', color: colors.amber, letterSpacing: 0.5 },
+  avatarOverlay: {
+    position: 'absolute', bottom: 0, right: 0,
+    width: 20, height: 20, borderRadius: 10,
+    backgroundColor: 'rgba(0,0,0,0.6)',
     alignItems: 'center', justifyContent: 'center',
   },
+  avatarError: { fontSize: 11, color: colors.error, marginTop: 4, flexShrink: 1 },
+  // Bottom sheet picker
+  sheetOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
+  sheetCard: {
+    backgroundColor: colors.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg,
+    borderWidth: 1, borderColor: colors.surfaceBorder, paddingTop: spacing.md, paddingBottom: spacing.xl + 8,
+    paddingHorizontal: spacing.md,
+  },
+  sheetTitle: { fontSize: 13, fontWeight: '700', color: colors.creamDim, letterSpacing: 1, textTransform: 'uppercase', marginBottom: spacing.sm, textAlign: 'center' },
+  sheetOption: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.sm + 4, borderBottomWidth: 1, borderBottomColor: colors.surfaceBorder },
+  sheetOptionText: { fontSize: 15, color: colors.cream, fontWeight: '500' },
+  sheetCancel: { marginTop: spacing.sm, paddingVertical: spacing.sm + 4, alignItems: 'center' },
+  sheetCancelText: { fontSize: 15, color: colors.creamMuted, fontWeight: '600' },
   identityInfo: { flex: 1 },
+  editFields: { flex: 1, gap: spacing.sm },
+  editInput: {
+    backgroundColor: colors.bg, borderRadius: radius.md, borderWidth: 1,
+    borderColor: colors.surfaceBorder, paddingHorizontal: spacing.sm,
+    paddingVertical: 8, fontSize: 14, color: colors.cream,
+  },
+  usernameRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  atSign: { fontSize: 14, color: colors.amber, fontWeight: '700' },
+  fieldError: { fontSize: 12, color: colors.error },
+  editActions: { flexDirection: 'row', gap: spacing.sm, marginTop: 4 },
+  cancelBtn: { flex: 1, paddingVertical: 8, borderRadius: radius.full, borderWidth: 1, borderColor: colors.surfaceBorder, alignItems: 'center' },
+  cancelBtnText: { fontSize: 13, color: colors.creamMuted, fontWeight: '600' },
+  saveBtn: { flex: 1, paddingVertical: 8, borderRadius: radius.full, backgroundColor: colors.amber, alignItems: 'center' },
+  saveBtnText: { fontSize: 13, color: colors.cream, fontWeight: '700' },
+  editIconBtn: {
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: colors.amberSubtle, borderWidth: 1, borderColor: colors.amberDim,
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  },
   displayName: { fontSize: 17, fontWeight: '700', color: colors.cream },
+  username: { fontSize: 13, color: colors.amber, fontWeight: '600', marginTop: 1 },
   accountType: { fontSize: 12, color: colors.creamMuted, marginTop: 2 },
+
   statsRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
   statCard: {
     flex: 1, backgroundColor: colors.surface, borderRadius: radius.md,
@@ -190,6 +520,7 @@ const styles = StyleSheet.create({
   },
   statNumber: { fontSize: 22, fontWeight: '800', color: colors.cream },
   statLabel: { fontSize: 11, color: colors.creamMuted, marginTop: 2 },
+
   upgradeCard: {
     backgroundColor: colors.amberSubtle, borderRadius: radius.md, padding: spacing.md,
     borderWidth: 1, borderColor: colors.amberDim, marginBottom: spacing.md,
@@ -198,21 +529,20 @@ const styles = StyleSheet.create({
   upgradeTitle: { fontSize: 16, fontWeight: '700', color: colors.cream },
   upgradePrice: { fontSize: 13, color: colors.amber, fontWeight: '600' },
   upgradeSubtitle: { fontSize: 12, color: colors.creamMuted, marginBottom: spacing.sm },
-  upgradeBtn: {
-    backgroundColor: colors.amber, borderRadius: radius.full,
-    paddingVertical: 10, alignItems: 'center',
-  },
+  upgradeBtn: { backgroundColor: colors.amber, borderRadius: radius.full, paddingVertical: 10, alignItems: 'center' },
   upgradeBtnText: { color: colors.cream, fontWeight: '700', fontSize: 14 },
+
   section: { marginBottom: spacing.md },
   sectionTitle: { fontSize: 11, fontWeight: '700', color: colors.creamDim, letterSpacing: 1, textTransform: 'uppercase', marginBottom: spacing.sm },
-  card: { backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: colors.surfaceBorder },
-  accountRow: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
-    paddingVertical: spacing.xs,
-  },
+  card: { backgroundColor: colors.surface, borderRadius: radius.md, paddingHorizontal: spacing.md, borderWidth: 1, borderColor: colors.surfaceBorder },
+  accountRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm + 2 },
+  accountRowBorder: { borderBottomWidth: 1, borderBottomColor: colors.surfaceBorder },
   accountRowText: { flex: 1 },
-  accountEmail: { fontSize: 14, color: colors.cream },
+  accountLabel: { fontSize: 14, color: colors.cream },
   accountSub: { fontSize: 11, color: colors.creamMuted, marginTop: 2 },
+  changeBtn: { paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: radius.full, borderWidth: 1, borderColor: colors.amberDim, backgroundColor: colors.amberSubtle },
+  changeBtnText: { fontSize: 12, color: colors.amber, fontWeight: '700' },
+
   signInCard: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.md,
     backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md,
@@ -221,4 +551,24 @@ const styles = StyleSheet.create({
   signInCardText: { flex: 1 },
   signInTitle: { fontSize: 15, fontWeight: '700', color: colors.cream },
   signInSubtitle: { fontSize: 12, color: colors.creamMuted, marginTop: 2 },
+
+  // Modal
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: spacing.xl },
+  modalCard: { width: '100%', backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.surfaceBorder, padding: spacing.lg },
+  modalSuccessIcon: { alignItems: 'center', marginBottom: spacing.sm },
+  modalTitle: { fontSize: 18, fontWeight: '800', color: colors.cream, marginBottom: spacing.sm },
+  modalBody: { fontSize: 14, color: colors.creamMuted, marginBottom: spacing.md, lineHeight: 20 },
+  modalHighlight: { color: colors.cream, fontWeight: '600' },
+  modalInput: {
+    backgroundColor: colors.bg, borderRadius: radius.md, borderWidth: 1,
+    borderColor: colors.surfaceBorder, paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2, fontSize: 14, color: colors.cream, marginBottom: spacing.sm,
+  },
+  modalError: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: spacing.sm },
+  modalErrorText: { fontSize: 12, color: colors.error, flex: 1 },
+  modalActions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs },
+  modalCancelBtn: { flex: 1, paddingVertical: 12, borderRadius: radius.full, borderWidth: 1, borderColor: colors.surfaceBorder, backgroundColor: colors.surfaceRaised, alignItems: 'center' },
+  modalCancelText: { color: colors.cream, fontWeight: '600', fontSize: 14 },
+  modalPrimaryBtn: { flex: 1, paddingVertical: 12, borderRadius: radius.full, backgroundColor: colors.amber, alignItems: 'center' },
+  modalPrimaryBtnText: { color: colors.cream, fontWeight: '700', fontSize: 14 },
 })

@@ -1,12 +1,17 @@
 import { useState, useCallback, useEffect } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet,
-  KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Image, Modal,
+  KeyboardAvoidingView, Platform, ActivityIndicator, Image, Modal, Alert,
 } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useReviewFormStore, FoodCategory } from '../../src/store/reviewFormStore'
 import { localStorageService } from '../../src/services/localStorage'
+import { photoService } from '../../src/services/photoService'
+import { syncService } from '../../src/services/syncService'
+import { useAuthStore } from '../../src/store/authStore'
+import { useProStore } from '../../src/store/proStore'
 import { LocationPicker } from '../../src/components/LocationPicker'
 import { FoodIconBar } from '../../src/components/FoodIconBar'
 import { ChipScorecard } from '../../src/components/ChipScorecard'
@@ -16,9 +21,9 @@ import type { SpotType, PrivacySetting, HeatLevel } from '../../src/types/app'
 const SPOT_TYPES: SpotType[] = ['Truck', 'Food Cart', 'Street Tent', 'Restaurant']
 
 const PRIVACY_OPTIONS: { value: PrivacySetting; label: string; icon: string }[] = [
-  { value: 'public', label: 'Public', icon: '🌎' },
-  { value: 'friends', label: 'Mi Gente', icon: '👥' },
-  { value: 'private', label: 'Just Me', icon: '🔒' },
+  { value: 'public', label: 'Public', icon: 'earth-outline' },
+  { value: 'friends', label: 'Mi Gente', icon: 'people-outline' },
+  { value: 'private', label: 'Just Me', icon: 'lock-closed-outline' },
 ]
 
 const TACO_TYPES = ['Al Pastor', 'Carne Asada', 'Carnitas', 'Birria', 'Pollo', 'Fish', 'Shrimp', 'Lengua', 'Cabeza', 'Chorizo', 'Veggie', 'Other']
@@ -36,16 +41,48 @@ const HEAT_ICONS: Record<HeatLevel, string> = {
 const STEP_NAMES = ['The Spot', "What'd You Have?", 'Your Verdict']
 
 export default function ReviewWizard() {
+  const insets = useSafeAreaInsets()
   const store = useReviewFormStore()
-  const params = useLocalSearchParams<{ vendorLocalId?: string; editReviewId?: string }>()
+  const session = useAuthStore(s => s.session)
+  const isPro = useProStore(s => s.isPro)
+  const params = useLocalSearchParams<{
+    vendorLocalId?: string
+    editReviewId?: string
+    prefillName?: string
+    prefillAddress?: string
+    prefillLat?: string
+    prefillLng?: string
+    prefillCity?: string
+  }>()
   const [showSpotNote, setShowSpotNote] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [showDitchModal, setShowDitchModal] = useState(false)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [pickingPhoto, setPickingPhoto] = useState(false)
+
+  // Reset form on mount for new reviews (not edits)
+  useEffect(() => {
+    if (!params.editReviewId) {
+      store.reset()
+    }
+  }, [])
 
   // Auto-expand spot note when entering edit mode if notes exist
   useEffect(() => {
     if (params.editReviewId && store.spotNote) setShowSpotNote(true)
   }, [params.editReviewId])
+
+  // Pre-fill from a Google Places suggestion passed via router params
+  useEffect(() => {
+    const { prefillName, prefillAddress, prefillLat, prefillLng, prefillCity, vendorLocalId, editReviewId } = params
+    if (!prefillName || vendorLocalId || editReviewId) return
+    if (store.vendorName === prefillName) return // already loaded
+    store.setField('vendorName', prefillName)
+    if (prefillAddress) store.setField('address', prefillAddress)
+    if (prefillLat) store.setField('lat', parseFloat(prefillLat))
+    if (prefillLng) store.setField('lng', parseFloat(prefillLng))
+    if (prefillCity) store.setField('cityName', prefillCity)
+  }, [params.prefillName])
 
   // Pre-fill Step 1 from an existing pinned vendor when logging first visit
   useEffect(() => {
@@ -80,17 +117,34 @@ export default function ReviewWizard() {
   }
 
   function handleProGate() {
-    Alert.alert('Pro Feature', 'Upgrade to TacoAtlas Pro to rate burritos and tortas!')
+    setErrorMsg('Upgrade to TacoAtlas Pro to rate burritos and tortas!')
+  }
+
+  async function handleAddPhoto(source: 'library' | 'camera') {
+    setPickingPhoto(true)
+    try {
+      const uri = source === 'library'
+        ? await photoService.pickFromLibrary()
+        : await photoService.takePhoto()
+      if (uri) store.addPhoto(uri)
+    } catch (e) {
+      Alert.alert('Photo Error', 'Could not add photo. Try again.')
+    } finally {
+      setPickingPhoto(false)
+    }
   }
 
   async function handleSubmit() {
+    setErrorMsg(null)
     if (!store.vendorName.trim()) {
-      Alert.alert('Missing name', 'Give this spot a name.')
+      setErrorMsg('Give this spot a name.')
       return
     }
     setSubmitting(true)
     try {
       let vendorLocalId = store.editingVendorLocalId
+
+      const effectivePrivacy = isPro ? store.privacy : 'private'
 
       if (!vendorLocalId) {
         // New vendor
@@ -103,16 +157,22 @@ export default function ReviewWizard() {
           cityName: store.cityName,
           hours: null,
           photoUri: null,
-          privacy: store.privacy,
+          privacy: effectivePrivacy,
           spotNote: store.spotNote.trim() || null,
           isVisited: true,
         })
         vendorLocalId = vendor.localId
       } else {
-        // Updating existing — update spotNote/privacy if changed
+        // Updating existing vendor — persist all editable fields
         await localStorageService.updateVendor(vendorLocalId, {
+          name: store.vendorName.trim(),
+          spotType: store.spotType,
+          lat: store.lat ?? undefined,
+          lng: store.lng ?? undefined,
+          address: store.address,
+          cityName: store.cityName,
           spotNote: store.spotNote.trim() || null,
-          privacy: store.privacy,
+          privacy: effectivePrivacy,
           isVisited: true,
         })
       }
@@ -130,16 +190,24 @@ export default function ReviewWizard() {
         tortaEntries: store.tortaEntries,
       }
 
+      let savedReview
       if (store.editingReviewLocalId) {
         await localStorageService.updateReview(store.editingReviewLocalId, reviewPayload)
+        const all = await localStorageService.getReviews()
+        savedReview = all.find(r => r.localId === store.editingReviewLocalId) ?? null
       } else {
-        await localStorageService.addReview(reviewPayload)
+        savedReview = await localStorageService.addReview(reviewPayload)
+      }
+
+      // Background sync to Supabase (Pro only — free reviews stay local until upgrade)
+      if (session && savedReview && isPro) {
+        syncService.liveSync(vendorLocalId, savedReview, session.user.id)
       }
 
       store.reset()
       router.back()
     } catch (e) {
-      Alert.alert('Error', 'Could not save your review. Try again.')
+      setErrorMsg('Could not save your review. Try again.')
     } finally {
       setSubmitting(false)
     }
@@ -171,12 +239,15 @@ export default function ReviewWizard() {
       </Modal>
 
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.closeBtn} onPress={handleClose}>
-          <Ionicons name="close" size={20} color={colors.cream} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Log a Visit</Text>
-        <View style={{ width: 36 }} />
+      <View style={[styles.header, { paddingTop: insets.top }]}>
+        <Image source={require('../../images/tacoatlas-logo-horz.png')} style={styles.headerLogo} resizeMode="contain" />
+        <View style={styles.navRow}>
+          <TouchableOpacity style={styles.closeBtn} onPress={handleClose}>
+            <Ionicons name="close" size={20} color={colors.cream} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Log a Visit</Text>
+          <View style={{ width: 36 }} />
+        </View>
       </View>
 
       {/* Step indicator */}
@@ -192,6 +263,13 @@ export default function ReviewWizard() {
           )
         })}
       </View>
+
+      {errorMsg && (
+        <View style={styles.errorBanner}>
+          <Ionicons name="alert-circle" size={16} color={colors.error} />
+          <Text style={styles.errorText}>{errorMsg}</Text>
+        </View>
+      )}
 
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
 
@@ -232,20 +310,27 @@ export default function ReviewWizard() {
             />
 
             <Text style={styles.fieldLabel}>Who can see this?</Text>
-            <View style={styles.privacyRow}>
-              {PRIVACY_OPTIONS.map(opt => (
-                <TouchableOpacity
-                  key={opt.value}
-                  style={[styles.privacyBtn, store.privacy === opt.value && styles.privacyBtnActive]}
-                  onPress={() => store.setField('privacy', opt.value)}
-                >
-                  <Text style={styles.privacyIcon}>{opt.icon}</Text>
-                  <Text style={[styles.privacyLabel, store.privacy === opt.value && styles.privacyLabelActive]}>
-                    {opt.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            {isPro ? (
+              <View style={styles.privacyRow}>
+                {PRIVACY_OPTIONS.map(opt => (
+                  <TouchableOpacity
+                    key={opt.value}
+                    style={[styles.privacyBtn, store.privacy === opt.value && styles.privacyBtnActive]}
+                    onPress={() => store.setField('privacy', opt.value)}
+                  >
+                    <Ionicons name={opt.icon as any} size={22} color={store.privacy === opt.value ? colors.amber : colors.creamMuted} style={styles.privacyIcon} />
+                    <Text style={[styles.privacyLabel, store.privacy === opt.value && styles.privacyLabelActive]}>
+                      {opt.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : (
+              <View style={styles.privacyLockedRow}>
+                <Ionicons name="lock-closed-outline" size={16} color={colors.creamMuted} />
+                <Text style={styles.privacyLockedText}>Just Me — upgrade to Pro to share your atlas</Text>
+              </View>
+            )}
 
             <TouchableOpacity
               style={styles.noteToggle}
@@ -426,6 +511,28 @@ export default function ReviewWizard() {
               multiline
               numberOfLines={4}
             />
+
+            <Text style={styles.fieldLabel}>Photos</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoScroll} contentContainerStyle={styles.photoScrollContent}>
+              {store.photoUris.map((uri, idx) => (
+                <View key={uri} style={styles.photoThumb}>
+                  <Image source={{ uri }} style={styles.thumbImg} />
+                  <TouchableOpacity style={styles.removePhotoBtn} onPress={() => store.removePhoto(uri)}>
+                    <Ionicons name="close-circle" size={20} color={colors.cream} />
+                  </TouchableOpacity>
+                </View>
+              ))}
+              <TouchableOpacity style={styles.addPhotoBtn} onPress={() => handleAddPhoto('library')} disabled={pickingPhoto}>
+                {pickingPhoto
+                  ? <ActivityIndicator size="small" color={colors.amber} />
+                  : <Ionicons name="image-outline" size={24} color={colors.amber} />}
+                <Text style={styles.addPhotoText}>Gallery</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.addPhotoBtn} onPress={() => handleAddPhoto('camera')} disabled={pickingPhoto}>
+                <Ionicons name="camera-outline" size={24} color={colors.amber} />
+                <Text style={styles.addPhotoText}>Camera</Text>
+              </TouchableOpacity>
+            </ScrollView>
           </View>
         )}
 
@@ -460,8 +567,11 @@ export default function ReviewWizard() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   header: {
+    paddingHorizontal: spacing.md, paddingBottom: spacing.sm,
+  },
+  headerLogo: { height: 28, width: 160, alignSelf: 'center', marginBottom: spacing.xs },
+  navRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingTop: 56, paddingHorizontal: spacing.md, paddingBottom: spacing.sm,
   },
   closeBtn: {
     width: 36, height: 36, borderRadius: 18,
@@ -496,13 +606,21 @@ const styles = StyleSheet.create({
   chipText: { color: colors.creamMuted, fontSize: 13, fontWeight: '600' },
   chipTextActive: { color: colors.cream },
   privacyRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
+  privacyLockedRow: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+    backgroundColor: colors.surfaceRaised, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.surfaceBorder,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.sm + 2,
+    marginBottom: spacing.md,
+  },
+  privacyLockedText: { color: colors.creamMuted, fontSize: 13, flex: 1 },
   privacyBtn: {
     flex: 1, alignItems: 'center', paddingVertical: spacing.sm + 4,
     borderRadius: radius.md, borderWidth: 1, borderColor: colors.surfaceBorder,
     backgroundColor: colors.surfaceRaised,
   },
   privacyBtnActive: { borderColor: colors.amber, backgroundColor: colors.amberSubtle },
-  privacyIcon: { fontSize: 18, marginBottom: 4 },
+  privacyIcon: { marginBottom: 4 },
   privacyLabel: { fontSize: 11, color: colors.creamMuted, fontWeight: '600' },
   privacyLabelActive: { color: colors.amber },
   noteToggle: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: spacing.sm },
@@ -592,4 +710,26 @@ const styles = StyleSheet.create({
   modalDitchText: {
     color: colors.bg, fontWeight: '700', fontSize: 14,
   },
+  photoScroll: { marginBottom: spacing.md },
+  photoScrollContent: { gap: spacing.sm, paddingVertical: 4 },
+  photoThumb: { width: 80, height: 80, borderRadius: radius.md, overflow: 'hidden', position: 'relative' },
+  thumbImg: { width: 80, height: 80 },
+  removePhotoBtn: {
+    position: 'absolute', top: 2, right: 2,
+    backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 10,
+  },
+  addPhotoBtn: {
+    width: 80, height: 80, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.amberDim, borderStyle: 'dashed',
+    backgroundColor: colors.surfaceRaised,
+    alignItems: 'center', justifyContent: 'center', gap: 4,
+  },
+  addPhotoText: { fontSize: 10, color: colors.amber, fontWeight: '600' },
+  errorBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.xs,
+    backgroundColor: '#3A1A1A', borderWidth: 1, borderColor: colors.error,
+    borderRadius: radius.md, padding: spacing.sm,
+    marginHorizontal: spacing.md, marginBottom: spacing.xs,
+  },
+  errorText: { flex: 1, color: colors.error, fontSize: 13 },
 })

@@ -1,11 +1,13 @@
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, Alert,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, Modal,
 } from 'react-native'
 import { useLocalSearchParams, router, useFocusEffect } from 'expo-router'
-import { useState } from 'react'
 import { Ionicons } from '@expo/vector-icons'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { localStorageService } from '../../src/services/localStorage'
+import { reviewRepository } from '../../src/services/reviewRepository'
+import { vendorRepository } from '../../src/services/vendorRepository'
 import { useReviewFormStore } from '../../src/store/reviewFormStore'
 import { TacoRating } from '../../src/components/TacoRating'
 import { shareSpot } from '../../src/utils/shareSpot'
@@ -21,11 +23,15 @@ const HEAT_COLOR: Record<string, string> = {
 }
 
 export default function SpotDetailScreen() {
+  const insets = useSafeAreaInsets()
   const { localId } = useLocalSearchParams<{ localId: string }>()
   const [vendor, setVendor] = useState<LocalVendor | null>(null)
   const [reviews, setReviews] = useState<LocalReview[]>([])
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const loadForEdit = useReviewFormStore(s => s.loadForEdit)
+  const [showSpotMenu, setShowSpotMenu] = useState(false)
+  const [showDeleteSpotModal, setShowDeleteSpotModal] = useState(false)
+  const [reviewToDelete, setReviewToDelete] = useState<LocalReview | null>(null)
 
   function toggleExpanded(id: string) {
     setExpandedIds(prev => {
@@ -53,39 +59,26 @@ export default function SpotDetailScreen() {
   }
 
   function handleDeleteReview(review: LocalReview) {
-    Alert.alert(
-      'Delete Visit',
-      'Remove this visit? This can\'t be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            await localStorageService.deleteReview(review.localId)
-            setReviews(prev => prev.filter(r => r.localId !== review.localId))
-          },
-        },
-      ]
-    )
+    setReviewToDelete(review)
   }
 
-  function handleDelete() {
-    Alert.alert(
-      'Delete Spot',
-      `Remove "${vendor?.name}" and all its visits? This can't be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            await localStorageService.deleteVendor(localId)
-            router.replace('/(tabs)/')
-          },
-        },
-      ]
-    )
+  async function confirmDeleteReview() {
+    if (!reviewToDelete) return
+    await localStorageService.deleteReview(reviewToDelete.localId)
+    if (reviewToDelete.supabaseReviewId) {
+      reviewRepository.deleteReview(reviewToDelete.supabaseReviewId)
+    }
+    setReviews(prev => prev.filter(r => r.localId !== reviewToDelete.localId))
+    setReviewToDelete(null)
+  }
+
+  async function confirmDeleteSpot() {
+    if (vendor?.supabaseVendorId) {
+      vendorRepository.deletePersonalVendor(vendor.supabaseVendorId)
+    }
+    await localStorageService.deleteVendor(localId)
+    setShowDeleteSpotModal(false)
+    router.replace('/(tabs)/')
   }
 
   if (!vendor) return null
@@ -103,7 +96,9 @@ export default function SpotDetailScreen() {
       />
 
       {/* Fixed header */}
-      <View style={styles.header}>
+      <View style={[styles.headerWrap, { paddingTop: insets.top }]}>
+        <Image source={require('../../images/tacoatlas-logo-horz.png')} style={styles.headerLogo} resizeMode="contain" />
+        <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={22} color={colors.cream} />
         </TouchableOpacity>
@@ -132,16 +127,66 @@ export default function SpotDetailScreen() {
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.overflowBtn}
-          onPress={() =>
-            Alert.alert('Spot Options', undefined, [
-              { text: 'Delete Spot', style: 'destructive', onPress: handleDelete },
-              { text: 'Cancel', style: 'cancel' },
-            ])
-          }
+          onPress={() => setShowSpotMenu(true)}
         >
           <Ionicons name="ellipsis-horizontal" size={22} color={colors.cream} />
         </TouchableOpacity>
+        </View>
       </View>
+
+      {/* Spot options bottom sheet */}
+      <Modal visible={showSpotMenu} transparent animationType="slide" onRequestClose={() => setShowSpotMenu(false)}>
+        <TouchableOpacity style={styles.sheetOverlay} activeOpacity={1} onPress={() => setShowSpotMenu(false)}>
+          <View style={styles.sheetCard}>
+            <Text style={styles.sheetTitle}>Spot Options</Text>
+            <TouchableOpacity style={styles.sheetOption} onPress={() => { setShowSpotMenu(false); setShowDeleteSpotModal(true) }}>
+              <Ionicons name="trash-outline" size={20} color={colors.error} />
+              <Text style={[styles.sheetOptionText, { color: colors.error }]}>Delete Spot</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.sheetCancel} onPress={() => setShowSpotMenu(false)}>
+              <Text style={styles.sheetCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Delete spot confirmation */}
+      <Modal visible={showDeleteSpotModal} transparent animationType="fade" onRequestClose={() => setShowDeleteSpotModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Delete Spot</Text>
+            <Text style={styles.modalBody}>
+              Remove <Text style={styles.modalBold}>{vendor?.name}</Text> and all its visits? This can't be undone.
+            </Text>
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setShowDeleteSpotModal(false)}>
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalDeleteBtn} onPress={confirmDeleteSpot}>
+                <Text style={styles.modalDeleteText}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Delete review confirmation */}
+      <Modal visible={!!reviewToDelete} transparent animationType="fade" onRequestClose={() => setReviewToDelete(null)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Delete Visit</Text>
+            <Text style={styles.modalBody}>Remove this visit? This can't be undone.</Text>
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setReviewToDelete(null)}>
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalDeleteBtn} onPress={confirmDeleteReview}>
+                <Text style={styles.modalDeleteText}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <ScrollView contentContainerStyle={styles.scroll}>
 
@@ -334,12 +379,14 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   scroll: { paddingBottom: spacing.xxl },
 
+  headerWrap: {
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.md,
+  },
+  headerLogo: { height: 28, width: 160, alignSelf: 'center', marginBottom: spacing.xs },
   header: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    paddingTop: 56,
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.md,
     gap: spacing.sm,
   },
   backBtn: {
@@ -434,6 +481,31 @@ const styles = StyleSheet.create({
   addReviewBtnText: { color: colors.cream, fontWeight: '700', fontSize: 15 },
 
   overflowBtn: { padding: spacing.sm },
+
+  // Bottom sheet
+  sheetOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
+  sheetCard: {
+    backgroundColor: colors.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg,
+    borderWidth: 1, borderColor: colors.surfaceBorder,
+    paddingTop: spacing.md, paddingBottom: spacing.xl + 8, paddingHorizontal: spacing.md,
+  },
+  sheetTitle: { fontSize: 13, fontWeight: '700', color: colors.creamDim, letterSpacing: 1, textTransform: 'uppercase', marginBottom: spacing.sm, textAlign: 'center' },
+  sheetOption: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.sm + 4, borderBottomWidth: 1, borderBottomColor: colors.surfaceBorder },
+  sheetOptionText: { fontSize: 15, color: colors.cream, fontWeight: '500' },
+  sheetCancel: { marginTop: spacing.sm, paddingVertical: spacing.sm + 4, alignItems: 'center' },
+  sheetCancelText: { fontSize: 15, color: colors.creamMuted, fontWeight: '600' },
+
+  // Confirmation modal
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: spacing.xl },
+  modalCard: { width: '100%', backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.surfaceBorder, padding: spacing.lg },
+  modalTitle: { fontSize: 18, fontWeight: '800', color: colors.cream, marginBottom: spacing.sm },
+  modalBody: { fontSize: 14, color: colors.creamMuted, marginBottom: spacing.lg, lineHeight: 20 },
+  modalBold: { color: colors.cream, fontWeight: '700' },
+  modalActions: { flexDirection: 'row', gap: spacing.sm },
+  modalCancelBtn: { flex: 1, paddingVertical: 12, borderRadius: radius.full, borderWidth: 1, borderColor: colors.surfaceBorder, backgroundColor: colors.surfaceRaised, alignItems: 'center' },
+  modalCancelText: { color: colors.cream, fontWeight: '600', fontSize: 14 },
+  modalDeleteBtn: { flex: 1, paddingVertical: 12, borderRadius: radius.full, backgroundColor: colors.error, alignItems: 'center' },
+  modalDeleteText: { color: colors.cream, fontWeight: '700', fontSize: 14 },
 
   spotNoteRow: { flexDirection: 'row', gap: spacing.sm, padding: spacing.md, backgroundColor: colors.surfaceRaised, borderRadius: radius.md, marginHorizontal: spacing.md, marginBottom: spacing.sm, alignItems: 'flex-start' },
   spotNoteText: { flex: 1, color: colors.creamMuted, fontSize: 13, lineHeight: 18 },

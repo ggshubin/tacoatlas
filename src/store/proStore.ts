@@ -9,7 +9,7 @@ interface ProState {
 }
 
 export const useProStore = create<ProState>((set) => ({
-  isPro: false,
+  isPro: true, // DEV: bypass Pro gate
   loading: true,
   checkPro: async () => {
     set({ loading: true })

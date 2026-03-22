@@ -1,22 +1,27 @@
-import { useState, useCallback } from 'react'
-import { View, FlatList, Text, StyleSheet, TouchableOpacity, Image, TextInput } from 'react-native'
+import { useState, useCallback, useEffect } from 'react'
+import { View, FlatList, Text, StyleSheet, TouchableOpacity, Image, TextInput, BackHandler } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect, router } from 'expo-router'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAuthStore } from '../../src/store/authStore'
 import { localStorageService } from '../../src/services/localStorage'
 import { TacoRating } from '../../src/components/TacoRating'
 import { AtlasMapView } from '../../src/components/AtlasMapView'
 import { QuickActionSheet } from '../../src/components/QuickActionSheet'
+import { getFriends, getFriendActivity } from '../../src/services/miGenteService'
 import { colors, spacing, radius } from '../../src/utils/theme'
 import type { LocalVendor, SpotType } from '../../src/types/app'
+import type { ActivityStub } from '../../src/data/mi-gente-stubs'
 
 interface VendorRow {
   vendor: LocalVendor
   visitCount: number
   avgRating: number | null
+  firstPhotoUri: string | null
 }
 
 export default function MyTacosScreen() {
+  const insets = useSafeAreaInsets()
   const { session, profile } = useAuthStore()
   const [rows, setRows] = useState<VendorRow[]>([])
   const [loaded, setLoaded] = useState(false)
@@ -24,6 +29,18 @@ export default function MyTacosScreen() {
   const [filterType, setFilterType] = useState<SpotType | null>(null)
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list')
   const [showActionSheet, setShowActionSheet] = useState(false)
+  const [friendSpots, setFriendSpots] = useState<ActivityStub[]>([])
+
+  useEffect(() => {
+    if (viewMode !== 'map' || !session) return
+    async function loadFriendSpots() {
+      const friends = await getFriends(session!.user.id)
+      if (friends.length === 0) return
+      const spots = await getFriendActivity(friends.map(f => f.userId))
+      setFriendSpots(spots.filter(s => s.lat !== 0 && s.lng !== 0))
+    }
+    loadFriendSpots()
+  }, [viewMode, session])
 
   const filteredRows = rows
     .filter(({ vendor }) => {
@@ -32,6 +49,20 @@ export default function MyTacosScreen() {
       return matchesSearch && matchesType
     })
     .sort((a, b) => new Date(b.vendor.createdAt).getTime() - new Date(a.vendor.createdAt).getTime())
+
+  // Intercept Android back button: map view → switch to list; list view → minimize app (not navigate back)
+  useFocusEffect(
+    useCallback(() => {
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+        if (viewMode === 'map') {
+          setViewMode('list')
+          return true
+        }
+        return false
+      })
+      return () => sub.remove()
+    }, [viewMode])
+  )
 
   useFocusEffect(
     useCallback(() => {
@@ -43,7 +74,8 @@ export default function MyTacosScreen() {
             const avgRating = reviews.length
               ? reviews.reduce((sum, r) => sum + r.overallRating, 0) / reviews.length
               : null
-            return { vendor, visitCount: reviews.length, avgRating }
+            const firstPhotoUri = reviews.flatMap(r => r.photoUris).find(Boolean) ?? null
+            return { vendor, visitCount: reviews.length, avgRating, firstPhotoUri }
           })
         )
         setRows(result)
@@ -62,8 +94,8 @@ export default function MyTacosScreen() {
       />
 
       {/* Static header — always visible */}
-      <View style={styles.staticHeader}>
-        <Text style={styles.headerEyebrow}>taco atlas</Text>
+      <View style={[styles.staticHeader, { paddingTop: insets.top }]}>
+        <Image source={require('../../images/tacoatlas-logo-horz.png')} style={styles.headerLogo} resizeMode="contain" />
         <Text style={styles.headerTitle}>
           {profile?.display_name ? `${profile.display_name}'s Atlas` : 'My Atlas'}
         </Text>
@@ -114,24 +146,26 @@ export default function MyTacosScreen() {
       </View>
 
       {viewMode === 'map' ? (
-        <AtlasMapView rows={rows} />
+        <AtlasMapView rows={rows} friendSpots={friendSpots} />
       ) : (
         <FlatList
           data={filteredRows}
           keyExtractor={r => r.vendor.localId}
-          renderItem={({ item: { vendor, visitCount, avgRating } }) => (
+          renderItem={({ item: { vendor, visitCount, avgRating, firstPhotoUri } }) => (
             <TouchableOpacity style={[styles.card, vendor.isVisited === false && styles.cardUnvisited]} onPress={() => router.push(`/spot/${vendor.localId}`)}>
               <View style={styles.cardLeft}>
                 <View style={styles.tacoIcon}>
-                  <Image
-                    source={require('../../assets/taco-icon.png')}
-                    style={{ width: 32, height: 32, borderRadius: 6 }}
-                    resizeMode="contain"
-                  />
+                  {firstPhotoUri ? (
+                    <Image source={{ uri: firstPhotoUri }} style={{ width: 48, height: 48, borderRadius: 6 }} resizeMode="cover" />
+                  ) : (
+                    <Image source={require('../../assets/taco-icon.png')} style={{ width: 32, height: 32, borderRadius: 6 }} resizeMode="contain" />
+                  )}
                 </View>
               </View>
               <View style={styles.cardBody}>
-                <Text style={styles.name}>{vendor.name}</Text>
+                <View style={styles.nameRow}>
+                  <Text style={styles.name}>{vendor.name}</Text>
+                </View>
                 {vendor.cityName && (
                   <View style={styles.cityRow}>
                     <Ionicons name="location-sharp" size={12} color={colors.creamMuted} />
@@ -156,6 +190,12 @@ export default function MyTacosScreen() {
                     <Text style={styles.reviewLabel}>visit{visitCount !== 1 ? 's' : ''}</Text>
                   </>
                 )}
+                <Ionicons
+                  name={vendor.privacy === 'public' ? 'earth-outline' : vendor.privacy === 'friends' ? 'people-outline' : 'lock-closed-outline'}
+                  size={13}
+                  color={colors.amber}
+                  style={{ marginTop: 4 }}
+                />
               </View>
             </TouchableOpacity>
           )}
@@ -206,17 +246,10 @@ const styles = StyleSheet.create({
 
   staticHeader: {
     paddingHorizontal: spacing.md,
-    paddingTop: 60,
     paddingBottom: spacing.sm,
     zIndex: 10,
   },
-  headerEyebrow: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.amber,
-    letterSpacing: 2,
-    marginBottom: 4,
-  },
+  headerLogo: { height: 28, width: 160, alignSelf: 'center', marginBottom: 4 },
   headerTitle: {
     fontSize: 36,
     fontWeight: '800',
@@ -292,7 +325,8 @@ const styles = StyleSheet.create({
     borderColor: colors.amberDim,
   },
   cardBody: { flex: 1 },
-  name: { fontSize: 16, fontWeight: '700', color: colors.cream, marginBottom: 2 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
+  name: { fontSize: 16, fontWeight: '700', color: colors.cream },
   cityRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginBottom: 2 },
   city: { fontSize: 12, color: colors.creamMuted },
   spotType: { fontSize: 11, color: colors.amberDim, fontWeight: '600', letterSpacing: 0.3, marginBottom: 4, textTransform: 'uppercase' },

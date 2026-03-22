@@ -2,8 +2,43 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { nanoid } from 'nanoid/non-secure'
 import type { LocalVendor, LocalReview } from '../types/app'
 
-const VENDORS_KEY = 'local_vendors'
-const REVIEWS_KEY = 'local_reviews'
+// Namespace keys by user ID so each account has isolated local data.
+// Falls back to 'guest' scope for unauthenticated users.
+let _userScope = 'guest'
+
+function VENDORS_KEY() { return `local_vendors_${_userScope}` }
+function REVIEWS_KEY() { return `local_reviews_${_userScope}` }
+
+export function setUserScope(userId: string | null) {
+  _userScope = userId ?? 'guest'
+}
+
+// One-time migration: copy data from the old unscoped keys (local_vendors / local_reviews)
+// into the current user-scoped keys, then remove the old keys.
+// Safe to call multiple times — no-op once old keys are gone.
+export async function migrateFromLegacyKeys(): Promise<void> {
+  const OLD_VENDORS = 'local_vendors'
+  const OLD_REVIEWS = 'local_reviews'
+
+  const [oldV, oldR, newV, newR] = await Promise.all([
+    AsyncStorage.getItem(OLD_VENDORS),
+    AsyncStorage.getItem(OLD_REVIEWS),
+    AsyncStorage.getItem(VENDORS_KEY()),
+    AsyncStorage.getItem(REVIEWS_KEY()),
+  ])
+
+  const writes: Promise<void>[] = []
+  if (oldV && !newV) writes.push(AsyncStorage.setItem(VENDORS_KEY(), oldV))
+  if (oldR && !newR) writes.push(AsyncStorage.setItem(REVIEWS_KEY(), oldR))
+
+  if (writes.length > 0) {
+    await Promise.all(writes)
+    await Promise.all([
+      AsyncStorage.removeItem(OLD_VENDORS),
+      AsyncStorage.removeItem(OLD_REVIEWS),
+    ])
+  }
+}
 
 // Normalize persisted vendor data — fills in missing new fields with safe defaults
 function normalizeVendor(v: any): LocalVendor {
@@ -29,21 +64,21 @@ function normalizeReview(r: any): LocalReview {
 }
 
 async function getVendors(): Promise<LocalVendor[]> {
-  const raw = await AsyncStorage.getItem(VENDORS_KEY)
+  const raw = await AsyncStorage.getItem(VENDORS_KEY())
   return raw ? JSON.parse(raw).map(normalizeVendor) : []
 }
 
 async function saveVendors(vendors: LocalVendor[]): Promise<void> {
-  await AsyncStorage.setItem(VENDORS_KEY, JSON.stringify(vendors))
+  await AsyncStorage.setItem(VENDORS_KEY(), JSON.stringify(vendors))
 }
 
 async function getReviews(): Promise<LocalReview[]> {
-  const raw = await AsyncStorage.getItem(REVIEWS_KEY)
+  const raw = await AsyncStorage.getItem(REVIEWS_KEY())
   return raw ? JSON.parse(raw).map(normalizeReview) : []
 }
 
 async function saveReviews(reviews: LocalReview[]): Promise<void> {
-  await AsyncStorage.setItem(REVIEWS_KEY, JSON.stringify(reviews))
+  await AsyncStorage.setItem(REVIEWS_KEY(), JSON.stringify(reviews))
 }
 
 export const localStorageService = {
@@ -123,8 +158,8 @@ export const localStorageService = {
   },
 
   async clearAll(): Promise<void> {
-    await AsyncStorage.removeItem(VENDORS_KEY)
-    await AsyncStorage.removeItem(REVIEWS_KEY)
+    await AsyncStorage.removeItem(VENDORS_KEY())
+    await AsyncStorage.removeItem(REVIEWS_KEY())
   },
 
   async getVendorCount(): Promise<number> {

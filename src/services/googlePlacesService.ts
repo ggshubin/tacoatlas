@@ -115,39 +115,35 @@ export const googlePlacesService = {
       return []
     }
 
-    const remaining = await this.getRemainingSearches()
-    if (remaining <= 0) return []
-
-    const body = {
-      textQuery: query,
-      maxResultCount: 20,
-    }
-
-    const res = await fetch('https://maps.googleapis.com/maps/api/place/textsearch/json', {
+    const res = await fetch('https://places.googleapis.com/v1/places:searchText', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-Goog-Api-Key': API_KEY,
+        'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.addressComponents,places.location,places.rating,places.types',
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ textQuery: query, maxResultCount: 10 }),
     })
 
     if (!res.ok) {
-      console.error('Google Places API error:', await res.text())
+      console.error('Google Places Text Search error:', res.status, res.statusText, await res.text())
       return []
     }
 
     const data = await res.json()
     await this.recordSearch()
 
-    return (data.results ?? []).map((p: any): GooglePlace => {
+    return (data.places ?? []).map((p: any): GooglePlace => {
+      const cityComponent = (p.addressComponents ?? []).find(
+        (c: any) => c.types?.includes('locality')
+      )
       return {
-        id: p.place_id,
-        name: p.name ?? 'Unknown',
-        address: p.formatted_address ?? null,
-        city: null, // Text Search API doesn't provide city directly; can parse from address if needed
-        lat: p.geometry?.location?.lat ?? 0,
-        lng: p.geometry?.location?.lng ?? 0,
+        id: p.id,
+        name: p.displayName?.text ?? 'Unknown',
+        address: p.formattedAddress ?? null,
+        city: cityComponent?.longText ?? null,
+        lat: p.location?.latitude ?? 0,
+        lng: p.location?.longitude ?? 0,
         rating: p.rating ?? null,
         types: p.types ?? [],
       }

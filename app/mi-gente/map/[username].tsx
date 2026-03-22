@@ -1,45 +1,61 @@
 import { useEffect, useState } from 'react'
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native'
 import MapView, { Marker } from 'react-native-maps'
 import * as Location from 'expo-location'
 import { router, useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { STUB_FRIENDS, STUB_ACTIVITY } from '../../../src/data/mi-gente-stubs'
+import { getFriendActivity } from '../../../src/services/miGenteService'
 import { openMapsNavigation } from '../../../src/utils/mapsNavigation'
 import { colors, spacing, radius } from '../../../src/utils/theme'
+import type { ActivityStub } from '../../../src/data/mi-gente-stubs'
 
 export default function FriendMapScreen() {
   const insets = useSafeAreaInsets()
-  const { username } = useLocalSearchParams<{ username: string }>()
+  const { username, userId } = useLocalSearchParams<{ username: string; userId: string }>()
   const [locationGranted, setLocationGranted] = useState(false)
-
-  const friend = STUB_FRIENDS.find(f => f.username === username)
-  const pins = STUB_ACTIVITY.filter(a => a.friend.username === username)
+  const [pins, setPins] = useState<ActivityStub[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     ;(async () => {
-      // Check existing permission — do NOT request (per spec: no prompt on this screen)
       const { status } = await Location.getForegroundPermissionsAsync()
-      if (status === 'granted') setLocationGranted(true)  // silently omit blue dot if denied
+      if (status === 'granted') setLocationGranted(true)
     })()
   }, [])
 
-  if (!friend || pins.length === 0) {
+  useEffect(() => {
+    if (!userId) { setLoading(false); return }
+    getFriendActivity([userId]).then(data => {
+      setPins(data.filter(p => p.lat !== 0 && p.lng !== 0))
+      setLoading(false)
+    })
+  }, [userId])
+
+  if (loading || pins.length === 0) {
     return (
       <View style={[styles.container, { paddingTop: insets.top + spacing.md, paddingHorizontal: spacing.md }]}>
         <TouchableOpacity style={styles.backRow} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={18} color={colors.amber} />
           <Text style={styles.backText}>{username}</Text>
         </TouchableOpacity>
-        <Text style={styles.errorText}>No pins to show.</Text>
+        {loading
+          ? <ActivityIndicator color={colors.amber} style={{ marginTop: spacing.xl }} />
+          : <Text style={styles.errorText}>No pins to show.</Text>}
       </View>
     )
   }
 
-  // Center map on the midpoint of all pins
-  const avgLat = pins.reduce((s, p) => s + p.lat, 0) / pins.length
-  const avgLng = pins.reduce((s, p) => s + p.lng, 0) / pins.length
+  // Compute a bounding region that fits all pins with padding
+  const minLat = Math.min(...pins.map(p => p.lat))
+  const maxLat = Math.max(...pins.map(p => p.lat))
+  const minLng = Math.min(...pins.map(p => p.lng))
+  const maxLng = Math.max(...pins.map(p => p.lng))
+  const centerLat = (minLat + maxLat) / 2
+  const centerLng = (minLng + maxLng) / 2
+  const PADDING = 1.4 // 40% padding around the bounding box
+  const latDelta = Math.max((maxLat - minLat) * PADDING, 0.01)
+  const lngDelta = Math.max((maxLng - minLng) * PADDING, 0.01)
 
   const PANEL_PINS = pins.slice(0, 3)
 
@@ -60,7 +76,7 @@ export default function FriendMapScreen() {
       {/* Map */}
       <MapView
         style={styles.map}
-        initialRegion={{ latitude: avgLat, longitude: avgLng, latitudeDelta: 0.05, longitudeDelta: 0.05 }}
+        initialRegion={{ latitude: centerLat, longitude: centerLng, latitudeDelta: latDelta, longitudeDelta: lngDelta }}
         showsUserLocation={locationGranted}
       >
         {pins.map(pin => (

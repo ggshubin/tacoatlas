@@ -1,9 +1,11 @@
 import { useState } from 'react'
-import { Modal, View, Text, TouchableOpacity, StyleSheet, Image, ActivityIndicator, Alert } from 'react-native'
+import { Modal, View, Text, TouchableOpacity, StyleSheet, Image, ActivityIndicator } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { colors, spacing, radius } from '../utils/theme'
 import { proService } from '../services/proService'
 import { useProStore } from '../store/proStore'
+import { useAuthStore } from '../store/authStore'
+import { syncService } from '../services/syncService'
 
 interface Props {
   visible: boolean
@@ -12,23 +14,32 @@ interface Props {
 
 export function ProPaywallModal({ visible, onClose }: Props) {
   const { setPro } = useProStore()
+  const session = useAuthStore(s => s.session)
   const [purchasing, setPurchasing] = useState(false)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+
+  function triggerMigration() {
+    if (session) {
+      syncService.bulkSyncOnProUpgrade(session.user.id)
+    }
+  }
 
   async function handleUpgrade() {
     setPurchasing(true)
     try {
       const pkg = await proService.getProPackage()
       if (!pkg) {
-        Alert.alert('Error', 'Could not load purchase options. Try again later.')
+        setErrorMsg('Could not load purchase options. Try again later.')
         return
       }
       const success = await proService.purchase(pkg)
       if (success) {
         setPro(true)
+        triggerMigration()
         onClose()
       }
     } catch {
-      Alert.alert('Error', 'Purchase failed. Please try again.')
+      setErrorMsg('Purchase failed. Please try again.')
     } finally {
       setPurchasing(false)
     }
@@ -40,9 +51,10 @@ export function ProPaywallModal({ visible, onClose }: Props) {
       const success = await proService.restore()
       if (success) {
         setPro(true)
+        triggerMigration()
         onClose()
       } else {
-        Alert.alert('No purchase found', 'No previous TacoAtlas Pro purchase found on this account.')
+        setErrorMsg('No previous TacoAtlas Pro purchase found on this account.')
       }
     } finally {
       setPurchasing(false)
@@ -76,6 +88,12 @@ export function ProPaywallModal({ visible, onClose }: Props) {
               </View>
             ))}
           </View>
+          {errorMsg && (
+            <View style={styles.errorBanner}>
+              <Ionicons name="alert-circle" size={16} color={colors.error} />
+              <Text style={styles.errorText}>{errorMsg}</Text>
+            </View>
+          )}
           <TouchableOpacity style={styles.upgradeBtn} onPress={handleUpgrade} disabled={purchasing}>
             {purchasing ? (
               <ActivityIndicator color={colors.cream} />
@@ -148,4 +166,11 @@ const styles = StyleSheet.create({
   cancelBtnText: { color: colors.creamMuted, fontSize: 14 },
   restoreBtn: { paddingVertical: spacing.xs },
   restoreBtnText: { color: colors.creamMuted, fontSize: 12, textDecorationLine: 'underline' },
+  errorBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.xs,
+    backgroundColor: '#3A1A1A', borderWidth: 1, borderColor: colors.error,
+    borderRadius: radius.md, padding: spacing.sm,
+    width: '100%', marginBottom: spacing.sm,
+  },
+  errorText: { flex: 1, color: colors.error, fontSize: 13 },
 })

@@ -1,35 +1,45 @@
 import { useState } from 'react'
-import { View, Text, Image, TextInput, TouchableOpacity, StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView, Dimensions } from 'react-native'
+import { View, Text, Image, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Dimensions } from 'react-native'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useAuthStore } from '../../src/store/authStore'
 import { colors, spacing, radius } from '../../src/utils/theme'
 
+const USERNAME_RE = /^[a-z0-9_]{3,20}$/
+
 export default function SignUpScreen() {
   const [displayName, setDisplayName] = useState('')
+  const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [pendingEmail, setPendingEmail] = useState<string | null>(null)
   const [resendLoading, setResendLoading] = useState(false)
   const [resendSent, setResendSent] = useState(false)
+  const [resendError, setResendError] = useState<string | null>(null)
 
   const { signUp, resendConfirmation } = useAuthStore()
 
   async function handleSignUp() {
-    if (!displayName.trim() || !email.trim() || !password) {
-      Alert.alert('Missing fields', 'Fill in all fields to create your account.')
+    setErrorMsg(null)
+    if (!displayName.trim() || !username.trim() || !email.trim() || !password) {
+      setErrorMsg('Fill in all fields to create your account.')
+      return
+    }
+    if (!USERNAME_RE.test(username.trim().toLowerCase())) {
+      setErrorMsg('Username must be 3–20 characters: lowercase letters, numbers, and underscores only.')
       return
     }
     if (password.length < 8) {
-      Alert.alert('Password too short', 'Use at least 8 characters.')
+      setErrorMsg('Password must be at least 8 characters.')
       return
     }
     setLoading(true)
-    const { error, needsConfirmation } = await signUp(email.trim().toLowerCase(), password, displayName.trim())
+    const { error, needsConfirmation } = await signUp(email.trim().toLowerCase(), password, displayName.trim(), username.trim().toLowerCase())
     setLoading(false)
     if (error) {
-      Alert.alert('Sign Up Failed', error)
+      setErrorMsg(error)
       return
     }
     if (needsConfirmation) {
@@ -43,10 +53,11 @@ export default function SignUpScreen() {
     if (!pendingEmail) return
     setResendLoading(true)
     setResendSent(false)
+    setResendError(null)
     const { error } = await resendConfirmation(pendingEmail)
     setResendLoading(false)
     if (error) {
-      Alert.alert('Error', error)
+      setResendError(error)
     } else {
       setResendSent(true)
     }
@@ -79,6 +90,13 @@ export default function SignUpScreen() {
             <Text style={styles.confirmHint}>
               Open the link to activate your account, then come back and sign in.
             </Text>
+
+            {resendError && (
+              <View style={styles.errorBanner}>
+                <Ionicons name="alert-circle" size={16} color={colors.error} />
+                <Text style={styles.errorText}>{resendError}</Text>
+              </View>
+            )}
 
             <TouchableOpacity
               style={[styles.button, resendLoading && styles.buttonDisabled]}
@@ -138,6 +156,16 @@ export default function SignUpScreen() {
           />
           <TextInput
             style={styles.input}
+            placeholder="Username (e.g. taco_king)"
+            placeholderTextColor={colors.creamDim}
+            value={username}
+            onChangeText={v => setUsername(v.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+            autoCapitalize="none"
+            autoCorrect={false}
+            maxLength={20}
+          />
+          <TextInput
+            style={styles.input}
             placeholder="Email"
             placeholderTextColor={colors.creamDim}
             value={email}
@@ -154,6 +182,13 @@ export default function SignUpScreen() {
             onChangeText={setPassword}
             secureTextEntry
           />
+
+          {errorMsg && (
+            <View style={styles.errorBanner}>
+              <Ionicons name="alert-circle" size={16} color={colors.error} />
+              <Text style={styles.errorText}>{errorMsg}</Text>
+            </View>
+          )}
 
           <TouchableOpacity
             style={[styles.button, loading && styles.buttonDisabled]}
@@ -215,6 +250,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     letterSpacing: 0.3,
   },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: '#3A1A1A',
+    borderWidth: 1,
+    borderColor: colors.error,
+    borderRadius: radius.md,
+    padding: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  errorText: { flex: 1, color: colors.error, fontSize: 13 },
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: spacing.lg },
   footerText: { color: colors.creamMuted, fontSize: 14 },
   link: { color: colors.amber, fontWeight: '700', fontSize: 14 },

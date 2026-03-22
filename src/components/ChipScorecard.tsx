@@ -52,6 +52,7 @@ export function ChipScorecard({
   const [pendingNotes, setPendingNotes] = useState('')
   const [pendingHeatLevel, setPendingHeatLevel] = useState<string | null>(null)
   const [showFreeform, setShowFreeform] = useState(false)
+  const [showValidation, setShowValidation] = useState(false)
 
   const addedLabels = new Set(items.filter(i => i?.label).map(i => i.label.toLowerCase()))
 
@@ -66,12 +67,16 @@ export function ChipScorecard({
   }
 
   function handleFreeformAdd() {
-    if (!pendingLabel.trim() || !pendingRating) return
+    if (!pendingLabel.trim() || !pendingRating) {
+      setShowValidation(true)
+      return
+    }
     onAdd({ label: pendingLabel.trim(), rating: pendingRating, notes: pendingNotes.trim() || null, heatLevel: pendingHeatLevel })
     setPendingLabel('')
     setPendingRating(0)
     setPendingNotes('')
     setPendingHeatLevel(null)
+    setShowValidation(false)
     setShowFreeform(false)
   }
 
@@ -140,15 +145,18 @@ export function ChipScorecard({
           ) : (showFreeform || items.length === 0) && (
             <>
               <TextInput
-                style={styles.freeformInput}
+                style={[styles.freeformInput, showValidation && !pendingLabel.trim() && styles.freeformInputError]}
                 placeholder="Salsa name (e.g. Salsa Verde)"
-                placeholderTextColor={colors.creamDim}
+                placeholderTextColor={showValidation && !pendingLabel.trim() ? colors.error : colors.creamDim}
                 value={pendingLabel}
-                onChangeText={setPendingLabel}
+                onChangeText={t => { setPendingLabel(t); if (showValidation && t.trim()) setShowValidation(false) }}
               />
+              {showValidation && !pendingLabel.trim() && (
+                <Text style={styles.validationHint}>Enter a salsa name above</Text>
+              )}
               <View style={styles.freeformCard}>
                 <Text style={styles.freeformCardLabel}>Flavor Rating</Text>
-                <StarRating value={pendingRating} onChange={setPendingRating} />
+                <StarRating value={pendingRating} onChange={r => { setPendingRating(r); if (showValidation) setShowValidation(false) }} />
                 {heatLevels && (
                   <>
                     <Text style={[styles.freeformCardLabel, { marginTop: spacing.sm }]}>Heat Level</Text>
@@ -175,10 +183,12 @@ export function ChipScorecard({
                   value={pendingNotes}
                   onChangeText={setPendingNotes}
                 />
+                {showValidation && !pendingRating && (
+                  <Text style={styles.validationHint}>Select a flavor rating</Text>
+                )}
                 <TouchableOpacity
-                  style={[styles.addBtn, (!pendingLabel.trim() || !pendingRating) && styles.addBtnDisabled]}
+                  style={styles.addBtn}
                   onPress={handleFreeformAdd}
-                  disabled={!pendingLabel.trim() || !pendingRating}
                 >
                   <Text style={styles.addBtnText}>Add Salsa</Text>
                 </TouchableOpacity>
@@ -233,14 +243,14 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5, marginBottom: spacing.sm,
   },
   heatChip: {
-    alignItems: 'center', gap: 2,
-    paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: spacing.sm, paddingVertical: 5,
     borderRadius: radius.md, borderWidth: 1, borderColor: colors.surfaceBorder,
     backgroundColor: colors.surface,
   },
   heatChipActive: { borderColor: colors.amber, backgroundColor: colors.amberSubtle },
-  heatChipIcon: { fontSize: 16 },
-  heatChipText: { color: colors.creamMuted, fontSize: 10, fontWeight: '600' },
+  heatChipIcon: { fontSize: 13 },
+  heatChipText: { color: colors.creamMuted, fontSize: 11, fontWeight: '600' },
   heatChipTextActive: { color: colors.amber },
   addAnotherBtn: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
@@ -264,6 +274,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.amber, borderRadius: radius.md,
     padding: spacing.sm + 2, alignItems: 'center', marginTop: spacing.sm,
   },
-  addBtnDisabled: { opacity: 0.4 },
   addBtnText: { color: colors.cream, fontWeight: '700', fontSize: 14 },
+  freeformInputError: { borderColor: colors.error },
+  validationHint: { fontSize: 11, color: colors.error, marginBottom: spacing.sm },
 })

@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet,
-  KeyboardAvoidingView, Platform, Alert, Image,
+  KeyboardAvoidingView, Platform, Image,
 } from 'react-native'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { localStorageService } from '../../src/services/localStorage'
 import { LocationPicker } from '../../src/components/LocationPicker'
 import { colors, spacing, radius } from '../../src/utils/theme'
@@ -14,12 +15,13 @@ import type { LocationResult } from '../../src/components/LocationPicker'
 const SPOT_TYPES: SpotType[] = ['Truck', 'Food Cart', 'Street Tent', 'Restaurant']
 
 const PRIVACY_OPTIONS: { value: PrivacySetting; label: string; icon: string }[] = [
-  { value: 'public', label: 'Public', icon: '🌎' },
-  { value: 'friends', label: 'Mi Gente', icon: '👥' },
-  { value: 'private', label: 'Just Me', icon: '🔒' },
+  { value: 'public', label: 'Public', icon: 'earth-outline' },
+  { value: 'friends', label: 'Mi Gente', icon: 'people-outline' },
+  { value: 'private', label: 'Just Me', icon: 'lock-closed-outline' },
 ]
 
 export default function DropPinScreen() {
+  const insets = useSafeAreaInsets()
   const [name, setName] = useState('')
   const [spotType, setSpotType] = useState<SpotType | null>(null)
   const [location, setLocation] = useState<LocationResult | null>(null)
@@ -27,10 +29,12 @@ export default function DropPinScreen() {
   const [spotNote, setSpotNote] = useState('')
   const [showSpotNote, setShowSpotNote] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   async function handleSave() {
+    setErrorMsg(null)
     if (!name.trim()) {
-      Alert.alert('Missing name', 'Give this spot a name.')
+      setErrorMsg('Give this spot a name.')
       return
     }
     setSaving(true)
@@ -60,12 +64,15 @@ export default function DropPinScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <Image source={require('../../assets/background.png')} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.closeBtn} onPress={() => router.back()}>
-          <Ionicons name="close" size={20} color={colors.cream} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Drop a Pin</Text>
-        <View style={{ width: 36 }} />
+      <View style={[styles.header, { paddingTop: insets.top }]}>
+        <Image source={require('../../images/tacoatlas-logo-horz.png')} style={styles.headerLogo} resizeMode="contain" />
+        <View style={styles.navRow}>
+          <TouchableOpacity style={styles.closeBtn} onPress={() => router.back()}>
+            <Ionicons name="close" size={20} color={colors.cream} />
+          </TouchableOpacity>
+          <Text style={styles.title}>Drop a Pin</Text>
+          <View style={{ width: 36 }} />
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
@@ -77,6 +84,12 @@ export default function DropPinScreen() {
           onChangeText={setName}
           autoFocus
         />
+        {errorMsg && (
+          <View style={styles.errorBanner}>
+            <Ionicons name="alert-circle" size={16} color={colors.error} />
+            <Text style={styles.errorText}>{errorMsg}</Text>
+          </View>
+        )}
 
         <Text style={styles.fieldLabel}>Type of Spot</Text>
         <View style={styles.chipGrid}>
@@ -102,7 +115,7 @@ export default function DropPinScreen() {
               style={[styles.privacyBtn, privacy === opt.value && styles.privacyBtnActive]}
               onPress={() => setPrivacy(opt.value)}
             >
-              <Text style={styles.privacyIcon}>{opt.icon}</Text>
+              <Ionicons name={opt.icon as any} size={22} color={privacy === opt.value ? colors.amber : colors.creamMuted} style={styles.privacyIcon} />
               <Text style={[styles.privacyLabel, privacy === opt.value && styles.privacyLabelActive]}>
                 {opt.label}
               </Text>
@@ -142,8 +155,11 @@ export default function DropPinScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   header: {
+    paddingHorizontal: spacing.md, paddingBottom: spacing.md,
+  },
+  headerLogo: { height: 28, width: 160, alignSelf: 'center', marginBottom: spacing.xs },
+  navRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingTop: 56, paddingHorizontal: spacing.md, paddingBottom: spacing.md,
   },
   closeBtn: {
     width: 36, height: 36, borderRadius: 18,
@@ -177,7 +193,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceRaised,
   },
   privacyBtnActive: { borderColor: colors.amber, backgroundColor: colors.amberSubtle },
-  privacyIcon: { fontSize: 18, marginBottom: 4 },
+  privacyIcon: { marginBottom: 4 },
   privacyLabel: { fontSize: 11, color: colors.creamMuted, fontWeight: '600' },
   privacyLabelActive: { color: colors.amber },
   noteToggle: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: spacing.sm },
@@ -194,4 +210,10 @@ const styles = StyleSheet.create({
     paddingVertical: 16, alignItems: 'center',
   },
   saveBtnText: { color: colors.cream, fontWeight: '700', fontSize: 16 },
+  errorBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.xs,
+    backgroundColor: '#3A1A1A', borderWidth: 1, borderColor: colors.error,
+    borderRadius: radius.md, padding: spacing.sm, marginBottom: spacing.md,
+  },
+  errorText: { flex: 1, color: colors.error, fontSize: 13 },
 })

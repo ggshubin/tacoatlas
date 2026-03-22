@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native'
-import MapView from 'react-native-maps'
+import MapView, { PROVIDER_GOOGLE } from 'react-native-maps'
 import { Ionicons } from '@expo/vector-icons'
 import { colors, spacing, radius } from '../utils/theme'
 import type { LocationResult } from './LocationPicker'
@@ -41,10 +41,10 @@ export function MapPinPicker({ onConfirm, onCancel }: Props) {
   return (
     <View style={styles.container}>
       <MapView
+        provider={PROVIDER_GOOGLE}
         style={StyleSheet.absoluteFillObject}
         initialRegion={region}
         onRegionChangeComplete={setRegion}
-        userInterfaceStyle="dark"
         showsUserLocation
       />
       <View style={styles.crosshairContainer} pointerEvents="none">

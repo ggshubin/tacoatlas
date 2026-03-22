@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, FlatList, ActivityIndicator, Modal } from 'react-native'
-import MapView, { Marker } from 'react-native-maps'
 import { Ionicons } from '@expo/vector-icons'
 import { colors, spacing, radius } from '../utils/theme'
 import { MapPinPicker } from './MapPinPicker'
+import { useProStore } from '../store/proStore'
 
 export interface LocationResult {
   lat: number
@@ -20,6 +20,7 @@ interface Props {
 type Method = 'gps' | 'search' | 'map'
 
 export function LocationPicker({ value, onChange }: Props) {
+  const { isPro } = useProStore()
   const [method, setMethod] = useState<Method | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<any[]>([])
@@ -49,26 +50,33 @@ export function LocationPicker({ value, onChange }: Props) {
     }
   }
 
-  async function handleSearch(text: string) {
-    setSearchQuery(text)
-    setSearchLimitHit(false)
-    if (text.length < 3) { setSearchResults([]); return }
+  async function runSearch(query: string) {
+    if (query.length < 2) { setSearchResults([]); return }
     setSearching(true)
+    setSearchLimitHit(false)
     try {
       const { googlePlacesService } = await import('../services/googlePlacesService')
-      const remaining = await googlePlacesService.getRemainingSearches()
-      if (remaining <= 0) {
-        setSearchLimitHit(true)
-        setSearchResults([])
-        return
+      if (!isPro) {
+        const remaining = await googlePlacesService.getRemainingSearches()
+        if (remaining <= 0) {
+          setSearchLimitHit(true)
+          setSearchResults([])
+          return
+        }
       }
-      const results = await googlePlacesService.searchByText(text)
+      const results = await googlePlacesService.searchByText(query)
       setSearchResults(results)
     } catch {
       setSearchResults([])
     } finally {
       setSearching(false)
     }
+  }
+
+  function handleSearch(text: string) {
+    setSearchQuery(text)
+    setSearchResults([])
+    setSearchLimitHit(false)
   }
 
   function handleSelectPlace(place: any) {
@@ -131,15 +139,23 @@ export function LocationPicker({ value, onChange }: Props) {
 
       {method === 'search' && (
         <View>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search address or place name..."
-            placeholderTextColor={colors.creamDim}
-            value={searchQuery}
-            onChangeText={handleSearch}
-            autoFocus
-          />
-          {searching && <ActivityIndicator color={colors.amber} style={{ marginTop: spacing.sm }} />}
+          <View style={styles.searchRow}>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search address or place name..."
+              placeholderTextColor={colors.creamDim}
+              value={searchQuery}
+              onChangeText={handleSearch}
+              onSubmitEditing={() => runSearch(searchQuery)}
+              returnKeyType="search"
+              autoFocus
+            />
+            <TouchableOpacity style={styles.searchBtn} onPress={() => runSearch(searchQuery)}>
+              {searching
+                ? <ActivityIndicator color={colors.cream} size="small" />
+                : <Ionicons name="search" size={18} color={colors.cream} />}
+            </TouchableOpacity>
+          </View>
           {searchLimitHit && (
             <Text style={styles.limitText}>Daily search limit reached. Try "I'm Here" or "Drop on Map" instead.</Text>
           )}
@@ -179,11 +195,19 @@ const styles = StyleSheet.create({
   locationConfirmedLabel: { fontSize: 11, fontWeight: '700', color: colors.amber, letterSpacing: 1, marginBottom: 2 },
   locationConfirmedAddress: { fontSize: 13, color: colors.cream, lineHeight: 18 },
   locationRemoveBtn: { padding: 4 },
+  searchRow: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm,
+  },
   searchInput: {
+    flex: 1,
     backgroundColor: colors.surfaceRaised, borderRadius: radius.md,
     borderWidth: 1, borderColor: colors.surfaceBorder,
     paddingHorizontal: spacing.md, paddingVertical: spacing.sm + 2,
-    color: colors.cream, fontSize: 14, marginBottom: spacing.sm,
+    color: colors.cream, fontSize: 14,
+  },
+  searchBtn: {
+    backgroundColor: colors.amber, borderRadius: radius.md,
+    padding: spacing.sm + 2, alignItems: 'center', justifyContent: 'center',
   },
   resultRow: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,

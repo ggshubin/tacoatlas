@@ -8,7 +8,7 @@ interface CreateReviewInput {
   returnIntent: Review['return_intent']
   notes: string | null
   photos: string[]
-  isPublic: boolean
+  privacy: 'public' | 'friends' | 'private'
   tacoEntries: Omit<TacoEntry, 'id' | 'review_id' | 'created_at'>[]
   salsaEntries: Omit<SalsaEntry, 'id' | 'review_id' | 'created_at'>[]
   condiments: string[]
@@ -25,7 +25,8 @@ export const reviewRepository = {
         return_intent: input.returnIntent,
         notes: input.notes,
         photos: input.photos,
-        is_public: input.isPublic,
+        is_public: input.privacy === 'public',
+        privacy: input.privacy,
       })
       .select()
       .single()
@@ -63,6 +64,19 @@ export const reviewRepository = {
 
     if (error) throw new Error(error.message)
     return data ?? []
+  },
+
+  async updateReview(id: string, input: Partial<CreateReviewInput>): Promise<void> {
+    await supabase.from('reviews').update({
+      ...(input.overallRating !== undefined && { overall_rating: input.overallRating }),
+      ...(input.returnIntent !== undefined && { return_intent: input.returnIntent }),
+      ...(input.notes !== undefined && { notes: input.notes }),
+      ...(input.privacy !== undefined && { privacy: input.privacy, is_public: input.privacy === 'public' }),
+    }).eq('id', id)
+  },
+
+  async deleteReview(id: string): Promise<void> {
+    await supabase.from('reviews').delete().eq('id', id)
   },
 
   async getAverageRating(vendorId: string): Promise<number | null> {

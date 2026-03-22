@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { supabase } from '../services/supabase'
 import { syncService } from '../services/syncService'
+import { setUserScope } from '../services/localStorage'
 import type { Profile } from '../types/database'
 import type { Session } from '@supabase/supabase-js'
 
@@ -11,14 +12,15 @@ interface AuthState {
   isLoading: boolean
   hasCompletedOnboarding: boolean
   signIn: (email: string, password: string) => Promise<{ error: string | null }>
-  signUp: (email: string, password: string, displayName: string) => Promise<{ error: string | null; needsConfirmation?: boolean }>
+  signUp: (email: string, password: string, displayName: string, username: string) => Promise<{ error: string | null; needsConfirmation?: boolean }>
   resendConfirmation: (email: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
   setSession: (session: Session | null) => void
   setHasCompletedOnboarding: (val: boolean) => Promise<void>
   loadProfile: () => Promise<void>
-  updateProfile: (updates: Partial<Pick<Profile, 'display_name' | 'avatar_url' | 'bio' | 'home_city' | 'favorite_taco'>>) => Promise<{ error: string | null }>
+  updateProfile: (updates: Partial<Pick<Profile, 'display_name' | 'username' | 'avatar_url' | 'bio' | 'home_city' | 'favorite_taco'>>) => Promise<{ error: string | null }>
   changePassword: (newPassword: string) => Promise<{ error: string | null }>
+  changeEmail: (newEmail: string) => Promise<{ error: string | null }>
   deleteAccount: () => Promise<{ error: string | null }>
 }
 
@@ -28,7 +30,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isLoading: true,
   hasCompletedOnboarding: false,
 
-  setSession: (session) => set({ session, isLoading: false }),
+  setSession: (session) => {
+    setUserScope(session?.user.id ?? null)
+    set({ session, isLoading: false })
+  },
 
   setHasCompletedOnboarding: async (val) => {
     set({ hasCompletedOnboarding: val })
@@ -53,14 +58,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     return { error: null }
   },
 
-  signUp: async (email, password, displayName) => {
+  signUp: async (email, password, displayName, username) => {
     const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { display_name: displayName } } })
     if (error) return { error: error.message }
     if (!data.session) {
       return { error: null, needsConfirmation: true }
     }
+    setUserScope(data.session.user.id)
     set({ session: data.session })
-    await supabase.from('profiles').upsert({ id: data.session.user.id, display_name: displayName })
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .upsert({ id: data.session.user.id, display_name: displayName, username: username.toLowerCase() })
+    if (profileError?.message?.includes('unique') || profileError?.message?.includes('duplicate')) {
+      await supabase.auth.signOut()
+      setUserScope(null)
+      set({ session: null })
+      return { error: 'That username is already taken. Please choose another.' }
+    }
     await syncService.syncGuestDataToSupabase(data.session.user.id)
     await get().loadProfile()
     return { error: null }
@@ -74,6 +88,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   signOut: async () => {
     await supabase.auth.signOut()
+    setUserScope(null)
     set({ session: null, profile: null })
   },
 
@@ -84,8 +99,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       .from('profiles')
       .update(updates)
       .eq('id', session.user.id)
-    if (error) return { error: error.message }
+    if (error) {
+      if (error.message.includes('unique') || error.message.includes('duplicate')) {
+        return { error: 'That username is already taken.' }
+      }
+      return { error: error.message }
+    }
     await get().loadProfile()
+    return { error: null }
+  },
+
+  changeEmail: async (newEmail) => {
+    const { error } = await supabase.auth.updateUser({ email: newEmail })
+    if (error) return { error: error.message }
     return { error: null }
   },
 

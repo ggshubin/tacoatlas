@@ -17,8 +17,7 @@ export default function LandingScreen() {
     <View style={styles.container}>
       <Image source={require('../assets/background.png')} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
       <View style={styles.content}>
-        <Text style={styles.appName}>TacoAtlas</Text>
-        <Text style={styles.tagline}>Stop forgetting where the good tacos are.</Text>
+        <Image source={require('../images/landing.jpg')} style={styles.hero} resizeMode="cover" />
       </View>
 
       <View style={styles.actions}>
@@ -41,22 +40,10 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   content: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
   },
-  appName: {
-    fontSize: 42,
-    fontWeight: '800',
-    color: colors.cream,
-    letterSpacing: -1,
-    marginBottom: spacing.sm,
-  },
-  tagline: {
-    fontSize: 16,
-    color: colors.creamMuted,
-    textAlign: 'center',
-    lineHeight: 22,
+  hero: {
+    width: '100%',
+    height: '100%',
   },
   actions: {
     paddingHorizontal: spacing.lg,

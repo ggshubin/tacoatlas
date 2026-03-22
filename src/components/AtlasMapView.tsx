@@ -1,8 +1,9 @@
-import MapView, { Marker, Callout } from 'react-native-maps'
-import { View, Text, Image, StyleSheet } from 'react-native'
+import MapView, { Marker, Callout, PROVIDER_GOOGLE } from 'react-native-maps'
+import { View, Text, StyleSheet } from 'react-native'
 import { router } from 'expo-router'
-import { colors, spacing, radius } from '../utils/theme'
+import { colors, spacing } from '../utils/theme'
 import type { LocalVendor } from '../types/app'
+import type { ActivityStub } from '../data/mi-gente-stubs'
 
 interface VendorRow {
   vendor: LocalVendor
@@ -11,18 +12,34 @@ interface VendorRow {
 
 interface Props {
   rows: VendorRow[]
+  friendSpots?: ActivityStub[]
 }
 
-export function AtlasMapView({ rows }: Props) {
-  const hasLocations = rows.some(r => r.vendor.lat !== 0 || r.vendor.lng !== 0)
+const FRIEND_PIN_COLORS = ['#E05C2A', '#2A7BE0', '#2ABF6F', '#B82AE0', '#E0B82A']
 
-  const initialRegion = hasLocations
-    ? {
-        latitude: rows[0].vendor.lat,
-        longitude: rows[0].vendor.lng,
-        latitudeDelta: 0.1,
-        longitudeDelta: 0.1,
-      }
+function friendColor(username: string): string {
+  let hash = 0
+  for (let i = 0; i < username.length; i++) hash = username.charCodeAt(i) + ((hash << 5) - hash)
+  return FRIEND_PIN_COLORS[Math.abs(hash) % FRIEND_PIN_COLORS.length]
+}
+
+export function AtlasMapView({ rows, friendSpots = [] }: Props) {
+  const locatedRows = rows.filter(r => r.vendor.lat !== 0 || r.vendor.lng !== 0)
+
+  const initialRegion = locatedRows.length > 0
+    ? (() => {
+        const lats = locatedRows.map(r => r.vendor.lat)
+        const lngs = locatedRows.map(r => r.vendor.lng)
+        const minLat = Math.min(...lats), maxLat = Math.max(...lats)
+        const minLng = Math.min(...lngs), maxLng = Math.max(...lngs)
+        const PADDING = 1.4
+        return {
+          latitude: (minLat + maxLat) / 2,
+          longitude: (minLng + maxLng) / 2,
+          latitudeDelta: Math.max((maxLat - minLat) * PADDING, 0.01),
+          longitudeDelta: Math.max((maxLng - minLng) * PADDING, 0.01),
+        }
+      })()
     : {
         latitude: 37.7749,
         longitude: -122.4194,
@@ -32,9 +49,9 @@ export function AtlasMapView({ rows }: Props) {
 
   return (
     <MapView
+      provider={PROVIDER_GOOGLE}
       style={StyleSheet.absoluteFillObject}
       initialRegion={initialRegion}
-      userInterfaceStyle="dark"
     >
       {rows.map(({ vendor, avgRating }) => (
         <Marker
@@ -43,11 +60,7 @@ export function AtlasMapView({ rows }: Props) {
           anchor={{ x: 0.5, y: 0.5 }}
         >
           <View style={styles.tacoPin}>
-            <Image
-              source={require('../../assets/taco-icon.png')}
-              style={styles.tacoPinImage}
-              resizeMode="contain"
-            />
+            <Text style={styles.tacoPinEmoji}>🌮</Text>
           </View>
           <Callout onPress={() => router.push(`/spot/${vendor.localId}`)}>
             <View style={styles.callout}>
@@ -59,6 +72,27 @@ export function AtlasMapView({ rows }: Props) {
                 {avgRating !== null ? `${avgRating.toFixed(1)} tacos` : 'No rating yet'}
               </Text>
               <Text style={styles.calloutTap}>Tap to view</Text>
+            </View>
+          </Callout>
+        </Marker>
+      ))}
+
+      {friendSpots.map((spot) => (
+        <Marker
+          key={spot.id}
+          coordinate={{ latitude: spot.lat, longitude: spot.lng }}
+          pinColor={friendColor(spot.friend.username)}
+        >
+          <Callout>
+            <View style={styles.callout}>
+              <Text style={styles.calloutName}>{spot.spotName}</Text>
+              <Text style={[styles.calloutType, { color: friendColor(spot.friend.username) }]}>
+                @{spot.friend.username}
+              </Text>
+              {spot.address ? <Text style={styles.calloutRating}>{spot.address}</Text> : null}
+              {spot.rating !== undefined && (
+                <Text style={styles.calloutRating}>{spot.rating.toFixed(1)} tacos</Text>
+              )}
             </View>
           </Callout>
         </Marker>
@@ -83,9 +117,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     elevation: 4,
   },
-  tacoPinImage: {
-    width: 22,
-    height: 22,
+  tacoPinEmoji: {
+    fontSize: 18,
   },
   callout: {
     padding: spacing.sm,

@@ -9,7 +9,7 @@ const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreCl
 
 export const proService = {
   configure(): void {
-    if (isExpoGo) return
+    if (isExpoGo || __DEV__) return
     const apiKey = Platform.OS === 'ios' ? IOS_KEY : ANDROID_KEY
     if (!apiKey) {
       console.warn('RevenueCat API key not set')

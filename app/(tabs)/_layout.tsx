@@ -2,8 +2,11 @@ import { Tabs } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { Platform } from 'react-native'
 import { colors } from '../../src/utils/theme'
+import { useNotificationStore } from '../../src/store/notificationStore'
 
 export default function TabsLayout() {
+  const { pendingFriendCount } = useNotificationStore()
+
   return (
     <Tabs
       initialRouteName="atlas"
@@ -49,6 +52,8 @@ export default function TabsLayout() {
         options={{
           title: 'Mi Gente',
           headerShown: false,
+          tabBarBadge: pendingFriendCount > 0 ? pendingFriendCount : undefined,
+          tabBarBadgeStyle: { backgroundColor: colors.amber, color: colors.bg, fontSize: 10, minWidth: 16, height: 16, lineHeight: 16 },
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="people-outline" size={size} color={color} />
           ),

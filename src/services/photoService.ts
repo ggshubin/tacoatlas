@@ -29,16 +29,54 @@ export const photoService = {
 
   async uploadPhoto(localUri: string, userId: string): Promise<string> {
     const fileName = `${userId}/${nanoid()}.jpg`
-    const response = await fetch(localUri)
-    const blob = await response.blob()
+    const bucketName = 'review-photos'
+    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!
 
-    const { error } = await supabase.storage
-      .from('review-photos')
-      .upload(fileName, blob, { contentType: 'image/jpeg' })
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) throw new Error('Not authenticated')
 
-    if (error) throw new Error(error.message)
+    const formData = new FormData()
+    formData.append('file', { uri: localUri, name: 'photo.jpg', type: 'image/jpeg' } as any)
 
-    const { data } = supabase.storage.from('review-photos').getPublicUrl(fileName)
+    const res = await fetch(`${supabaseUrl}/storage/v1/object/${bucketName}/${fileName}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: formData,
+    })
+
+    if (!res.ok) throw new Error(`Upload failed: ${await res.text()}`)
+
+    const { data } = supabase.storage.from(bucketName).getPublicUrl(fileName)
     return data.publicUrl
+  },
+
+  async uploadAvatar(localUri: string, userId: string): Promise<string> {
+    const fileName = `avatars/${userId}.jpg`
+    const bucketName = 'review-photos'
+    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!
+
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) throw new Error('Not authenticated')
+
+    // Use FormData with direct URI — React Native handles file reading natively,
+    // avoiding fetch(file://) which fails on Android
+    const formData = new FormData()
+    formData.append('file', { uri: localUri, name: 'avatar.jpg', type: 'image/jpeg' } as any)
+
+    const res = await fetch(`${supabaseUrl}/storage/v1/object/${bucketName}/${fileName}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        'x-upsert': 'true',
+      },
+      body: formData,
+    })
+
+    if (!res.ok) throw new Error(`Upload failed: ${await res.text()}`)
+
+    const { data } = supabase.storage.from(bucketName).getPublicUrl(fileName)
+    return `${data.publicUrl}?v=${Date.now()}`
   },
 }
