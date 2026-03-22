@@ -7,13 +7,14 @@ import { supabase } from '../src/services/supabase'
 import { useAuthStore } from '../src/store/authStore'
 import { proService } from '../src/services/proService'
 import { useProStore } from '../src/store/proStore'
-import { migrateFromLegacyKeys } from '../src/services/localStorage'
+import { migrateFromLegacyKeys, localStorageService } from '../src/services/localStorage'
 import { getPendingRequests } from '../src/services/miGenteService'
 import { useNotificationStore } from '../src/store/notificationStore'
 import { syncService } from '../src/services/syncService'
+import { RestorePromptModal } from '../src/components/RestorePromptModal'
 
 export default function RootLayout() {
-  const { setSession, loadProfile, setHasCompletedOnboarding } = useAuthStore()
+  const { setSession, loadProfile, setHasCompletedOnboarding, setShowRestorePrompt } = useAuthStore()
   const { checkPro, isPro } = useProStore()
   const { setPendingFriendCount } = useNotificationStore()
   const [ready, setReady] = useState(false)
@@ -44,7 +45,13 @@ export default function RootLayout() {
       if (session) {
         loadProfile()
         getPendingRequests(session.user.id).then(p => setPendingFriendCount(p.length))
-        syncService.restoreFromCloud(session.user.id)
+        // Show restore prompt if cloud has data but local is empty
+        const localCount = await localStorageService.getVendorCount()
+        if (localCount === 0) {
+          syncService.hasCloudData(session.user.id).then(hasData => {
+            if (hasData) setShowRestorePrompt(true)
+          })
+        }
         if (isPro) {
           console.log('[sync] bulkSyncOnProUpgrade triggered on startup for', session.user.id)
           syncService.bulkSyncOnProUpgrade(session.user.id)
@@ -74,9 +81,17 @@ export default function RootLayout() {
       if (session) {
         loadProfile()
         getPendingRequests(session.user.id).then(p => setPendingFriendCount(p.length))
-        if (event === 'SIGNED_IN' && isPro) {
-          syncService.bulkSyncOnProUpgrade(session.user.id)
-        }
+        ;(async () => {
+          if (event === 'SIGNED_IN') {
+            const localCount = await localStorageService.getVendorCount()
+            if (localCount === 0) {
+              syncService.hasCloudData(session.user.id).then(hasData => {
+                if (hasData) setShowRestorePrompt(true)
+              })
+            }
+            if (isPro) syncService.bulkSyncOnProUpgrade(session.user.id)
+          }
+        })()
       } else {
         setPendingFriendCount(0)
       }
@@ -86,19 +101,22 @@ export default function RootLayout() {
   }, [])
 
   return (
-    <Stack screenOptions={{ contentStyle: { backgroundColor: '#18140F' } }}>
-      <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-      <Stack.Screen name="landing" options={{ headerShown: false }} />
-      <Stack.Screen name="settings" options={{ headerShown: false }} />
-      <Stack.Screen name="spot/[localId]" options={{ headerShown: false }} />
-      <Stack.Screen name="vendor/[id]" options={{ title: 'Vendor', headerStyle: { backgroundColor: '#241C16' }, headerTintColor: '#F5EDD8' }} />
-      <Stack.Screen name="review/add" options={{ title: 'Add Review', presentation: 'modal', headerStyle: { backgroundColor: '#241C16' }, headerTintColor: '#F5EDD8' }} />
-      <Stack.Screen name="pin/add" options={{ headerShown: false, presentation: 'modal' }} />
-      <Stack.Screen name="mi-gente/add" options={{ headerShown: false }} />
-      <Stack.Screen name="mi-gente/friend/[username]" options={{ headerShown: false }} />
-      <Stack.Screen name="mi-gente/map/[username]" options={{ headerShown: false }} />
-    </Stack>
+    <>
+      <Stack screenOptions={{ contentStyle: { backgroundColor: '#18140F' } }}>
+        <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="landing" options={{ headerShown: false }} />
+        <Stack.Screen name="settings" options={{ headerShown: false }} />
+        <Stack.Screen name="spot/[localId]" options={{ headerShown: false }} />
+        <Stack.Screen name="vendor/[id]" options={{ title: 'Vendor', headerStyle: { backgroundColor: '#241C16' }, headerTintColor: '#F5EDD8' }} />
+        <Stack.Screen name="review/add" options={{ title: 'Add Review', presentation: 'modal', headerStyle: { backgroundColor: '#241C16' }, headerTintColor: '#F5EDD8' }} />
+        <Stack.Screen name="pin/add" options={{ headerShown: false, presentation: 'modal' }} />
+        <Stack.Screen name="mi-gente/add" options={{ headerShown: false }} />
+        <Stack.Screen name="mi-gente/friend/[username]" options={{ headerShown: false }} />
+        <Stack.Screen name="mi-gente/map/[username]" options={{ headerShown: false }} />
+      </Stack>
+      {ready && <RestorePromptModal />}
+    </>
   )
 }
