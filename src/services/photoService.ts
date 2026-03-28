@@ -1,13 +1,12 @@
 import * as ImagePicker from 'expo-image-picker'
 import { supabase } from './supabase'
 import { nanoid } from 'nanoid/non-secure'
+import { compressImage } from '../utils/imageCompression'
 
 export const photoService = {
   async pickFromLibrary(): Promise<string | null> {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.8,
-      allowsEditing: true,
     })
 
     if (result.canceled) return null
@@ -28,6 +27,7 @@ export const photoService = {
   },
 
   async uploadPhoto(localUri: string, userId: string): Promise<string> {
+    const compressedUri = await compressImage(localUri)
     const fileName = `${userId}/${nanoid()}.jpg`
     const bucketName = 'review-photos'
     const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!
@@ -36,7 +36,7 @@ export const photoService = {
     if (!session) throw new Error('Not authenticated')
 
     const formData = new FormData()
-    formData.append('file', { uri: localUri, name: 'photo.jpg', type: 'image/jpeg' } as any)
+    formData.append('file', { uri: compressedUri, name: 'photo.jpg', type: 'image/jpeg' } as any)
 
     const res = await fetch(`${supabaseUrl}/storage/v1/object/${bucketName}/${fileName}`, {
       method: 'POST',
@@ -53,7 +53,8 @@ export const photoService = {
   },
 
   async uploadAvatar(localUri: string, userId: string): Promise<string> {
-    const fileName = `avatars/${userId}.jpg`
+    const compressedUri = await compressImage(localUri)
+    const fileName = `${userId}/avatar.jpg`
     const bucketName = 'review-photos'
     const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!
 
@@ -63,7 +64,7 @@ export const photoService = {
     // Use FormData with direct URI — React Native handles file reading natively,
     // avoiding fetch(file://) which fails on Android
     const formData = new FormData()
-    formData.append('file', { uri: localUri, name: 'avatar.jpg', type: 'image/jpeg' } as any)
+    formData.append('file', { uri: compressedUri, name: 'avatar.jpg', type: 'image/jpeg' } as any)
 
     const res = await fetch(`${supabaseUrl}/storage/v1/object/${bucketName}/${fileName}`, {
       method: 'POST',

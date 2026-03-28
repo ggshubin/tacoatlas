@@ -18,7 +18,7 @@ import { ChipScorecard } from '../../src/components/ChipScorecard'
 import { colors, spacing, radius } from '../../src/utils/theme'
 import type { SpotType, PrivacySetting, HeatLevel } from '../../src/types/app'
 
-const SPOT_TYPES: SpotType[] = ['Truck', 'Food Cart', 'Street Tent', 'Restaurant']
+const SPOT_TYPES: SpotType[] = ['Truck', 'Food Cart', 'Pop-up', 'Restaurant']
 
 const PRIVACY_OPTIONS: { value: PrivacySetting; label: string; icon: string }[] = [
   { value: 'public', label: 'Public', icon: 'earth-outline' },
@@ -177,12 +177,22 @@ export default function ReviewWizard() {
         })
       }
 
+      // Upload any local photos to Supabase before saving (signed-in users only)
+      let finalPhotoUris = store.photoUris
+      if (session && store.photoUris.length > 0) {
+        finalPhotoUris = await Promise.all(
+          store.photoUris.map(uri =>
+            uri.startsWith('http') ? Promise.resolve(uri) : photoService.uploadPhoto(uri, session.user.id)
+          )
+        )
+      }
+
       const reviewPayload = {
         vendorLocalId,
         overallRating: store.overallRating,
         returnIntent: store.returnIntent,
         notes: store.notes.trim() || null,
-        photoUris: store.photoUris,
+        photoUris: finalPhotoUris,
         tacoEntries: store.tacoEntries.map(e => ({ tacoType: e.tacoType || '', rating: e.rating, notes: e.notes })),
         salsaEntries: store.salsaEntries,
         condiments: store.condiments,
