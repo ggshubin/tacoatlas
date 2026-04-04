@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { View, Text, Image, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Dimensions } from 'react-native'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
@@ -10,10 +10,35 @@ export default function SignInScreen() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [failedAttempts, setFailedAttempts] = useState(0)
+  const [lockedUntil, setLockedUntil] = useState<number | null>(null)
+  const [countdown, setCountdown] = useState(0)
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const signIn = useAuthStore(s => s.signIn)
+
+  useEffect(() => {
+    if (lockedUntil === null) return
+    const tick = () => {
+      const remaining = Math.ceil((lockedUntil - Date.now()) / 1000)
+      if (remaining <= 0) {
+        setLockedUntil(null)
+        setFailedAttempts(0)
+        setCountdown(0)
+        if (countdownRef.current) clearInterval(countdownRef.current)
+      } else {
+        setCountdown(remaining)
+      }
+    }
+    tick()
+    countdownRef.current = setInterval(tick, 1000)
+    return () => { if (countdownRef.current) clearInterval(countdownRef.current) }
+  }, [lockedUntil])
 
   async function handleSignIn() {
     setErrorMsg(null)
+
+    if (lockedUntil !== null && Date.now() < lockedUntil) return
+
     if (!email.trim() || !password) {
       setErrorMsg('Enter your email and password.')
       return
@@ -21,10 +46,21 @@ export default function SignInScreen() {
     setLoading(true)
     const { error } = await signIn(email.trim().toLowerCase(), password)
     setLoading(false)
+
     if (error) {
-      setErrorMsg(error)
+      const next = failedAttempts + 1
+      setFailedAttempts(next)
+      if (next >= 5) {
+        setLockedUntil(Date.now() + 30_000)
+        setErrorMsg('Too many attempts. Try again in 30 seconds.')
+      } else {
+        setErrorMsg(error)
+      }
       return
     }
+
+    setFailedAttempts(0)
+    setLockedUntil(null)
     router.replace('/(tabs)/atlas')
   }
 
@@ -78,11 +114,17 @@ export default function SignInScreen() {
           )}
 
           <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
+            style={[styles.button, (loading || lockedUntil !== null) && styles.buttonDisabled]}
             onPress={handleSignIn}
-            disabled={loading}
+            disabled={loading || lockedUntil !== null}
           >
-            <Text style={styles.buttonText}>{loading ? 'Signing in...' : 'Sign In'}</Text>
+            <Text style={styles.buttonText}>
+              {loading
+                ? 'Signing in...'
+                : lockedUntil !== null
+                  ? `Try again in ${countdown}s`
+                  : 'Sign In'}
+            </Text>
           </TouchableOpacity>
 
           <View style={styles.footer}>

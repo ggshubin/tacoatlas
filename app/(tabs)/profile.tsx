@@ -4,7 +4,9 @@ import {
   ActivityIndicator, Image, Modal, TextInput, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native'
 import { useFocusEffect, router } from 'expo-router'
+import Constants from 'expo-constants'
 import { Ionicons } from '@expo/vector-icons'
+import { AppBottomSheet } from '../../src/components/AppBottomSheet'
 import { useAuthStore } from '../../src/store/authStore'
 import { useProStore } from '../../src/store/proStore'
 import { localStorageService } from '../../src/services/localStorage'
@@ -12,6 +14,7 @@ import { photoService } from '../../src/services/photoService'
 import { getFriends } from '../../src/services/miGenteService'
 import { colors, spacing, radius } from '../../src/utils/theme'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { passwordSchema, firstError } from '../../src/utils/validation'
 
 interface Stats {
   totalSpots: number
@@ -28,7 +31,7 @@ function getInitials(name: string): string {
 }
 
 export default function ProfileScreen() {
-  const { session, profile, loadProfile, updateProfile, changeEmail } = useAuthStore()
+  const { session, profile, loadProfile, updateProfile, changeEmail, changePassword } = useAuthStore()
   const { isPro } = useProStore()
   const insets = useSafeAreaInsets()
   const [stats, setStats] = useState<Stats | null>(null)
@@ -44,6 +47,17 @@ export default function ProfileScreen() {
   const [showAvatarPicker, setShowAvatarPicker] = useState(false)
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [avatarError, setAvatarError] = useState<string | null>(null)
+
+  // Change password state
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showNewPw, setShowNewPw] = useState(false)
+  const [showConfirmPw, setShowConfirmPw] = useState(false)
+  const [passwordSaving, setPasswordSaving] = useState(false)
+  const [passwordError, setPasswordError] = useState<string | null>(null)
+  const [passwordDone, setPasswordDone] = useState(false)
+  const [newPasswordTouched, setNewPasswordTouched] = useState(false)
 
   // Change email state
   const [showEmailModal, setShowEmailModal] = useState(false)
@@ -127,6 +141,38 @@ export default function ProfileScreen() {
       Alert.alert('Avatar Upload Error', msg)
     } finally {
       setAvatarUploading(false)
+    }
+  }
+
+  function openPasswordModal() {
+    setNewPassword('')
+    setConfirmPassword('')
+    setShowNewPw(false)
+    setShowConfirmPw(false)
+    setPasswordError(null)
+    setPasswordDone(false)
+    setNewPasswordTouched(false)
+    setShowPasswordModal(true)
+  }
+
+  async function handleChangePassword() {
+    setPasswordError(null)
+    const pwResult = passwordSchema.safeParse(newPassword)
+    if (!pwResult.success) {
+      setPasswordError(firstError(pwResult))
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Passwords do not match.')
+      return
+    }
+    setPasswordSaving(true)
+    const { error } = await changePassword(newPassword)
+    setPasswordSaving(false)
+    if (error) {
+      setPasswordError(error)
+    } else {
+      setPasswordDone(true)
     }
   }
 
@@ -330,6 +376,17 @@ export default function ProfileScreen() {
                   <Text style={styles.changeBtnText}>Change</Text>
                 </TouchableOpacity>
               </View>
+              {/* Password row */}
+              <View style={[styles.accountRow, styles.accountRowBorder]}>
+                <Ionicons name="lock-closed-outline" size={18} color={colors.creamMuted} />
+                <View style={styles.accountRowText}>
+                  <Text style={styles.accountLabel}>Password</Text>
+                  <Text style={styles.accountSub}>••••••••</Text>
+                </View>
+                <TouchableOpacity style={styles.changeBtn} onPress={openPasswordModal}>
+                  <Text style={styles.changeBtnText}>Change</Text>
+                </TouchableOpacity>
+              </View>
               {/* Sign out row */}
               <TouchableOpacity style={styles.accountRow} onPress={handleSignOut}>
                 <Ionicons name="log-out-outline" size={18} color={colors.error} />
@@ -354,41 +411,114 @@ export default function ProfileScreen() {
           <View style={styles.card}>
             <View style={styles.accountRow}>
               <Ionicons name="information-circle-outline" size={18} color={colors.creamMuted} />
-              <Text style={styles.accountLabel}>TacoAtlas v1.0</Text>
+              <Text style={styles.accountLabel}>TacoAtlas v{Constants.expoConfig?.version ?? '1.1.0'}</Text>
             </View>
           </View>
         </View>
       </ScrollView>
 
-      {/* Avatar source picker */}
-      <Modal visible={showAvatarPicker} transparent animationType="slide" onRequestClose={() => setShowAvatarPicker(false)}>
-        <TouchableOpacity style={styles.sheetOverlay} activeOpacity={1} onPress={() => setShowAvatarPicker(false)}>
-          <View style={styles.sheetCard}>
-            <Text style={styles.sheetTitle}>Change Profile Photo</Text>
-            <TouchableOpacity style={styles.sheetOption} onPress={() => handlePickAvatar('library')}>
-              <Ionicons name="images-outline" size={20} color={colors.cream} />
-              <Text style={styles.sheetOptionText}>Choose from Library</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.sheetOption} onPress={() => handlePickAvatar('camera')}>
-              <Ionicons name="camera-outline" size={20} color={colors.cream} />
-              <Text style={styles.sheetOptionText}>Take Photo</Text>
-            </TouchableOpacity>
-            {profile?.avatar_url && (
-              <TouchableOpacity style={styles.sheetOption} onPress={async () => {
-                setShowAvatarPicker(false)
-                setAvatarUploading(true)
-                await updateProfile({ avatar_url: null })
-                setAvatarUploading(false)
-              }}>
-                <Ionicons name="trash-outline" size={20} color={colors.error} />
-                <Text style={[styles.sheetOptionText, { color: colors.error }]}>Remove Photo</Text>
-              </TouchableOpacity>
+      <AppBottomSheet
+        visible={showAvatarPicker}
+        title="Change Profile Photo"
+        options={[
+          { label: 'Choose from Library', icon: 'images-outline', onPress: () => handlePickAvatar('library') },
+          { label: 'Take Photo', icon: 'camera-outline', onPress: () => handlePickAvatar('camera') },
+          ...(profile?.avatar_url ? [{
+            label: 'Remove Photo',
+            icon: 'trash-outline' as const,
+            destructive: true,
+            onPress: async () => {
+              setAvatarUploading(true)
+              await updateProfile({ avatar_url: null })
+              setAvatarUploading(false)
+            },
+          }] : []),
+        ]}
+        onClose={() => setShowAvatarPicker(false)}
+      />
+
+      {/* Change password modal */}
+      <Modal visible={showPasswordModal} transparent animationType="fade" onRequestClose={() => setShowPasswordModal(false)}>
+        <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <View style={styles.modalCard}>
+            {passwordDone ? (
+              <>
+                <View style={styles.modalSuccessIcon}>
+                  <Ionicons name="checkmark-circle" size={36} color={colors.amber} />
+                </View>
+                <Text style={styles.modalTitle}>Password updated</Text>
+                <Text style={styles.modalBody}>Your password has been changed successfully.</Text>
+                <TouchableOpacity style={styles.modalPrimaryBtn} onPress={() => setShowPasswordModal(false)}>
+                  <Text style={styles.modalPrimaryBtnText}>Done</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Text style={styles.modalTitle}>Change Password</Text>
+                <Text style={styles.modalBody}>Enter a new password (min 8 characters).</Text>
+                <View style={styles.pwInputWrap}>
+                  <TextInput
+                    style={styles.pwInput}
+                    value={newPassword}
+                    onChangeText={v => { setNewPassword(v); if (!newPasswordTouched) setNewPasswordTouched(true) }}
+                    placeholder="New password"
+                    placeholderTextColor={colors.creamDim}
+                    secureTextEntry={!showNewPw}
+                    autoCapitalize="none"
+                  />
+                  <TouchableOpacity style={styles.pwEyeBtn} onPress={() => setShowNewPw(v => !v)}>
+                    <Ionicons name={showNewPw ? 'eye-off-outline' : 'eye-outline'} size={18} color={colors.creamDim} />
+                  </TouchableOpacity>
+                </View>
+                {newPasswordTouched && (
+                  <Text style={{
+                    fontSize: 12,
+                    marginTop: -4,
+                    marginBottom: spacing.sm,
+                    marginLeft: 2,
+                    color: passwordSchema.safeParse(newPassword).success ? '#4CAF50' : colors.error,
+                  }}>
+                    {passwordSchema.safeParse(newPassword).success
+                      ? 'Strong password ✓'
+                      : newPassword.length < 8
+                        ? 'Too short — minimum 8 characters'
+                        : 'Add a number or special character'}
+                  </Text>
+                )}
+                <View style={[styles.pwInputWrap, { marginBottom: spacing.sm }]}>
+                  <TextInput
+                    style={styles.pwInput}
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    placeholder="Confirm new password"
+                    placeholderTextColor={colors.creamDim}
+                    secureTextEntry={!showConfirmPw}
+                    autoCapitalize="none"
+                  />
+                  <TouchableOpacity style={styles.pwEyeBtn} onPress={() => setShowConfirmPw(v => !v)}>
+                    <Ionicons name={showConfirmPw ? 'eye-off-outline' : 'eye-outline'} size={18} color={colors.creamDim} />
+                  </TouchableOpacity>
+                </View>
+                {passwordError && (
+                  <View style={styles.modalError}>
+                    <Ionicons name="alert-circle-outline" size={14} color={colors.error} />
+                    <Text style={styles.modalErrorText}>{passwordError}</Text>
+                  </View>
+                )}
+                <View style={styles.modalActions}>
+                  <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setShowPasswordModal(false)} disabled={passwordSaving}>
+                    <Text style={styles.modalCancelText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.modalPrimaryBtn} onPress={handleChangePassword} disabled={passwordSaving}>
+                    {passwordSaving
+                      ? <ActivityIndicator color={colors.cream} size="small" />
+                      : <Text style={styles.modalPrimaryBtnText}>Update</Text>}
+                  </TouchableOpacity>
+                </View>
+              </>
             )}
-            <TouchableOpacity style={styles.sheetCancel} onPress={() => setShowAvatarPicker(false)}>
-              <Text style={styles.sheetCancelText}>Cancel</Text>
-            </TouchableOpacity>
           </View>
-        </TouchableOpacity>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Change email modal */}
@@ -552,6 +682,25 @@ const styles = StyleSheet.create({
   signInTitle: { fontSize: 15, fontWeight: '700', color: colors.cream },
   signInSubtitle: { fontSize: 12, color: colors.creamMuted, marginTop: 2 },
 
+  pwInputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.bg,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
+    marginBottom: spacing.sm,
+  },
+  pwInput: {
+    flex: 1,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    fontSize: 14,
+    color: colors.cream,
+  },
+  pwEyeBtn: {
+    padding: spacing.sm,
+  },
   // Modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: spacing.xl },
   modalCard: { width: '100%', backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.surfaceBorder, padding: spacing.lg },

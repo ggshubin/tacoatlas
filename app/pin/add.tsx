@@ -11,10 +11,11 @@ import { useAuthStore } from '../../src/store/authStore'
 import { syncService } from '../../src/services/syncService'
 import { LocationPicker } from '../../src/components/LocationPicker'
 import { colors, spacing, radius } from '../../src/utils/theme'
+import { spotNameSchema, firstError } from '../../src/utils/validation'
 import type { SpotType, PrivacySetting } from '../../src/types/app'
 import type { LocationResult } from '../../src/components/LocationPicker'
 
-const SPOT_TYPES: SpotType[] = ['Truck', 'Food Cart', 'Street Tent', 'Restaurant']
+const SPOT_TYPES: SpotType[] = ['Truck', 'Food Cart', 'Pop-up', 'Restaurant']
 
 const PRIVACY_OPTIONS: { value: PrivacySetting; label: string; icon: string }[] = [
   { value: 'public', label: 'Public', icon: 'earth-outline' },
@@ -36,14 +37,15 @@ export default function DropPinScreen() {
 
   async function handleSave() {
     setErrorMsg(null)
-    if (!name.trim()) {
-      setErrorMsg('Give this spot a name.')
+    const nameResult = spotNameSchema.safeParse(name)
+    if (!nameResult.success) {
+      setErrorMsg(firstError(nameResult) ?? 'Give this spot a name.')
       return
     }
     setSaving(true)
     try {
       const savedVendor = await localStorageService.addVendor({
-        name: name.trim(),
+        name: nameResult.data,
         spotType,
         lat: location?.lat ?? 0,
         lng: location?.lng ?? 0,

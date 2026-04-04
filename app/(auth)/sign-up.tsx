@@ -4,20 +4,21 @@ import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useAuthStore } from '../../src/store/authStore'
 import { colors, spacing, radius } from '../../src/utils/theme'
-
-const USERNAME_RE = /^[a-z0-9_]{3,20}$/
+import { passwordSchema, usernameSchema, firstError } from '../../src/utils/validation'
 
 export default function SignUpScreen() {
   const [displayName, setDisplayName] = useState('')
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [pendingEmail, setPendingEmail] = useState<string | null>(null)
   const [resendLoading, setResendLoading] = useState(false)
   const [resendSent, setResendSent] = useState(false)
   const [resendError, setResendError] = useState<string | null>(null)
+  const [passwordTouched, setPasswordTouched] = useState(false)
 
   const { signUp, resendConfirmation } = useAuthStore()
 
@@ -27,12 +28,14 @@ export default function SignUpScreen() {
       setErrorMsg('Fill in all fields to create your account.')
       return
     }
-    if (!USERNAME_RE.test(username.trim().toLowerCase())) {
-      setErrorMsg('Username must be 3–20 characters: lowercase letters, numbers, and underscores only.')
+    const usernameResult = usernameSchema.safeParse(username.trim().toLowerCase())
+    if (!usernameResult.success) {
+      setErrorMsg(firstError(usernameResult) ?? 'Invalid username')
       return
     }
-    if (password.length < 8) {
-      setErrorMsg('Password must be at least 8 characters.')
+    const pwResult = passwordSchema.safeParse(password)
+    if (!pwResult.success) {
+      setErrorMsg(firstError(pwResult) ?? 'Invalid password')
       return
     }
     setLoading(true)
@@ -174,14 +177,31 @@ export default function SignUpScreen() {
             keyboardType="email-address"
             autoComplete="email"
           />
-          <TextInput
-            style={styles.input}
-            placeholder="Password (min 8 characters)"
-            placeholderTextColor={colors.creamDim}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
+          <View style={styles.passwordWrap}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Password (min 8 characters)"
+              placeholderTextColor={colors.creamDim}
+              value={password}
+              onChangeText={v => { setPassword(v); if (!passwordTouched) setPasswordTouched(true) }}
+              secureTextEntry={!showPassword}
+            />
+            <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowPassword(v => !v)}>
+              <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={colors.creamDim} />
+            </TouchableOpacity>
+          </View>
+          {passwordTouched && (
+            <Text style={[
+              styles.strengthHint,
+              passwordSchema.safeParse(password).success ? styles.strengthGood : styles.strengthBad,
+            ]}>
+              {passwordSchema.safeParse(password).success
+                ? 'Strong password ✓'
+                : password.length < 8
+                  ? 'Too short — minimum 8 characters'
+                  : 'Add a number or special character'}
+            </Text>
+          )}
 
           {errorMsg && (
             <View style={styles.errorBanner}>
@@ -235,6 +255,24 @@ const styles = StyleSheet.create({
     color: colors.cream,
     borderWidth: 1,
     borderColor: colors.surfaceBorder,
+  },
+  passwordWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surfaceRaised,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
+    marginBottom: spacing.md,
+  },
+  passwordInput: {
+    flex: 1,
+    padding: spacing.md,
+    fontSize: 16,
+    color: colors.cream,
+  },
+  eyeBtn: {
+    padding: spacing.md,
   },
   button: {
     backgroundColor: colors.amber,
@@ -296,4 +334,12 @@ const styles = StyleSheet.create({
     gap: 6, marginTop: spacing.md,
   },
   changeEmailText: { color: colors.amber, fontSize: 14, fontWeight: '600' },
+  strengthHint: {
+    fontSize: 12,
+    marginTop: -spacing.sm,
+    marginBottom: spacing.sm,
+    marginLeft: 2,
+  },
+  strengthBad: { color: colors.error },
+  strengthGood: { color: '#4CAF50' },
 })

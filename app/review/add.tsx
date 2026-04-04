@@ -16,6 +16,7 @@ import { LocationPicker } from '../../src/components/LocationPicker'
 import { FoodIconBar } from '../../src/components/FoodIconBar'
 import { ChipScorecard } from '../../src/components/ChipScorecard'
 import { colors, spacing, radius } from '../../src/utils/theme'
+import { spotNameSchema, notesSchema, firstError } from '../../src/utils/validation'
 import type { SpotType, PrivacySetting, HeatLevel } from '../../src/types/app'
 
 const SPOT_TYPES: SpotType[] = ['Truck', 'Food Cart', 'Pop-up', 'Restaurant']
@@ -136,8 +137,14 @@ export default function ReviewWizard() {
 
   async function handleSubmit() {
     setErrorMsg(null)
-    if (!store.vendorName.trim()) {
-      setErrorMsg('Give this spot a name.')
+    const nameResult = spotNameSchema.safeParse(store.vendorName)
+    if (!nameResult.success) {
+      setErrorMsg(firstError(nameResult) ?? 'Give this spot a name.')
+      return
+    }
+    const notesResult = notesSchema.safeParse(store.spotNote || undefined)
+    if (!notesResult.success) {
+      setErrorMsg(firstError(notesResult) ?? 'Notes too long.')
       return
     }
     setSubmitting(true)
@@ -149,7 +156,7 @@ export default function ReviewWizard() {
       if (!vendorLocalId) {
         // New vendor
         const vendor = await localStorageService.addVendor({
-          name: store.vendorName.trim(),
+          name: nameResult.data,
           spotType: store.spotType,
           lat: store.lat ?? 0,
           lng: store.lng ?? 0,
@@ -165,7 +172,7 @@ export default function ReviewWizard() {
       } else {
         // Updating existing vendor — persist all editable fields
         await localStorageService.updateVendor(vendorLocalId, {
-          name: store.vendorName.trim(),
+          name: nameResult.data,
           spotType: store.spotType,
           lat: store.lat ?? undefined,
           lng: store.lng ?? undefined,
