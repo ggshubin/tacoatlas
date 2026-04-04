@@ -48,27 +48,32 @@ export default function ExploreScreen() {
   async function loadAll() {
     setLoading(true)
 
-    // Phase 1: local data — fast, show map immediately
-    const [coords, mine] = await Promise.all([
-      locationService.getCurrentLocation(),
+    // Phase 1: instant — last known location (cached by OS) + local pins
+    const [lastCoords, mine] = await Promise.all([
+      locationService.getLastKnownLocation(),
       localStorageService.getVendors(),
     ])
 
-    if (!coords) {
+    if (lastCoords) setUserCoords(lastCoords)
+    setMyPins(mine.filter(v => v.lat !== 0 || v.lng !== 0))
+    setLoading(false) // map appears immediately
+
+    // Phase 2: fresh GPS fix — updates user dot position once acquired
+    const freshCoords = await locationService.getCurrentLocation()
+    if (!freshCoords) {
       setLocationDenied(true)
     } else {
-      setUserCoords(coords)
+      setUserCoords(freshCoords)
       setLocationDenied(false)
     }
-    setMyPins(mine.filter(v => v.lat !== 0 || v.lng !== 0))
-    setLoading(false) // show map now with local pins
 
-    // Phase 2: remote data — background, updates pins as they arrive
+    // Phase 3: remote data — background, updates pins as they arrive
+    const coordsForQuery = freshCoords ?? lastCoords
     try {
       const pub = await vendorRepository.getNearbyVendors(
-        coords?.lat ?? 0,
-        coords?.lng ?? 0,
-        coords ? 50 : 20000
+        coordsForQuery?.lat ?? 0,
+        coordsForQuery?.lng ?? 0,
+        coordsForQuery ? 50 : 20000
       )
       setPublicPins(pub.filter(v => v.lat !== 0 || v.lng !== 0))
     } catch { /* silent */ }
@@ -90,13 +95,20 @@ export default function ExploreScreen() {
   const showFriends = filter === 'all' || filter === 'friends'
   const showPublic = filter === 'all' || filter === 'public'
 
+  // User's own pins that are marked public — appear under both Mine and Public filters
+  const myPublicPins = myPins.filter(p => !p.privacy || p.privacy === 'public')
+
   // Compute initial region from visible pins + user location
   const visibleLats: number[] = []
   const visibleLngs: number[] = []
   if (userCoords) { visibleLats.push(userCoords.lat); visibleLngs.push(userCoords.lng) }
   if (showMine) myPins.forEach(p => { visibleLats.push(p.lat); visibleLngs.push(p.lng) })
   if (showFriends) friendPins.forEach(p => { visibleLats.push(p.lat); visibleLngs.push(p.lng) })
-  if (showPublic) publicPins.forEach(p => { visibleLats.push(p.lat); visibleLngs.push(p.lng) })
+  if (showPublic) {
+    publicPins.forEach(p => { visibleLats.push(p.lat!); visibleLngs.push(p.lng!) })
+    // Include user's public pins in region calc when Mine isn't already shown
+    if (!showMine) myPublicPins.forEach(p => { visibleLats.push(p.lat); visibleLngs.push(p.lng) })
+  }
 
   const initialRegion = visibleLats.length > 0
     ? (() => {
@@ -138,10 +150,12 @@ export default function ExploreScreen() {
     )
   }
 
+  // When both Mine and Public are visible (filter === 'all'), deduplicate public pins
+  // that would otherwise be counted twice (once as myPins, once as myPublicPins)
   const totalVisible =
     (showMine ? myPins.length : 0) +
     (showFriends ? friendPins.length : 0) +
-    (showPublic ? publicPins.length : 0)
+    (showPublic ? publicPins.length + (showMine ? 0 : myPublicPins.length) : 0)
 
   return (
     <View style={styles.container}>
@@ -163,7 +177,7 @@ export default function ExploreScreen() {
               </Text>
               {f.key !== 'all' && (
                 <Text style={[styles.filterCount, filter === f.key && styles.filterCountActive]}>
-                  {f.key === 'mine' ? myPins.length : f.key === 'friends' ? friendPins.length : publicPins.length}
+                  {f.key === 'mine' ? myPins.length : f.key === 'friends' ? friendPins.length : myPublicPins.length + publicPins.length}
                 </Text>
               )}
             </TouchableOpacity>
@@ -220,7 +234,7 @@ export default function ExploreScreen() {
           </Marker>
         ))}
 
-        {/* Public — blue pins */}
+        {/* Public — community vendor pins */}
         {showPublic && publicPins.map(pin => (
           <Marker
             key={`public-${pin.id}`}
@@ -232,6 +246,27 @@ export default function ExploreScreen() {
                 <Text style={styles.calloutName}>{pin.name}</Text>
                 {pin.address && <Text style={styles.calloutMeta}>{pin.address}</Text>}
                 <Text style={styles.calloutSource}>Public · Tap to view</Text>
+              </View>
+            </Callout>
+          </Marker>
+        ))}
+
+        {/* Public — user's own pins marked public (shown when Mine filter is hidden) */}
+        {showPublic && !showMine && myPublicPins.map(pin => (
+          <Marker
+            key={`mine-pub-${pin.localId}`}
+            coordinate={{ latitude: pin.lat, longitude: pin.lng }}
+            anchor={{ x: 0.5, y: 0.5 }}
+            tracksViewChanges={false}
+          >
+            <View style={styles.tacoPin}>
+              <Text style={styles.tacoPinEmoji}>🌮</Text>
+            </View>
+            <Callout onPress={() => router.push(`/spot/${pin.localId}`)}>
+              <View style={styles.callout}>
+                <Text style={styles.calloutName}>{pin.name}</Text>
+                {pin.spotType && <Text style={styles.calloutMeta}>{pin.spotType}</Text>}
+                <Text style={styles.calloutSource}>My Public Pin · Tap to view</Text>
               </View>
             </Callout>
           </Marker>
