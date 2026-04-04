@@ -34,7 +34,7 @@ export const notesSchema = z
   .optional()
 
 /** Returns the first error message or null if valid */
-export function firstError(result: z.SafeParseError<unknown> | z.SafeParseSuccess<unknown>): string | null {
+export function firstError(result: z.ZodSafeParseError<unknown> | z.ZodSafeParseSuccess<unknown>): string | null {
   if (result.success) return null
   return result.error.issues[0]?.message ?? 'Invalid input'
 }

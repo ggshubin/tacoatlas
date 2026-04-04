@@ -131,10 +131,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   deleteAccount: async () => {
     const { session } = get()
     if (!session) return { error: 'Not signed in' }
-    // Delete profile first (reviews/vendors cascade or are left as orphans)
-    await supabase.from('profiles').delete().eq('id', session.user.id)
-    // Sign out — actual user deletion requires a server-side function
-    await supabase.auth.signOut()
+    const { error } = await supabase.functions.invoke('delete-account')
+    if (error) return { error: error.message }
+    setUserScope(null)
     set({ session: null, profile: null })
     return { error: null }
   },
