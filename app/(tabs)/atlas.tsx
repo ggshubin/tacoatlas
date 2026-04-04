@@ -94,7 +94,7 @@ export default function MyTacosScreen() {
       />
 
       {/* Static header — always visible */}
-      <View style={[styles.staticHeader, { paddingTop: insets.top }]}>
+      <View style={[styles.staticHeader, { paddingTop: insets.top }, viewMode === 'map' && styles.staticHeaderMapOverlay]}>
         <Image source={require('../../images/tacoatlas-logo-horz.png')} style={styles.headerLogo} resizeMode="contain" />
         <Text style={styles.headerTitle}>
           {profile?.display_name ? `${profile.display_name}'s Atlas` : 'My Atlas'}
@@ -248,6 +248,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.sm,
     zIndex: 10,
+  },
+  staticHeaderMapOverlay: {
+    backgroundColor: 'rgba(18,12,8,0.72)',
   },
   headerLogo: { height: 28, width: 160, alignSelf: 'center', marginBottom: 4 },
   headerTitle: {

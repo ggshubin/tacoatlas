@@ -7,7 +7,7 @@ export const vendorRepository = {
     const { data, error } = await supabase
       .from('vendors')
       .select('*, city:cities(*)')
-      .eq('status', 'approved')
+      .in('status', ['approved', 'pending'])
       .gte('lat', lat - delta)
       .lte('lat', lat + delta)
       .gte('lng', lng - delta)

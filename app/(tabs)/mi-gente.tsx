@@ -7,6 +7,7 @@ import { router, useFocusEffect } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useProStore } from '../../src/store/proStore'
+import { proService } from '../../src/services/proService'
 import { useAuthStore } from '../../src/store/authStore'
 import { useNotificationStore } from '../../src/store/notificationStore'
 import { type FriendStub, type ActivityStub } from '../../src/data/mi-gente-stubs'
@@ -109,7 +110,10 @@ function DraggableCrewItem({ friend, index, orderLength, isSelected, isDragging,
       {...panResponder.panHandlers}
     >
       <View style={[styles.crewAv, isSelected && styles.crewAvSelected, isDragging && styles.crewAvDragging]}>
-        <Text style={styles.crewAvText}>{friend.initials}</Text>
+        {friend.avatarUrl
+          ? <Image source={{ uri: friend.avatarUrl }} style={styles.crewAvImg} />
+          : <Text style={styles.crewAvText}>{friend.initials}</Text>
+        }
       </View>
       <Text style={styles.crewName} numberOfLines={1}>{friend.username.split('_')[0]}</Text>
     </Animated.View>
@@ -117,10 +121,11 @@ function DraggableCrewItem({ friend, index, orderLength, isSelected, isDragging,
 }
 
 export default function MiGenteScreen() {
-  const { isPro } = useProStore()
+  const { isPro, checkPro } = useProStore()
   const { session } = useAuthStore()
   const { setPendingFriendCount } = useNotificationStore()
   const insets = useSafeAreaInsets()
+  const [purchasing, setPurchasing] = useState(false)
   const toastOpacity = useRef(new Animated.Value(0)).current
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [toastMsg, setToastMsg] = useState('')
@@ -221,14 +226,29 @@ export default function MiGenteScreen() {
           <Ionicons name="people-outline" size={28} color={colors.creamMuted} />
           <Text style={styles.lockedText}>Connect with your taco crew — see where your friends are eating, share your spots, and build your crew.</Text>
         </View>
-        <TouchableOpacity style={styles.upgradeCard} onPress={() => {}}>
+        <TouchableOpacity
+          style={styles.upgradeCard}
+          disabled={purchasing}
+          onPress={async () => {
+            setPurchasing(true)
+            try {
+              const pkg = await proService.getProPackage()
+              if (pkg) {
+                const success = await proService.purchase(pkg)
+                if (success) await checkPro()
+              }
+            } finally {
+              setPurchasing(false)
+            }
+          }}
+        >
           <View style={styles.upgradeCardInner}>
             <Text style={styles.upgradeTitle}>Unlock TacoAtlas Pro</Text>
             <Text style={styles.upgradePrice}>$3.99 one-time</Text>
           </View>
           <Text style={styles.upgradeSubtitle}>Mi Gente · Cloud Sync · Burritos & Tortas · Advanced Stats</Text>
           <View style={styles.upgradeBtn}>
-            <Text style={styles.upgradeBtnText}>Upgrade Now</Text>
+            <Text style={styles.upgradeBtnText}>{purchasing ? 'Processing…' : 'Upgrade Now'}</Text>
           </View>
         </TouchableOpacity>
       </View>
@@ -251,12 +271,7 @@ export default function MiGenteScreen() {
       <View style={[styles.container, { paddingTop: insets.top, paddingHorizontal: spacing.md }]}>
         <Image source={require('../../assets/background.png')} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
         <Image source={require('../../images/tacoatlas-logo-horz.png')} style={styles.headerLogo} resizeMode="contain" />
-        <View style={styles.headerRow}>
-          <Text style={styles.title}>Mi Gente</Text>
-          <TouchableOpacity style={styles.addPill} onPress={() => router.push('/mi-gente/add')}>
-            <Text style={styles.addPillText}>＋ Add</Text>
-          </TouchableOpacity>
-        </View>
+        <Text style={styles.title}>Mi Gente</Text>
         <Text style={styles.sectionLabel}>Friend Requests</Text>
         {pendingRequests.map(req => (
           <View key={req.id} style={styles.requestRow}>
@@ -312,12 +327,7 @@ export default function MiGenteScreen() {
       <View style={[styles.container, { paddingTop: insets.top, paddingHorizontal: spacing.md }]}>
         <Image source={require('../../assets/background.png')} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
         <Image source={require('../../images/tacoatlas-logo-horz.png')} style={styles.headerLogo} resizeMode="contain" />
-        <View style={styles.headerRow}>
-          <Text style={styles.title}>Mi Gente</Text>
-          <TouchableOpacity style={styles.addPill} onPress={() => router.push('/mi-gente/add')}>
-            <Text style={styles.addPillText}>＋ Add</Text>
-          </TouchableOpacity>
-        </View>
+        <Text style={styles.title}>Mi Gente</Text>
         <View style={styles.emptyState}>
           <Ionicons name="people-outline" size={48} color={colors.amber} />
           <Text style={styles.emptyTitle}>Find your taco crew</Text>
@@ -386,17 +396,7 @@ export default function MiGenteScreen() {
       >
       {/* Header */}
       <Image source={require('../../images/tacoatlas-logo-horz.png')} style={styles.headerLogo} resizeMode="contain" />
-      <View style={styles.headerRow}>
-        <Text style={styles.title}>Mi Gente</Text>
-        <TouchableOpacity style={styles.addPill} onPress={() => router.push('/mi-gente/add')}>
-          <Text style={styles.addPillText}>＋ Add</Text>
-          {pendingRequests.length > 0 && (
-            <View style={styles.addPillBadge}>
-              <Text style={styles.addPillBadgeText}>{pendingRequests.length}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-      </View>
+      <Text style={styles.title}>Mi Gente</Text>
 
       {/* Pending friend requests */}
       {pendingRequests.length > 0 && (
@@ -522,7 +522,10 @@ export default function MiGenteScreen() {
           {friends.map(friend => (
             <View key={friend.username} style={styles.friendRow}>
               <View style={styles.friendAv}>
-                <Text style={styles.friendAvText}>{friend.initials}</Text>
+                {friend.avatarUrl
+                  ? <Image source={{ uri: friend.avatarUrl }} style={styles.friendAvImg} />
+                  : <Text style={styles.friendAvText}>{friend.initials}</Text>
+                }
               </View>
               <View style={styles.friendInfo}>
                 <Text style={styles.friendName}>{friend.username}</Text>
@@ -542,7 +545,28 @@ export default function MiGenteScreen() {
       {/* State C: activity feed */}
       {hasActivity && (
         <>
-          <Text style={styles.sectionLabel}>Recent Activity</Text>
+          <View style={styles.sectionLabelRow}>
+            <Text style={styles.sectionLabel}>{selectedFriend ? `${selectedFriend}'s Activity` : 'Recent Activity'}</Text>
+            {selectedFriend && (
+              <TouchableOpacity style={styles.clearFilterBtn} onPress={() => setSelectedFriend(null)}>
+                <Ionicons name="close-circle" size={14} color={colors.creamDim} />
+                <Text style={styles.clearFilterText}>All</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          {selectedFriend && (() => {
+            const sf = friends.find(f => f.username === selectedFriend)
+            if (!sf) return null
+            return (
+              <TouchableOpacity
+                style={styles.mapCtaBanner}
+                onPress={() => router.push({ pathname: '/mi-gente/map/[username]', params: { username: sf.username, userId: sf.userId } })}
+              >
+                <Ionicons name="map-outline" size={16} color={colors.amber} />
+                <Text style={styles.mapCtaBannerText}>See {selectedFriend}'s Pins on Map →</Text>
+              </TouchableOpacity>
+            )
+          })()}
           {displayActivity.map(item => {
             const isExpanded = expandedId === item.id
             return (
@@ -555,7 +579,10 @@ export default function MiGenteScreen() {
                 {/* Always-visible row */}
                 <View style={styles.actRow}>
                   <View style={styles.actAv}>
-                    <Text style={styles.actAvText}>{item.friend.initials}</Text>
+                    {item.friend.avatarUrl
+                      ? <Image source={{ uri: item.friend.avatarUrl }} style={styles.actAvImg} />
+                      : <Text style={styles.actAvText}>{item.friend.initials}</Text>
+                    }
                   </View>
                   <View style={styles.actInfo}>
                     <Text style={styles.actMain}>
@@ -685,6 +712,11 @@ const styles = StyleSheet.create({
   pendingPill: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.surfaceRaised, borderRadius: radius.full, borderWidth: 1, borderColor: colors.surfaceBorder, paddingHorizontal: spacing.sm, paddingVertical: 4 },
   pendingPillText: { fontSize: 10, color: colors.creamDim, fontWeight: '600' },
   sectionLabel: { fontSize: 11, fontWeight: '700', color: colors.creamDim, letterSpacing: 1, textTransform: 'uppercase', marginTop: spacing.sm, marginBottom: spacing.sm },
+  sectionLabelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.sm, marginBottom: spacing.sm },
+  clearFilterBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: spacing.sm, paddingVertical: 3, backgroundColor: colors.surfaceRaised, borderRadius: radius.full, borderWidth: 1, borderColor: colors.surfaceBorder },
+  clearFilterText: { fontSize: 11, color: colors.creamMuted, fontWeight: '600' },
+  mapCtaBanner: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.amberSubtle, borderWidth: 1, borderColor: colors.amberDim, borderRadius: radius.md, paddingVertical: spacing.sm, paddingHorizontal: spacing.md, marginBottom: spacing.sm },
+  mapCtaBannerText: { fontSize: 13, fontWeight: '700', color: colors.amber, flex: 1 },
   // Crew strip
   crewStrip: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: spacing.md },
   crewItem: { alignItems: 'center', marginRight: spacing.md, width: 44 },
@@ -692,12 +724,14 @@ const styles = StyleSheet.create({
   crewAvSelected: { borderColor: colors.amber, backgroundColor: colors.amberSubtle },
   crewAvDragging: { borderColor: colors.amber, backgroundColor: colors.amberSubtle, opacity: 0.85 },
   crewAvText: { fontSize: 12, fontWeight: '700', color: colors.amber },
+  crewAvImg: { width: 36, height: 36, borderRadius: 18 },
   crewName: { fontSize: 9, color: colors.creamMuted, textAlign: 'center' },
   crewAvAdd: { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, borderColor: colors.creamDim, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
   crewAvAddText: { fontSize: 18, color: colors.creamDim },
   // Friend rows (State B)
   friendRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.sm, borderWidth: 1, borderColor: colors.surfaceBorder, marginBottom: spacing.sm },
   friendAv: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.amberSubtle, borderWidth: 2, borderColor: colors.amberDim, alignItems: 'center', justifyContent: 'center' },
+  friendAvImg: { width: 36, height: 36, borderRadius: 18 },
   friendAvText: { fontSize: 12, fontWeight: '700', color: colors.amber },
   friendInfo: { flex: 1 },
   friendName: { fontSize: 13, fontWeight: '600', color: colors.cream },
@@ -710,6 +744,7 @@ const styles = StyleSheet.create({
   actCardExpanded: { borderColor: colors.amberDim },
   actRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.sm },
   actAv: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.amberSubtle, borderWidth: 1.5, borderColor: colors.amberDim, alignItems: 'center', justifyContent: 'center' },
+  actAvImg: { width: 28, height: 28, borderRadius: 14 },
   actAvText: { fontSize: 10, fontWeight: '700', color: colors.amber },
   actInfo: { flex: 1 },
   actMain: { fontSize: 12, color: colors.cream },

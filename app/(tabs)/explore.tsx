@@ -47,30 +47,34 @@ export default function ExploreScreen() {
 
   async function loadAll() {
     setLoading(true)
+
+    // Phase 1: local data — fast, show map immediately
+    const [coords, mine] = await Promise.all([
+      locationService.getCurrentLocation(),
+      localStorageService.getVendors(),
+    ])
+
+    if (!coords) {
+      setLocationDenied(true)
+    } else {
+      setUserCoords(coords)
+      setLocationDenied(false)
+    }
+    setMyPins(mine.filter(v => v.lat !== 0 || v.lng !== 0))
+    setLoading(false) // show map now with local pins
+
+    // Phase 2: remote data — background, updates pins as they arrive
     try {
-      // Location
-      const coords = await locationService.getCurrentLocation()
-      if (!coords) {
-        setLocationDenied(true)
-      } else {
-        setUserCoords(coords)
-        setLocationDenied(false)
-      }
-
-      // Mine: user's own saved pins from local storage
-      const mine = await localStorageService.getVendors()
-      setMyPins(mine.filter(v => v.lat !== 0 || v.lng !== 0))
-
-      // Public: approved vendors from Supabase
       const pub = await vendorRepository.getNearbyVendors(
         coords?.lat ?? 0,
         coords?.lng ?? 0,
         coords ? 50 : 20000
       )
       setPublicPins(pub.filter(v => v.lat !== 0 || v.lng !== 0))
+    } catch { /* silent */ }
 
-      // Friends: only if logged in
-      if (session?.user.id) {
+    if (session?.user.id) {
+      try {
         const friends = await getFriends(session.user.id)
         if (friends.length > 0) {
           const activity = await getFriendActivity(friends.map(f => f.userId))
@@ -78,11 +82,7 @@ export default function ExploreScreen() {
         } else {
           setFriendPins([])
         }
-      }
-    } catch {
-      // silently fail — show whatever was loaded
-    } finally {
-      setLoading(false)
+      } catch { /* silent */ }
     }
   }
 

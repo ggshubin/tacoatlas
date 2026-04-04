@@ -10,6 +10,8 @@ import { reviewRepository } from '../../src/services/reviewRepository'
 import { vendorRepository } from '../../src/services/vendorRepository'
 import { useReviewFormStore } from '../../src/store/reviewFormStore'
 import { TacoRating } from '../../src/components/TacoRating'
+import { ConfirmModal } from '../../src/components/ConfirmModal'
+import { AppBottomSheet } from '../../src/components/AppBottomSheet'
 import { shareSpot } from '../../src/utils/shareSpot'
 import { colors, spacing, radius, typography } from '../../src/utils/theme'
 import type { LocalVendor, LocalReview } from '../../src/types/app'
@@ -32,6 +34,7 @@ export default function SpotDetailScreen() {
   const [showSpotMenu, setShowSpotMenu] = useState(false)
   const [showDeleteSpotModal, setShowDeleteSpotModal] = useState(false)
   const [reviewToDelete, setReviewToDelete] = useState<LocalReview | null>(null)
+  const [lightboxUri, setLightboxUri] = useState<string | null>(null)
 
   function toggleExpanded(id: string) {
     setExpandedIds(prev => {
@@ -77,8 +80,7 @@ export default function SpotDetailScreen() {
       vendorRepository.deletePersonalVendor(vendor.supabaseVendorId)
     }
     await localStorageService.deleteVendor(localId)
-    setShowDeleteSpotModal(false)
-    router.replace('/(tabs)/')
+    router.replace('/(tabs)/atlas')
   }
 
   if (!vendor) return null
@@ -134,57 +136,42 @@ export default function SpotDetailScreen() {
         </View>
       </View>
 
-      {/* Spot options bottom sheet */}
-      <Modal visible={showSpotMenu} transparent animationType="slide" onRequestClose={() => setShowSpotMenu(false)}>
-        <TouchableOpacity style={styles.sheetOverlay} activeOpacity={1} onPress={() => setShowSpotMenu(false)}>
-          <View style={styles.sheetCard}>
-            <Text style={styles.sheetTitle}>Spot Options</Text>
-            <TouchableOpacity style={styles.sheetOption} onPress={() => { setShowSpotMenu(false); setShowDeleteSpotModal(true) }}>
-              <Ionicons name="trash-outline" size={20} color={colors.error} />
-              <Text style={[styles.sheetOptionText, { color: colors.error }]}>Delete Spot</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.sheetCancel} onPress={() => setShowSpotMenu(false)}>
-              <Text style={styles.sheetCancelText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+      <AppBottomSheet
+        visible={showSpotMenu}
+        title="Spot Options"
+        options={[{ label: 'Delete Spot', icon: 'trash-outline', destructive: true, onPress: () => setShowDeleteSpotModal(true) }]}
+        onClose={() => setShowSpotMenu(false)}
+      />
 
-      {/* Delete spot confirmation */}
-      <Modal visible={showDeleteSpotModal} transparent animationType="fade" onRequestClose={() => setShowDeleteSpotModal(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Delete Spot</Text>
-            <Text style={styles.modalBody}>
-              Remove <Text style={styles.modalBold}>{vendor?.name}</Text> and all its visits? This can't be undone.
-            </Text>
-            <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setShowDeleteSpotModal(false)}>
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.modalDeleteBtn} onPress={confirmDeleteSpot}>
-                <Text style={styles.modalDeleteText}>Delete</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <ConfirmModal
+        visible={showDeleteSpotModal}
+        title="Delete Spot"
+        body={<Text style={{ fontSize: 14, color: colors.creamMuted, lineHeight: 20 }}>Remove <Text style={{ color: colors.cream, fontWeight: '700' }}>{vendor?.name}</Text> and all its visits? This can't be undone.</Text>}
+        confirmLabel="Delete"
+        destructive
+        onConfirm={confirmDeleteSpot}
+        onCancel={() => setShowDeleteSpotModal(false)}
+      />
 
-      {/* Delete review confirmation */}
-      <Modal visible={!!reviewToDelete} transparent animationType="fade" onRequestClose={() => setReviewToDelete(null)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Delete Visit</Text>
-            <Text style={styles.modalBody}>Remove this visit? This can't be undone.</Text>
-            <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setReviewToDelete(null)}>
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.modalDeleteBtn} onPress={confirmDeleteReview}>
-                <Text style={styles.modalDeleteText}>Delete</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+      <ConfirmModal
+        visible={!!reviewToDelete}
+        title="Delete Visit"
+        body="Remove this visit? This can't be undone."
+        confirmLabel="Delete"
+        destructive
+        onConfirm={confirmDeleteReview}
+        onCancel={() => setReviewToDelete(null)}
+      />
+
+      {/* Full-screen image lightbox */}
+      <Modal visible={!!lightboxUri} transparent animationType="fade" onRequestClose={() => setLightboxUri(null)}>
+        <View style={styles.lightboxOverlay}>
+          <TouchableOpacity style={styles.lightboxClose} onPress={() => setLightboxUri(null)}>
+            <Ionicons name="close" size={28} color={colors.cream} />
+          </TouchableOpacity>
+          {lightboxUri && (
+            <Image source={{ uri: lightboxUri }} style={styles.lightboxImage} resizeMode="contain" />
+          )}
         </View>
       </Modal>
 
@@ -298,7 +285,9 @@ export default function SpotDetailScreen() {
                   {review.photoUris.length > 0 && (
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoRow}>
                       {review.photoUris.map((uri, pi) => (
-                        <Image key={pi} source={{ uri }} style={styles.photo} />
+                        <TouchableOpacity key={pi} onPress={() => setLightboxUri(uri)} activeOpacity={0.85}>
+                          <Image source={{ uri }} style={styles.photo} />
+                        </TouchableOpacity>
                       ))}
                     </ScrollView>
                   )}
@@ -452,6 +441,10 @@ const styles = StyleSheet.create({
 
   photoRow: { marginBottom: spacing.md },
   photo: { width: 120, height: 90, borderRadius: radius.md, marginRight: spacing.sm },
+
+  lightboxOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', justifyContent: 'center', alignItems: 'center' },
+  lightboxImage: { width: '100%', height: '85%' },
+  lightboxClose: { position: 'absolute', top: 60, right: spacing.lg, zIndex: 10, width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(36,28,22,0.85)', alignItems: 'center', justifyContent: 'center' },
 
   section: { marginTop: spacing.sm },
   sectionLabel: { fontSize: 10, fontWeight: '700', color: colors.amber, letterSpacing: 1.5, marginBottom: 6 },

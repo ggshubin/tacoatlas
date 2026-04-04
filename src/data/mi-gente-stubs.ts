@@ -4,6 +4,7 @@ import type { SpotType } from '../types/app'
 export interface FriendStub {
   username: string
   initials: string
+  avatarUrl?: string | null
   isActive: boolean
   pinCount: number
   reviewCount: number

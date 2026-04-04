@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { sendFriendRequestNotification } from './notificationService'
 import type { FriendStub, ActivityStub } from '../data/mi-gente-stubs'
 
 function initials(username: string, displayName: string | null): string {
@@ -37,7 +38,7 @@ export async function getFriends(userId: string): Promise<FriendWithId[]> {
 
   const { data: profiles } = await supabase
     .from('profiles')
-    .select('id, username, display_name')
+    .select('id, username, display_name, avatar_url')
     .in('id', friendIds)
 
   if (!profiles) return []
@@ -48,6 +49,7 @@ export async function getFriends(userId: string): Promise<FriendWithId[]> {
       userId: p.id,
       username,
       initials: initials(username, p.display_name),
+      avatarUrl: p.avatar_url ?? null,
       isActive: false,
       pinCount: 0,
       reviewCount: 0,
@@ -73,23 +75,24 @@ export async function getFriendActivity(friendUserIds: string[]): Promise<Activi
   const reviewerIds = [...new Set(data.map((r: any) => r.user_id))]
   const { data: profiles } = await supabase
     .from('profiles')
-    .select('id, username, display_name')
+    .select('id, username, display_name, avatar_url')
     .in('id', reviewerIds)
 
-  const profileMap: Record<string, { username: string; display_name: string | null }> = {}
+  const profileMap: Record<string, { username: string; display_name: string | null; avatar_url: string | null }> = {}
   for (const p of (profiles ?? [])) {
-    profileMap[p.id] = { username: p.username || p.id.slice(0, 8), display_name: p.display_name }
+    profileMap[p.id] = { username: p.username || p.id.slice(0, 8), display_name: p.display_name, avatar_url: p.avatar_url ?? null }
   }
 
   return data
     .filter((row: any) => row.vendor)
     .map((row: any) => {
-      const prof = profileMap[row.user_id] ?? { username: row.user_id.slice(0, 8), display_name: null }
+      const prof = profileMap[row.user_id] ?? { username: row.user_id.slice(0, 8), display_name: null, avatar_url: null }
       return {
         id: row.id,
         friend: {
           username: prof.username,
           initials: initials(prof.username, prof.display_name),
+          avatarUrl: prof.avatar_url,
           isActive: false,
           pinCount: 0,
           reviewCount: 0,
@@ -233,7 +236,17 @@ export async function sendFriendRequest(requesterId: string, addresseeId: string
   const { error } = await supabase
     .from('friendships')
     .insert({ requester_id: requesterId, addressee_id: addresseeId, status: 'pending' })
-  return error ? error.message : null
+  if (error) return error.message
+  // Notify addressee — fire and forget, don't fail the request if notification fails
+  const { data: requesterProfile } = await supabase
+    .from('profiles')
+    .select('username')
+    .eq('id', requesterId)
+    .single()
+  if (requesterProfile?.username) {
+    sendFriendRequestNotification(addresseeId, requesterProfile.username).catch(() => {})
+  }
+  return null
 }
 
 export async function removeFriend(userId: string, friendId: string): Promise<string | null> {
