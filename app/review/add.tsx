@@ -255,15 +255,22 @@ export default function ReviewWizard() {
         </View>
       </Modal>
 
-      {/* Header */}
+      {/* Header — Review Page Only */}
       <View style={[styles.header, { paddingTop: insets.top }]}>
-        <Image source={require('../../images/tacoatlas-logo-horz.png')} style={styles.headerLogo} resizeMode="contain" />
-        <View style={styles.navRow}>
-          <TouchableOpacity style={styles.closeBtn} onPress={handleClose}>
+        <View style={styles.headerRow}>
+          <Image
+            source={require('../../images/tacoatlas-logo-horz.png')}
+            style={styles.headerLogo}
+            resizeMode="contain"
+          />
+          <Text style={styles.headerTitle}>Log a Visit</Text>
+          <TouchableOpacity
+            style={styles.closeBtn}
+            onPress={handleClose}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
             <Ionicons name="close" size={20} color={colors.cream} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Log a Visit</Text>
-          <View style={{ width: 36 }} />
         </View>
       </View>
 
@@ -584,11 +591,18 @@ export default function ReviewWizard() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   header: {
-    paddingHorizontal: spacing.md, paddingBottom: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.md,
+    backgroundColor: colors.bg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.surfaceBorder,
   },
-  headerLogo: { height: 28, width: 160, alignSelf: 'center', marginBottom: spacing.xs },
-  navRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+  headerLogo: { height: 24, width: 100 },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
   },
   closeBtn: {
     width: 36, height: 36, borderRadius: 18,
@@ -596,7 +610,13 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: colors.surfaceBorder,
   },
-  headerTitle: { fontSize: 17, fontWeight: '700', color: colors.cream },
+  headerTitle: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 17,
+    fontWeight: '700',
+    color: colors.cream,
+  },
   stepRow: {
     flexDirection: 'row', justifyContent: 'center', gap: spacing.lg,
     paddingHorizontal: spacing.md, paddingBottom: spacing.md,
