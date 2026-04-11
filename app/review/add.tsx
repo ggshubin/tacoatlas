@@ -80,12 +80,49 @@ export default function ReviewWizard() {
   useEffect(() => {
     if (!params.editReviewId) {
       store.reset()
+      scrollToStep(0)
     }
   }, [])
 
-  // Auto-expand spot note when entering edit mode if notes exist
+  // Load existing review for editing
   useEffect(() => {
-    if (params.editReviewId && store.spotNote) setShowSpotNote(true)
+    const { editReviewId } = params
+    if (!editReviewId) return
+
+    localStorageService.getReviews().then(reviews => {
+      const review = reviews.find(r => r.localId === editReviewId)
+      if (!review) return
+
+      store.setField('editingReviewLocalId', editReviewId)
+      store.setField('overallRating', review.overallRating ?? 0)
+      store.setField('returnIntent', review.returnIntent ?? null)
+      store.setField('notes', review.notes ?? '')
+      store.setField('tacoEntries', review.tacoEntries ?? [])
+      store.setField('salsaEntries', review.salsaEntries ?? [])
+      store.setField('condiments', review.condiments ?? [])
+      store.setField('burritoEntries', review.burritoEntries ?? [])
+      store.setField('tortaEntries', review.tortaEntries ?? [])
+      store.setField('photoUris', review.photoUris ?? [])
+
+      localStorageService.getVendors().then(vendors => {
+        const vendor = vendors.find(v => v.localId === review.vendorLocalId)
+        if (vendor) {
+          store.setField('editingVendorLocalId', vendor.localId)
+          store.setField('vendorName', vendor.name)
+          store.setField('spotType', vendor.spotType ?? null)
+          store.setField('lat', vendor.lat ?? null)
+          store.setField('lng', vendor.lng ?? null)
+          store.setField('address', vendor.address ?? null)
+          store.setField('cityName', vendor.cityName ?? null)
+          store.setField('privacy', vendor.privacy ?? 'public')
+          store.setField('spotNote', vendor.spotNote ?? '')
+          if (vendor.spotNote) setShowSpotNote(true)
+        }
+      })
+
+      // Auto-scroll to Step 2 since Step 1 is already filled
+      scrollToStep(1)
+    })
   }, [params.editReviewId])
 
   // Pre-fill from a Google Places suggestion passed via router params
