@@ -11,6 +11,16 @@ export const locationService = {
     return status === 'granted'
   },
 
+  async getLastKnownLocation(): Promise<Coordinates | null> {
+    try {
+      const location = await Location.getLastKnownPositionAsync()
+      if (!location) return null
+      return { lat: location.coords.latitude, lng: location.coords.longitude }
+    } catch {
+      return null
+    }
+  },
+
   async getCurrentLocation(): Promise<Coordinates | null> {
     const hasPermission = await locationService.requestPermission()
     if (!hasPermission) return null

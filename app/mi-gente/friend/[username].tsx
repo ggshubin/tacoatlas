@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Modal, ActivityIndicator, Image } from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Image } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAuthStore } from '../../../src/store/authStore'
 import { getFriendActivity, removeFriend } from '../../../src/services/miGenteService'
 import { openMapsNavigation } from '../../../src/utils/mapsNavigation'
+import { ConfirmModal } from '../../../src/components/ConfirmModal'
 import { colors, spacing, radius } from '../../../src/utils/theme'
 import type { ActivityStub } from '../../../src/data/mi-gente-stubs'
 
@@ -128,27 +129,16 @@ export default function FriendProfileScreen() {
         )}
       </ScrollView>
 
-      {/* Remove Friend confirmation modal */}
-      <Modal visible={showRemoveModal} transparent animationType="fade" onRequestClose={() => setShowRemoveModal(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Remove Friend</Text>
-            <Text style={styles.modalBody}>
-              Remove <Text style={styles.modalUsername}>{username}</Text> from your crew? They won't be notified.
-            </Text>
-            <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setShowRemoveModal(false)}>
-                <Text style={styles.modalCancelText}>Keep</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.modalRemoveBtn} onPress={handleConfirmRemove} disabled={removing}>
-                {removing
-                  ? <ActivityIndicator color={colors.cream} size="small" />
-                  : <Text style={styles.modalRemoveText}>Remove</Text>}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <ConfirmModal
+        visible={showRemoveModal}
+        title="Remove Friend"
+        body={<Text style={{ fontSize: 14, color: colors.creamMuted, lineHeight: 20 }}>Remove <Text style={{ color: colors.cream, fontWeight: '700' }}>{username}</Text> from your crew? They won't be notified.</Text>}
+        confirmLabel={removing ? '...' : 'Remove'}
+        cancelLabel="Keep"
+        destructive
+        onConfirm={handleConfirmRemove}
+        onCancel={() => setShowRemoveModal(false)}
+      />
     </View>
   )
 }

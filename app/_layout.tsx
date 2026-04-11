@@ -10,6 +10,7 @@ import { useProStore } from '../src/store/proStore'
 import { migrateFromLegacyKeys, localStorageService } from '../src/services/localStorage'
 import { getPendingRequests } from '../src/services/miGenteService'
 import { useNotificationStore } from '../src/store/notificationStore'
+import { registerForPushNotifications, savePushToken } from '../src/services/notificationService'
 import { syncService } from '../src/services/syncService'
 import { RestorePromptModal } from '../src/components/RestorePromptModal'
 
@@ -47,6 +48,9 @@ export default function RootLayout() {
       if (session) {
         loadProfile()
         getPendingRequests(session.user.id).then(p => setPendingFriendCount(p.length))
+        registerForPushNotifications().then(token => {
+          if (token) savePushToken(session.user.id, token)
+        })
         // Show restore prompt if cloud has data but local is empty
         const localCount = await localStorageService.getVendorCount()
         if (localCount === 0) {
@@ -83,6 +87,9 @@ export default function RootLayout() {
       if (session) {
         loadProfile()
         getPendingRequests(session.user.id).then(p => setPendingFriendCount(p.length))
+        registerForPushNotifications().then(token => {
+          if (token) savePushToken(session.user.id, token)
+        })
         ;(async () => {
           if (event === 'SIGNED_IN' && !restoreCheckDone) {
             restoreCheckDone = true
@@ -111,8 +118,7 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="landing" options={{ headerShown: false }} />
-        <Stack.Screen name="settings" options={{ headerShown: false }} />
-        <Stack.Screen name="spot/[localId]" options={{ headerShown: false }} />
+<Stack.Screen name="spot/[localId]" options={{ headerShown: false }} />
         <Stack.Screen name="vendor/[id]" options={{ title: 'Vendor', headerStyle: { backgroundColor: '#241C16' }, headerTintColor: '#F5EDD8' }} />
         <Stack.Screen name="review/add" options={{ title: 'Add Review', presentation: 'modal', headerStyle: { backgroundColor: '#241C16' }, headerTintColor: '#F5EDD8' }} />
         <Stack.Screen name="pin/add" options={{ headerShown: false, presentation: 'modal' }} />
