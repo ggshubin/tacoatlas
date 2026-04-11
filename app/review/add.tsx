@@ -163,7 +163,11 @@ export default function ReviewWizard() {
   )
 
   function handleClose() {
-    setShowDitchModal(true)
+    if (store.editingReviewLocalId) {
+      setShowDitchModal(true)
+    } else {
+      router.back()
+    }
   }
 
   function handleProGate() {
@@ -287,12 +291,12 @@ export default function ReviewWizard() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Ditch this visit?</Text>
-            <Text style={styles.modalBody}>Your progress will be lost.</Text>
+            <Text style={styles.modalBody}>Your spot is saved — you can finish rating later.</Text>
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.modalKeepBtn} onPress={() => setShowDitchModal(false)}>
                 <Text style={styles.modalKeepText}>Keep Editing</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.modalDitchBtn} onPress={() => { setShowDitchModal(false); store.reset(); router.back() }}>
+              <TouchableOpacity style={styles.modalDitchBtn} onPress={() => { setShowDitchModal(false); router.back() }}>
                 <Text style={styles.modalDitchText}>Ditch It</Text>
               </TouchableOpacity>
             </View>
