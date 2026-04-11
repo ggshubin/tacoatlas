@@ -4,10 +4,14 @@ import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect, router } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAuthStore } from '../../src/store/authStore'
+import { useProStore } from '../../src/store/proStore'
 import { localStorageService } from '../../src/services/localStorage'
 import { TacoRating } from '../../src/components/TacoRating'
 import { AtlasMapView } from '../../src/components/AtlasMapView'
 import { QuickActionSheet } from '../../src/components/QuickActionSheet'
+import { DotProgressIndicator } from '../../src/components/DotProgressIndicator'
+import { UpgradeNudge } from '../../src/components/UpgradeNudge'
+import { ProPaywallModal } from '../../src/components/ProPaywallModal'
 import { getFriends, getFriendActivity } from '../../src/services/miGenteService'
 import { colors, spacing, radius } from '../../src/utils/theme'
 import type { LocalVendor, SpotType } from '../../src/types/app'
@@ -23,6 +27,7 @@ interface VendorRow {
 export default function MyTacosScreen() {
   const insets = useSafeAreaInsets()
   const { session, profile } = useAuthStore()
+  const isPro = useProStore(s => s.isPro)
   const [rows, setRows] = useState<VendorRow[]>([])
   const [loaded, setLoaded] = useState(false)
   const [search, setSearch] = useState('')
@@ -30,6 +35,8 @@ export default function MyTacosScreen() {
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list')
   const [showActionSheet, setShowActionSheet] = useState(false)
   const [friendSpots, setFriendSpots] = useState<ActivityStub[]>([])
+  const [nudgeDismissed, setNudgeDismissed] = useState(false)
+  const [showPaywall, setShowPaywall] = useState(false)
 
   useEffect(() => {
     if (viewMode !== 'map' || !session) return
@@ -105,6 +112,16 @@ export default function MyTacosScreen() {
             <Text style={styles.statLabel}> spot{rows.length !== 1 ? 's' : ''} tracked</Text>
           </View>
         </View>
+        {!isPro && (
+          <>
+            <DotProgressIndicator placesLogged={rows.length} />
+            <UpgradeNudge
+              visible={!nudgeDismissed && rows.length >= 5}
+              onDismiss={() => setNudgeDismissed(true)}
+              onUpgrade={() => setShowPaywall(true)}
+            />
+          </>
+        )}
         <View style={styles.toggleRow}>
           <TouchableOpacity
             style={[styles.toggleBtn, viewMode === 'list' && styles.toggleBtnActive]}
@@ -236,6 +253,8 @@ export default function MyTacosScreen() {
           </TouchableOpacity>
         </View>
       )}
+
+      <ProPaywallModal visible={showPaywall} onClose={() => setShowPaywall(false)} />
     </View>
   )
 }

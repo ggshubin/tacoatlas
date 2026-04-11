@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet,
-  KeyboardAvoidingView, Platform, Image,
+  KeyboardAvoidingView, Platform, Image, Alert,
 } from 'react-native'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { localStorageService } from '../../src/services/localStorage'
 import { useAuthStore } from '../../src/store/authStore'
+import { useProStore } from '../../src/store/proStore'
 import { syncService } from '../../src/services/syncService'
 import { LocationPicker } from '../../src/components/LocationPicker'
 import { colors, spacing, radius } from '../../src/utils/theme'
@@ -26,6 +27,7 @@ const PRIVACY_OPTIONS: { value: PrivacySetting; label: string; icon: string }[] 
 export default function DropPinScreen() {
   const insets = useSafeAreaInsets()
   const { session } = useAuthStore()
+  const isPro = useProStore(s => s.isPro)
   const [name, setName] = useState('')
   const [spotType, setSpotType] = useState<SpotType | null>(null)
   const [location, setLocation] = useState<LocationResult | null>(null)
@@ -40,6 +42,17 @@ export default function DropPinScreen() {
     const nameResult = spotNameSchema.safeParse(name)
     if (!nameResult.success) {
       setErrorMsg(firstError(nameResult) ?? 'Give this spot a name.')
+      return
+    }
+    if (!isPro && await localStorageService.isAtFreeLimit()) {
+      Alert.alert(
+        'Upgrade to Pro',
+        "You've reached your 15-spot limit. Upgrade to TacoAtlas Pro for unlimited spots.",
+        [
+          { text: 'Maybe Later', style: 'cancel' },
+          { text: 'Upgrade Now', onPress: () => router.push('/(tabs)/profile') },
+        ]
+      )
       return
     }
     setSaving(true)

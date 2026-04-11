@@ -243,6 +243,18 @@ export default function ReviewWizard() {
       const effectivePrivacy = isPro ? store.privacy : 'private'
 
       if (!vendorLocalId) {
+        if (!isPro && await localStorageService.isAtFreeLimit()) {
+          setSubmitting(false)
+          Alert.alert(
+            'Upgrade to Pro',
+            "You've reached your 15-spot limit. Upgrade to TacoAtlas Pro for unlimited spots.",
+            [
+              { text: 'Maybe Later', style: 'cancel' },
+              { text: 'Upgrade Now', onPress: () => router.push('/(tabs)/profile') },
+            ]
+          )
+          return
+        }
         const vendor = await localStorageService.addVendor({
           name: nameResult.data,
           spotType: store.spotType,
