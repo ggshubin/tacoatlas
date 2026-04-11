@@ -1,7 +1,7 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Image, Modal, Alert,
+  KeyboardAvoidingView, Platform, ActivityIndicator, Image, Modal, Alert, FlatList, Dimensions,
 } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
@@ -18,6 +18,7 @@ import { ChipScorecard } from '../../src/components/ChipScorecard'
 import { colors, spacing, radius } from '../../src/utils/theme'
 import { spotNameSchema, notesSchema, firstError } from '../../src/utils/validation'
 import type { SpotType, PrivacySetting, HeatLevel } from '../../src/types/app'
+import { debounce } from '../../src/utils/debounce'
 
 const SPOT_TYPES: SpotType[] = ['Truck', 'Food Cart', 'Pop-up', 'Restaurant']
 
@@ -39,7 +40,12 @@ const HEAT_ICONS: Record<HeatLevel, string> = {
   volcano: '🌋',
 }
 
-const STEP_NAMES = ['The Spot', "What'd You Have?", 'Your Verdict']
+const STEPS = [
+  { id: 'spot', title: 'The Spot' },
+  { id: 'food', title: "What'd You Have?" },
+  { id: 'verdict', title: 'Your Verdict' },
+]
+const { width: WINDOW_WIDTH } = Dimensions.get('window')
 
 export default function ReviewWizard() {
   const insets = useSafeAreaInsets()
@@ -60,6 +66,15 @@ export default function ReviewWizard() {
   const [showDitchModal, setShowDitchModal] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [pickingPhoto, setPickingPhoto] = useState(false)
+
+  const flatListRef = useRef<FlatList>(null)
+  const [currentStepIndex, setCurrentStepIndex] = useState(0)
+  const [autoSaveStatus, setAutoSaveStatus] = useState(false)
+
+  const scrollToStep = (stepIndex: number) => {
+    flatListRef.current?.scrollToIndex({ index: stepIndex, animated: true })
+    setCurrentStepIndex(stepIndex)
+  }
 
   // Reset form on mount for new reviews (not edits)
   useEffect(() => {
@@ -113,6 +128,40 @@ export default function ReviewWizard() {
   if (store.tortaEntries.length > 0) litCategories.push('tortas')
   if (store.salsaEntries.length > 0) litCategories.push('salsas')
 
+  const debouncedAutoSave = useCallback(
+    debounce(async () => {
+      const s = useReviewFormStore.getState()
+      if (!s.editingReviewLocalId || !s.editingVendorLocalId) return
+      try {
+        const reviewPayload = {
+          vendorLocalId: s.editingVendorLocalId,
+          overallRating: s.overallRating,
+          returnIntent: s.returnIntent,
+          notes: s.notes.trim() || null,
+          photoUris: s.photoUris,
+          tacoEntries: s.tacoEntries.map(e => ({ tacoType: e.tacoType || '', rating: e.rating, notes: e.notes })),
+          salsaEntries: s.salsaEntries,
+          condiments: s.condiments,
+          burritoEntries: s.burritoEntries,
+          tortaEntries: s.tortaEntries,
+        }
+        await localStorageService.updateReview(s.editingReviewLocalId, reviewPayload)
+
+        if (session && isPro) {
+          const all = await localStorageService.getReviews()
+          const saved = all.find(r => r.localId === s.editingReviewLocalId)
+          if (saved) syncService.liveSync(s.editingVendorLocalId, saved, session.user.id)
+        }
+
+        setAutoSaveStatus(true)
+        setTimeout(() => setAutoSaveStatus(false), 2000)
+      } catch (e) {
+        // auto-save failure is silent
+      }
+    }, 800),
+    [session, isPro]
+  )
+
   function handleClose() {
     setShowDitchModal(true)
   }
@@ -135,7 +184,7 @@ export default function ReviewWizard() {
     }
   }
 
-  async function handleSubmit() {
+  async function handleSaveStep1() {
     setErrorMsg(null)
     const nameResult = spotNameSchema.safeParse(store.vendorName)
     if (!nameResult.success) {
@@ -150,11 +199,9 @@ export default function ReviewWizard() {
     setSubmitting(true)
     try {
       let vendorLocalId = store.editingVendorLocalId
-
       const effectivePrivacy = isPro ? store.privacy : 'private'
 
       if (!vendorLocalId) {
-        // New vendor
         const vendor = await localStorageService.addVendor({
           name: nameResult.data,
           spotType: store.spotType,
@@ -169,8 +216,8 @@ export default function ReviewWizard() {
           isVisited: true,
         })
         vendorLocalId = vendor.localId
+        store.setField('editingVendorLocalId', vendorLocalId)
       } else {
-        // Updating existing vendor — persist all editable fields
         await localStorageService.updateVendor(vendorLocalId, {
           name: nameResult.data,
           spotType: store.spotType,
@@ -184,7 +231,6 @@ export default function ReviewWizard() {
         })
       }
 
-      // Upload any local photos to Supabase before saving (signed-in users only)
       let finalPhotoUris = store.photoUris
       if (session && store.photoUris.length > 0) {
         finalPhotoUris = await Promise.all(
@@ -196,15 +242,15 @@ export default function ReviewWizard() {
 
       const reviewPayload = {
         vendorLocalId,
-        overallRating: store.overallRating,
-        returnIntent: store.returnIntent,
-        notes: store.notes.trim() || null,
+        overallRating: 0,
+        returnIntent: null as any,
+        notes: null,
         photoUris: finalPhotoUris,
-        tacoEntries: store.tacoEntries.map(e => ({ tacoType: e.tacoType || '', rating: e.rating, notes: e.notes })),
-        salsaEntries: store.salsaEntries,
-        condiments: store.condiments,
-        burritoEntries: store.burritoEntries,
-        tortaEntries: store.tortaEntries,
+        tacoEntries: [],
+        salsaEntries: [],
+        condiments: [],
+        burritoEntries: [],
+        tortaEntries: [],
       }
 
       let savedReview
@@ -214,17 +260,16 @@ export default function ReviewWizard() {
         savedReview = all.find(r => r.localId === store.editingReviewLocalId) ?? null
       } else {
         savedReview = await localStorageService.addReview(reviewPayload)
+        store.setField('editingReviewLocalId', savedReview.localId)
       }
 
-      // Background sync to Supabase (Pro only — free reviews stay local until upgrade)
       if (session && savedReview && isPro) {
         syncService.liveSync(vendorLocalId, savedReview, session.user.id)
       }
 
-      store.reset()
-      router.back()
+      scrollToStep(1)
     } catch (e) {
-      setErrorMsg('Could not save your review. Try again.')
+      setErrorMsg('Could not save spot info. Try again.')
     } finally {
       setSubmitting(false)
     }
@@ -275,17 +320,16 @@ export default function ReviewWizard() {
       </View>
 
       {/* Step indicator */}
-      <View style={styles.stepRow}>
-        {STEP_NAMES.map((label, i) => {
-          const step = i + 1
-          const isActive = store.currentStep === step
-          return (
-            <View key={step} style={styles.stepItem}>
-              <View style={[styles.stepDot, isActive && styles.stepDotActive]} />
-              <Text style={[styles.stepLabel, isActive && styles.stepLabelActive]}>{label}</Text>
-            </View>
-          )
-        })}
+      <View style={styles.stepIndicator}>
+        {STEPS.map((step, idx) => (
+          <TouchableOpacity
+            key={step.id}
+            style={[styles.stepDot, idx === currentStepIndex && styles.stepDotActive]}
+            onPress={() => scrollToStep(idx)}
+          >
+            <Text style={styles.stepDotLabel}>{idx + 1}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       {errorMsg && (
@@ -295,295 +339,307 @@ export default function ReviewWizard() {
         </View>
       )}
 
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+      <FlatList
+        ref={flatListRef}
+        data={STEPS}
+        keyExtractor={step => step.id}
+        horizontal
+        pagingEnabled
+        scrollEventThrottle={16}
+        showsHorizontalScrollIndicator={false}
+        onMomentumScrollEnd={event => {
+          const stepIndex = Math.round(
+            event.nativeEvent.contentOffset.x / event.nativeEvent.layoutMeasurement.width
+          )
+          setCurrentStepIndex(stepIndex)
+        }}
+        renderItem={({ index }) => (
+          <View style={[styles.stepPage, { width: WINDOW_WIDTH }]}>
+            <ScrollView contentContainerStyle={styles.stepPageContent} keyboardShouldPersistTaps="handled">
 
-        {/* === STEP 1: The Spot === */}
-        {store.currentStep === 1 && (
-          <View>
-            <TextInput
-              style={styles.nameInput}
-              placeholder="Taco spot name"
-              placeholderTextColor={colors.creamDim}
-              value={store.vendorName}
-              onChangeText={v => store.setField('vendorName', v)}
-              autoFocus
-            />
+              {index === 0 && (
+                <>
+                  {/* === STEP 1: The Spot === */}
+                  <TextInput
+                    style={styles.nameInput}
+                    placeholder="Taco spot name"
+                    placeholderTextColor={colors.creamDim}
+                    value={store.vendorName}
+                    onChangeText={v => store.setField('vendorName', v)}
+                    autoFocus
+                  />
 
-            <Text style={styles.fieldLabel}>Type of Spot</Text>
-            <View style={styles.chipGrid}>
-              {SPOT_TYPES.map(t => (
-                <TouchableOpacity
-                  key={t}
-                  style={[styles.chip, store.spotType === t && styles.chipActive]}
-                  onPress={() => store.setField('spotType', store.spotType === t ? null : t)}
-                >
-                  <Text style={[styles.chipText, store.spotType === t && styles.chipTextActive]}>{t}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+                  <Text style={styles.fieldLabel}>Type of Spot</Text>
+                  <View style={styles.chipGrid}>
+                    {SPOT_TYPES.map(t => (
+                      <TouchableOpacity
+                        key={t}
+                        style={[styles.chip, store.spotType === t && styles.chipActive]}
+                        onPress={() => store.setField('spotType', store.spotType === t ? null : t)}
+                      >
+                        <Text style={[styles.chipText, store.spotType === t && styles.chipTextActive]}>{t}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
 
-            <Text style={styles.fieldLabel}>Location</Text>
-            <LocationPicker
-              value={store.lat !== null ? { lat: store.lat, lng: store.lng ?? 0, address: store.address, cityName: store.cityName } : null}
-              onChange={loc => {
-                store.setField('lat', loc?.lat ?? null)
-                store.setField('lng', loc?.lng ?? null)
-                store.setField('address', loc?.address ?? null)
-                store.setField('cityName', loc?.cityName ?? null)
-              }}
-            />
+                  <Text style={styles.fieldLabel}>Location</Text>
+                  <LocationPicker
+                    value={store.lat !== null ? { lat: store.lat, lng: store.lng ?? 0, address: store.address, cityName: store.cityName } : null}
+                    onChange={loc => {
+                      store.setField('lat', loc?.lat ?? null)
+                      store.setField('lng', loc?.lng ?? null)
+                      store.setField('address', loc?.address ?? null)
+                      store.setField('cityName', loc?.cityName ?? null)
+                    }}
+                  />
 
-            <Text style={styles.fieldLabel}>Who can see this?</Text>
-            {isPro ? (
-              <View style={styles.privacyRow}>
-                {PRIVACY_OPTIONS.map(opt => (
+                  <Text style={styles.fieldLabel}>Who can see this?</Text>
+                  {isPro ? (
+                    <View style={styles.privacyRow}>
+                      {PRIVACY_OPTIONS.map(opt => (
+                        <TouchableOpacity
+                          key={opt.value}
+                          style={[styles.privacyBtn, store.privacy === opt.value && styles.privacyBtnActive]}
+                          onPress={() => store.setField('privacy', opt.value)}
+                        >
+                          <Ionicons name={opt.icon as any} size={22} color={store.privacy === opt.value ? colors.amber : colors.creamMuted} style={styles.privacyIcon} />
+                          <Text style={[styles.privacyLabel, store.privacy === opt.value && styles.privacyLabelActive]}>
+                            {opt.label}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  ) : (
+                    <View style={styles.privacyLockedRow}>
+                      <Ionicons name="lock-closed-outline" size={16} color={colors.creamMuted} />
+                      <Text style={styles.privacyLockedText}>Just Me — upgrade to Pro to share your atlas</Text>
+                    </View>
+                  )}
+
                   <TouchableOpacity
-                    key={opt.value}
-                    style={[styles.privacyBtn, store.privacy === opt.value && styles.privacyBtnActive]}
-                    onPress={() => store.setField('privacy', opt.value)}
+                    style={styles.noteToggle}
+                    onPress={() => setShowSpotNote(s => !s)}
                   >
-                    <Ionicons name={opt.icon as any} size={22} color={store.privacy === opt.value ? colors.amber : colors.creamMuted} style={styles.privacyIcon} />
-                    <Text style={[styles.privacyLabel, store.privacy === opt.value && styles.privacyLabelActive]}>
-                      {opt.label}
-                    </Text>
+                    <Ionicons name={showSpotNote ? 'chevron-down' : 'chevron-forward'} size={14} color={colors.creamMuted} />
+                    <Text style={styles.noteToggleText}>About this spot</Text>
                   </TouchableOpacity>
-                ))}
-              </View>
-            ) : (
-              <View style={styles.privacyLockedRow}>
-                <Ionicons name="lock-closed-outline" size={16} color={colors.creamMuted} />
-                <Text style={styles.privacyLockedText}>Just Me — upgrade to Pro to share your atlas</Text>
-              </View>
-            )}
+                  {showSpotNote && (
+                    <TextInput
+                      style={styles.noteInput}
+                      placeholder="Cash only, opens at 3pm..."
+                      placeholderTextColor={colors.creamDim}
+                      value={store.spotNote}
+                      onChangeText={v => store.setField('spotNote', v)}
+                      multiline
+                      numberOfLines={3}
+                    />
+                  )}
 
-            <TouchableOpacity
-              style={styles.noteToggle}
-              onPress={() => setShowSpotNote(s => !s)}
-            >
-              <Ionicons name={showSpotNote ? 'chevron-down' : 'chevron-forward'} size={14} color={colors.creamMuted} />
-              <Text style={styles.noteToggleText}>About this spot</Text>
-            </TouchableOpacity>
-            {showSpotNote && (
-              <TextInput
-                style={styles.noteInput}
-                placeholder="Cash only, opens at 3pm..."
-                placeholderTextColor={colors.creamDim}
-                value={store.spotNote}
-                onChangeText={v => store.setField('spotNote', v)}
-                multiline
-                numberOfLines={3}
-              />
-            )}
-          </View>
-        )}
+                  {/* Photos — moved here from Step 3 */}
+                  <Text style={styles.fieldLabel}>Photos</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoScroll} contentContainerStyle={styles.photoScrollContent}>
+                    {store.photoUris.map((uri) => (
+                      <View key={uri} style={styles.photoThumb}>
+                        <Image source={{ uri }} style={styles.thumbImg} />
+                        <TouchableOpacity style={styles.removePhotoBtn} onPress={() => store.removePhoto(uri)}>
+                          <Ionicons name="close-circle" size={20} color={colors.cream} />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                    <TouchableOpacity style={styles.addPhotoBtn} onPress={() => handleAddPhoto('library')} disabled={pickingPhoto}>
+                      {pickingPhoto
+                        ? <ActivityIndicator size="small" color={colors.amber} />
+                        : <Ionicons name="image-outline" size={24} color={colors.amber} />}
+                      <Text style={styles.addPhotoText}>Gallery</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.addPhotoBtn} onPress={() => handleAddPhoto('camera')} disabled={pickingPhoto}>
+                      <Ionicons name="camera-outline" size={24} color={colors.amber} />
+                      <Text style={styles.addPhotoText}>Camera</Text>
+                    </TouchableOpacity>
+                  </ScrollView>
 
-        {/* === STEP 2: What'd You Have? === */}
-        {store.currentStep === 2 && (
-          <View>
-            <FoodIconBar
-              active={store.activeCategory}
-              litCategories={litCategories}
-              onSelect={store.setActiveCategory}
-              onProGate={handleProGate}
-            />
+                  <TouchableOpacity style={styles.step1SaveBtn} onPress={handleSaveStep1} disabled={submitting}>
+                    {submitting
+                      ? <ActivityIndicator color={colors.cream} />
+                      : <Text style={styles.step1SaveBtnText}>Save & Continue</Text>}
+                  </TouchableOpacity>
+                </>
+              )}
 
-            {store.activeCategory === null && (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyStateEmoji}>🌮</Text>
-                <Text style={styles.emptyStateTitle}>What did you eat?</Text>
-                <Text style={styles.emptyStateSubtitle}>Tap a category above, then pick what you had.</Text>
-              </View>
-            )}
+              {index === 1 && (
+                <>
+                  {/* === STEP 2: What'd You Have? === */}
+                  <FoodIconBar
+                    active={store.activeCategory}
+                    litCategories={litCategories}
+                    onSelect={store.setActiveCategory}
+                    onProGate={handleProGate}
+                  />
 
-            {store.activeCategory === 'tacos' && (
-              <ChipScorecard
-                presets={TACO_TYPES}
-                items={store.tacoEntries.map(e => ({ label: e.tacoType, rating: e.rating, notes: e.notes }))}
-                onAdd={item => store.addTacoEntry({ tacoType: item.label, rating: item.rating, notes: item.notes })}
-                onRemove={store.removeTacoEntry}
-                onUpdate={(idx, updates) => store.updateTacoEntry(idx, {
-                  ...(updates.label !== undefined && { tacoType: updates.label }),
-                  ...(updates.rating !== undefined && { rating: updates.rating }),
-                  ...(updates.notes !== undefined && { notes: updates.notes }),
-                })}
-              />
-            )}
+                  {store.activeCategory === null && (
+                    <View style={styles.emptyState}>
+                      <Text style={styles.emptyStateEmoji}>🌮</Text>
+                      <Text style={styles.emptyStateTitle}>What did you eat?</Text>
+                      <Text style={styles.emptyStateSubtitle}>Tap a category above, then pick what you had.</Text>
+                    </View>
+                  )}
 
-            {store.activeCategory === 'burritos' && (
-              <ChipScorecard
-                presets={BURRITO_TYPES}
-                items={store.burritoEntries.map(e => ({ label: e.burritoType, rating: e.rating, notes: e.notes }))}
-                onAdd={item => store.addBurritoEntry({ burritoType: item.label, rating: item.rating, notes: item.notes })}
-                onRemove={store.removeBurritoEntry}
-                onUpdate={(idx, updates) => {
-                  const current = store.burritoEntries[idx]
-                  store.removeBurritoEntry(idx)
-                  store.addBurritoEntry({
-                    burritoType: updates.label ?? current.burritoType,
-                    rating: updates.rating ?? current.rating,
-                    notes: updates.notes !== undefined ? updates.notes : current.notes,
-                  })
-                }}
-              />
-            )}
+                  {store.activeCategory === 'tacos' && (
+                    <ChipScorecard
+                      presets={TACO_TYPES}
+                      items={store.tacoEntries.map(e => ({ label: e.tacoType, rating: e.rating, notes: e.notes }))}
+                      onAdd={item => { store.addTacoEntry({ tacoType: item.label, rating: item.rating, notes: item.notes }); debouncedAutoSave() }}
+                      onRemove={idx => { store.removeTacoEntry(idx); debouncedAutoSave() }}
+                      onUpdate={(idx, updates) => {
+                        store.updateTacoEntry(idx, {
+                          ...(updates.label !== undefined && { tacoType: updates.label }),
+                          ...(updates.rating !== undefined && { rating: updates.rating }),
+                          ...(updates.notes !== undefined && { notes: updates.notes }),
+                        })
+                        debouncedAutoSave()
+                      }}
+                    />
+                  )}
 
-            {store.activeCategory === 'tortas' && (
-              <ChipScorecard
-                presets={TORTA_TYPES}
-                items={store.tortaEntries.map(e => ({ label: e.tortaType, rating: e.rating, notes: e.notes }))}
-                onAdd={item => store.addTortaEntry({ tortaType: item.label, rating: item.rating, notes: item.notes })}
-                onRemove={store.removeTortaEntry}
-                onUpdate={(idx, updates) => {
-                  const current = store.tortaEntries[idx]
-                  store.removeTortaEntry(idx)
-                  store.addTortaEntry({
-                    tortaType: updates.label ?? current.tortaType,
-                    rating: updates.rating ?? current.rating,
-                    notes: updates.notes !== undefined ? updates.notes : current.notes,
-                  })
-                }}
-              />
-            )}
+                  {store.activeCategory === 'burritos' && (
+                    <ChipScorecard
+                      presets={BURRITO_TYPES}
+                      items={store.burritoEntries.map(e => ({ label: e.burritoType, rating: e.rating, notes: e.notes }))}
+                      onAdd={item => { store.addBurritoEntry({ burritoType: item.label, rating: item.rating, notes: item.notes }); debouncedAutoSave() }}
+                      onRemove={idx => { store.removeBurritoEntry(idx); debouncedAutoSave() }}
+                      onUpdate={(idx, updates) => {
+                        const current = store.burritoEntries[idx]
+                        store.removeBurritoEntry(idx)
+                        store.addBurritoEntry({
+                          burritoType: updates.label ?? current.burritoType,
+                          rating: updates.rating ?? current.rating,
+                          notes: updates.notes !== undefined ? updates.notes : current.notes,
+                        })
+                        debouncedAutoSave()
+                      }}
+                    />
+                  )}
 
-            {store.activeCategory === 'salsas' && (
-              <ChipScorecard
-                freeform
-                heatLevels={HEAT_LEVELS}
-                heatLevelIcons={HEAT_ICONS}
-                items={store.salsaEntries.map(e => ({ label: e.salsaName, rating: e.flavorRating, notes: e.notes ?? null, heatLevel: e.heatLevel }))}
-                onAdd={item => store.addSalsaEntry({ salsaName: item.label, flavorRating: item.rating, heatLevel: item.heatLevel ?? null, notes: item.notes })}
-                onRemove={store.removeSalsaEntry}
-                onUpdate={(idx, updates) => {
-                  // Reconstruct salsa entry on update
-                  const entries = [...store.salsaEntries]
-                  if (updates.rating !== undefined) entries[idx] = { ...entries[idx], flavorRating: updates.rating }
-                  if (updates.notes !== undefined) entries[idx] = { ...entries[idx], notes: updates.notes }
-                  store.setField('salsaEntries', entries)
-                }}
-                renderHeatPicker={(item, idx) => (
-                  <View style={{ flexDirection: 'row', gap: 6, marginTop: spacing.sm, flexWrap: 'wrap' }}>
-                    {HEAT_LEVELS.map(h => {
-                      const isActive = store.salsaEntries[idx]?.heatLevel === h
+                  {store.activeCategory === 'tortas' && (
+                    <ChipScorecard
+                      presets={TORTA_TYPES}
+                      items={store.tortaEntries.map(e => ({ label: e.tortaType, rating: e.rating, notes: e.notes }))}
+                      onAdd={item => { store.addTortaEntry({ tortaType: item.label, rating: item.rating, notes: item.notes }); debouncedAutoSave() }}
+                      onRemove={idx => { store.removeTortaEntry(idx); debouncedAutoSave() }}
+                      onUpdate={(idx, updates) => {
+                        const current = store.tortaEntries[idx]
+                        store.removeTortaEntry(idx)
+                        store.addTortaEntry({
+                          tortaType: updates.label ?? current.tortaType,
+                          rating: updates.rating ?? current.rating,
+                          notes: updates.notes !== undefined ? updates.notes : current.notes,
+                        })
+                        debouncedAutoSave()
+                      }}
+                    />
+                  )}
+
+                  {store.activeCategory === 'salsas' && (
+                    <ChipScorecard
+                      freeform
+                      heatLevels={HEAT_LEVELS}
+                      heatLevelIcons={HEAT_ICONS}
+                      items={store.salsaEntries.map(e => ({ label: e.salsaName, rating: e.flavorRating, notes: e.notes ?? null, heatLevel: e.heatLevel }))}
+                      onAdd={item => { store.addSalsaEntry({ salsaName: item.label, flavorRating: item.rating, heatLevel: item.heatLevel ?? null, notes: item.notes }); debouncedAutoSave() }}
+                      onRemove={idx => { store.removeSalsaEntry(idx); debouncedAutoSave() }}
+                      onUpdate={(idx, updates) => {
+                        const entries = [...store.salsaEntries]
+                        if (updates.rating !== undefined) entries[idx] = { ...entries[idx], flavorRating: updates.rating }
+                        if (updates.notes !== undefined) entries[idx] = { ...entries[idx], notes: updates.notes }
+                        store.setField('salsaEntries', entries)
+                        debouncedAutoSave()
+                      }}
+                      renderHeatPicker={(item, idx) => (
+                        <View style={{ flexDirection: 'row', gap: 6, marginTop: spacing.sm, flexWrap: 'wrap' }}>
+                          {HEAT_LEVELS.map(h => {
+                            const isActive = store.salsaEntries[idx]?.heatLevel === h
+                            return (
+                              <TouchableOpacity
+                                key={h}
+                                style={{
+                                  alignItems: 'center', gap: 2,
+                                  paddingHorizontal: 10, paddingVertical: 6,
+                                  borderRadius: radius.md, borderWidth: 1,
+                                  borderColor: isActive ? colors.amber : colors.surfaceBorder,
+                                  backgroundColor: isActive ? colors.amberSubtle : colors.surface,
+                                }}
+                                onPress={() => {
+                                  const entries = [...store.salsaEntries]
+                                  entries[idx] = { ...entries[idx], heatLevel: h }
+                                  store.setField('salsaEntries', entries)
+                                  debouncedAutoSave()
+                                }}
+                              >
+                                <Text style={{ fontSize: 16 }}>{HEAT_ICONS[h as HeatLevel]}</Text>
+                                <Text style={{ fontSize: 10, fontWeight: '600', color: isActive ? colors.amber : colors.creamMuted }}>
+                                  {h}
+                                </Text>
+                              </TouchableOpacity>
+                            )
+                          })}
+                        </View>
+                      )}
+                    />
+                  )}
+                </>
+              )}
+
+              {index === 2 && (
+                <>
+                  {/* === STEP 3: Your Verdict === */}
+                  <Text style={styles.fieldLabel}>Overall Rating</Text>
+                  <View style={{ flexDirection: 'row', gap: 4, marginBottom: spacing.md }}>
+                    {[1,2,3,4,5].map(n => (
+                      <TouchableOpacity key={n} onPress={() => { store.setField('overallRating', n); debouncedAutoSave() }}>
+                        <Text style={{ fontSize: 32, color: n <= store.overallRating ? colors.amber : colors.creamDim }}>★</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  <Text style={styles.fieldLabel}>Would you come back?</Text>
+                  <View style={styles.intentRow}>
+                    {(['yes', 'maybe', 'no'] as const).map(intent => {
+                      const label = intent === 'yes' ? 'Hell yes 🤙' : intent === 'maybe' ? 'Maybe' : 'Nah'
                       return (
                         <TouchableOpacity
-                          key={h}
-                          style={{
-                            alignItems: 'center', gap: 2,
-                            paddingHorizontal: 10, paddingVertical: 6,
-                            borderRadius: radius.md, borderWidth: 1,
-                            borderColor: isActive ? colors.amber : colors.surfaceBorder,
-                            backgroundColor: isActive ? colors.amberSubtle : colors.surface,
-                          }}
-                          onPress={() => {
-                            const entries = [...store.salsaEntries]
-                            entries[idx] = { ...entries[idx], heatLevel: h }
-                            store.setField('salsaEntries', entries)
-                          }}
+                          key={intent}
+                          style={[styles.intentBtn, store.returnIntent === intent && styles.intentBtnActive]}
+                          onPress={() => { store.setField('returnIntent', intent); debouncedAutoSave() }}
                         >
-                          <Text style={{ fontSize: 16 }}>{HEAT_ICONS[h as HeatLevel]}</Text>
-                          <Text style={{ fontSize: 10, fontWeight: '600', color: isActive ? colors.amber : colors.creamMuted }}>
-                            {h}
+                          <Text style={[styles.intentText, store.returnIntent === intent && styles.intentTextActive]}>
+                            {label}
                           </Text>
                         </TouchableOpacity>
                       )
                     })}
                   </View>
-                )}
-              />
-            )}
 
-          </View>
-        )}
+                  <Text style={styles.fieldLabel}>Notes</Text>
+                  <TextInput
+                    style={styles.noteInput}
+                    placeholder="Anything else worth remembering..."
+                    placeholderTextColor={colors.creamDim}
+                    value={store.notes}
+                    onChangeText={v => { store.setField('notes', v); debouncedAutoSave() }}
+                    multiline
+                    numberOfLines={4}
+                  />
 
-        {/* === STEP 3: Your Verdict === */}
-        {store.currentStep === 3 && (
-          <View>
-            <Text style={styles.fieldLabel}>Overall Rating</Text>
-            <View style={{ flexDirection: 'row', gap: 4, marginBottom: spacing.md }}>
-              {[1,2,3,4,5].map(n => (
-                <TouchableOpacity key={n} onPress={() => store.setField('overallRating', n)}>
-                  <Text style={{ fontSize: 32, color: n <= store.overallRating ? colors.amber : colors.creamDim }}>★</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+                  {autoSaveStatus && (
+                    <Text style={styles.autoSaveIndicator}>✓ Saved</Text>
+                  )}
+                </>
+              )}
 
-            <Text style={styles.fieldLabel}>Would you come back?</Text>
-            <View style={styles.intentRow}>
-              {(['yes', 'maybe', 'no'] as const).map(intent => {
-                const label = intent === 'yes' ? 'Hell yes 🤙' : intent === 'maybe' ? 'Maybe' : 'Nah'
-                return (
-                  <TouchableOpacity
-                    key={intent}
-                    style={[styles.intentBtn, store.returnIntent === intent && styles.intentBtnActive]}
-                    onPress={() => store.setField('returnIntent', intent)}
-                  >
-                    <Text style={[styles.intentText, store.returnIntent === intent && styles.intentTextActive]}>
-                      {label}
-                    </Text>
-                  </TouchableOpacity>
-                )
-              })}
-            </View>
-
-            <Text style={styles.fieldLabel}>Notes</Text>
-            <TextInput
-              style={styles.noteInput}
-              placeholder="Anything else worth remembering..."
-              placeholderTextColor={colors.creamDim}
-              value={store.notes}
-              onChangeText={v => store.setField('notes', v)}
-              multiline
-              numberOfLines={4}
-            />
-
-            <Text style={styles.fieldLabel}>Photos</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoScroll} contentContainerStyle={styles.photoScrollContent}>
-              {store.photoUris.map((uri, idx) => (
-                <View key={uri} style={styles.photoThumb}>
-                  <Image source={{ uri }} style={styles.thumbImg} />
-                  <TouchableOpacity style={styles.removePhotoBtn} onPress={() => store.removePhoto(uri)}>
-                    <Ionicons name="close-circle" size={20} color={colors.cream} />
-                  </TouchableOpacity>
-                </View>
-              ))}
-              <TouchableOpacity style={styles.addPhotoBtn} onPress={() => handleAddPhoto('library')} disabled={pickingPhoto}>
-                {pickingPhoto
-                  ? <ActivityIndicator size="small" color={colors.amber} />
-                  : <Ionicons name="image-outline" size={24} color={colors.amber} />}
-                <Text style={styles.addPhotoText}>Gallery</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.addPhotoBtn} onPress={() => handleAddPhoto('camera')} disabled={pickingPhoto}>
-                <Ionicons name="camera-outline" size={24} color={colors.amber} />
-                <Text style={styles.addPhotoText}>Camera</Text>
-              </TouchableOpacity>
             </ScrollView>
           </View>
         )}
-
-      </ScrollView>
-
-      {/* Footer nav */}
-      <View style={styles.footer}>
-        {store.currentStep > 1 && (
-          <TouchableOpacity style={styles.backBtn} onPress={store.prevStep}>
-            <Ionicons name="chevron-back" size={18} color={colors.creamMuted} />
-            <Text style={styles.backBtnText}>Back</Text>
-          </TouchableOpacity>
-        )}
-        <View style={{ flex: 1 }} />
-        {store.currentStep < 3 ? (
-          <TouchableOpacity style={styles.nextBtn} onPress={store.nextStep}>
-            <Text style={styles.nextBtnText}>Next</Text>
-            <Ionicons name="chevron-forward" size={18} color={colors.cream} />
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit} disabled={submitting}>
-            {submitting
-              ? <ActivityIndicator color={colors.cream} />
-              : <Text style={styles.submitBtnText}>Save Visit</Text>}
-          </TouchableOpacity>
-        )}
-      </View>
+      />
     </KeyboardAvoidingView>
   )
 }
@@ -617,16 +673,40 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.cream,
   },
-  stepRow: {
-    flexDirection: 'row', justifyContent: 'center', gap: spacing.lg,
-    paddingHorizontal: spacing.md, paddingBottom: spacing.md,
+  stepIndicator: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
-  stepItem: { alignItems: 'center', gap: 4 },
-  stepDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.surfaceBorder },
-  stepDotActive: { backgroundColor: colors.amber },
-  stepLabel: { fontSize: 10, color: colors.creamDim, fontWeight: '500' },
-  stepLabelActive: { color: colors.amber, fontWeight: '700' },
-  scroll: { paddingHorizontal: spacing.md, paddingBottom: 120 },
+  stepDot: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.surfaceRaised,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepDotActive: {
+    backgroundColor: colors.amber,
+    borderColor: colors.amber,
+  },
+  stepDotLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.cream,
+  },
+  stepPage: {
+    flex: 1,
+  },
+  stepPageContent: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.lg,
+    paddingBottom: 100,
+  },
   nameInput: {
     backgroundColor: colors.surface, borderRadius: radius.md,
     padding: spacing.md, fontSize: 18, fontWeight: '700', color: colors.cream,
@@ -677,28 +757,6 @@ const styles = StyleSheet.create({
   intentBtnActive: { borderColor: colors.amber, backgroundColor: colors.amberSubtle },
   intentText: { fontSize: 13, color: colors.creamMuted, fontWeight: '600' },
   intentTextActive: { color: colors.amber },
-  footer: {
-    flexDirection: 'row', alignItems: 'center',
-    padding: spacing.md, paddingBottom: 36,
-    borderTopWidth: 1, borderTopColor: colors.surfaceBorder,
-    backgroundColor: colors.bg,
-  },
-  backBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
-  },
-  backBtnText: { color: colors.creamMuted, fontSize: 15, fontWeight: '600' },
-  nextBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: colors.amber, borderRadius: radius.full,
-    paddingHorizontal: spacing.lg, paddingVertical: spacing.sm + 4,
-  },
-  nextBtnText: { color: colors.cream, fontWeight: '700', fontSize: 15 },
-  submitBtn: {
-    backgroundColor: colors.amber, borderRadius: radius.full,
-    paddingHorizontal: spacing.xl, paddingVertical: spacing.sm + 4,
-  },
-  submitBtnText: { color: colors.cream, fontWeight: '700', fontSize: 15 },
   emptyState: {
     alignItems: 'center', justifyContent: 'center',
     paddingVertical: spacing.xxl,
@@ -769,4 +827,24 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.md, marginBottom: spacing.xs,
   },
   errorText: { flex: 1, color: colors.error, fontSize: 13 },
+  step1SaveBtn: {
+    backgroundColor: colors.amber,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md + 4,
+    alignItems: 'center',
+    marginTop: spacing.xl,
+    marginBottom: spacing.lg,
+  },
+  step1SaveBtnText: {
+    color: colors.cream,
+    fontWeight: '700',
+    fontSize: 15,
+  },
+  autoSaveIndicator: {
+    textAlign: 'center',
+    fontSize: 12,
+    color: colors.creamMuted,
+    marginTop: spacing.lg,
+  },
 })
