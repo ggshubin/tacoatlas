@@ -8,6 +8,7 @@ import { colors, spacing, radius } from '../../src/utils/theme'
 export default function SignInScreen() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [failedAttempts, setFailedAttempts] = useState(0)
@@ -96,15 +97,20 @@ export default function SignInScreen() {
             keyboardType="email-address"
             autoComplete="email"
           />
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            placeholderTextColor={colors.creamDim}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoComplete="password"
-          />
+          <View style={styles.passwordWrap}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Password"
+              placeholderTextColor={colors.creamDim}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              autoComplete="password"
+            />
+            <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowPassword(v => !v)}>
+              <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={colors.creamDim} />
+            </TouchableOpacity>
+          </View>
 
           {errorMsg && (
             <View style={styles.errorBanner}>
@@ -165,6 +171,24 @@ const styles = StyleSheet.create({
     color: colors.cream,
     borderWidth: 1,
     borderColor: colors.surfaceBorder,
+  },
+  passwordWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surfaceRaised,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
+    marginBottom: spacing.md,
+  },
+  passwordInput: {
+    flex: 1,
+    padding: spacing.md,
+    fontSize: 16,
+    color: colors.cream,
+  },
+  eyeBtn: {
+    padding: spacing.md,
   },
   button: {
     backgroundColor: colors.amber,

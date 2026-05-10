@@ -1,11 +1,14 @@
 import { Tabs } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { Platform } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { colors } from '../../src/utils/theme'
 import { useNotificationStore } from '../../src/store/notificationStore'
 
 export default function TabsLayout() {
   const { pendingFriendCount } = useNotificationStore()
+  const insets = useSafeAreaInsets()
+  const isAndroid = Platform.OS === 'android'
 
   return (
     <Tabs
@@ -17,8 +20,8 @@ export default function TabsLayout() {
           backgroundColor: colors.surface,
           borderTopColor: colors.surfaceBorder,
           borderTopWidth: 1,
-          height: Platform.OS === 'android' ? 64 : 60,
-          paddingBottom: Platform.OS === 'android' ? 12 : 8,
+          height: isAndroid ? 64 + insets.bottom : 60,
+          paddingBottom: isAndroid ? 12 + insets.bottom : 8,
         },
         tabBarLabelStyle: {
           fontSize: 10,

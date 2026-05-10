@@ -19,7 +19,6 @@ export const photoService = {
 
     const result = await ImagePicker.launchCameraAsync({
       quality: 0.8,
-      allowsEditing: true,
     })
 
     if (result.canceled) return null
