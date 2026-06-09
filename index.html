@@ -171,6 +171,15 @@
     filter: none; opacity: 1;
   }
   .badge-lock svg { width: 13px; height: 13px; }
+  .badge-beta { position: relative; display: inline-block; cursor: default; }
+  .badge-beta img { height: 50px; width: auto; display: block; }
+  .badge-label {
+    position: absolute; top: -9px; right: -9px; z-index: 2;
+    font-family: 'Spline Sans Mono', monospace; font-size: 9px; font-weight: 500;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    background: var(--cilantro); color: #fff;
+    padding: 2px 6px; border-radius: 6px; white-space: nowrap;
+  }
 
   /* hero taco + named pins */
   .hero-art { position: relative; display: flex; align-items: center; justify-content: center; min-height: 460px; z-index: 1; }
@@ -308,7 +317,7 @@
     </div>
 
     <div class="hero-text">
-      <span class="eyebrow"><span class="dot"></span>Coming soon · Now in beta</span>
+      <span class="eyebrow"><span class="dot"></span>Android Beta Live · iOS Coming Soon</span>
       <h1 class="hero-title">Taco Atlas</h1>
       <p class="tagline">The taco nerd's field guide.</p>
       <p class="lead">Find, map and rate every taco truck, cart and stand around you. Track your visits, follow your crew, and never lose the spot that changed your life.</p>
@@ -318,18 +327,18 @@
           <input type="email" id="email" placeholder="you@email.com" required aria-label="Email address" />
           <button class="btn" type="submit">Join the beta</button>
         </div>
-        <p class="form-note">No spam — one note the day the trucks roll in.</p>
-        <div class="success">★ &nbsp;You're on the list. We'll be in touch.</div>
+        <p class="form-note">Use your Google account email — that's how we send your Play Store beta invite.</p>
+        <div class="success">★ &nbsp;You're on the list. We'll send your Play Store beta invite soon.</div>
       </form>
 
       <div class="store">
         <div class="store-head">
-          <span class="soon-stamp"><svg viewBox="0 0 24 24" fill="none" stroke="#2a1a08" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg>Coming soon</span>
-          <span class="store-cap"><b>Not in the stores yet.</b> Join the beta above for first access on iOS &amp; Android.</span>
+          <span class="soon-stamp" style="background: var(--cilantro); color: #fff;"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Android Beta</span>
+          <span class="store-cap"><b>Android beta is live.</b> iOS is coming soon. Sign up with your Google account email above to receive your Play Store beta invite.</span>
         </div>
         <div class="badges" aria-hidden="true">
+          <span class="badge-beta"><span class="badge-label">Beta</span><img src="assets/googleplay.png" alt="Google Play (beta)" /></span>
           <span class="badge-locked"><span class="badge-lock"><svg viewBox="0 0 24 24" fill="none" stroke="#f1e7d3" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg></span><img src="assets/appstore.png" alt="App Store (coming soon)" /></span>
-          <span class="badge-locked"><span class="badge-lock"><svg viewBox="0 0 24 24" fill="none" stroke="#f1e7d3" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg></span><img src="assets/googleplay.png" alt="Google Play (coming soon)" /></span>
         </div>
       </div>
     </div>
@@ -392,17 +401,18 @@
         <input type="email" id="email2" placeholder="you@email.com" required aria-label="Email address" />
         <button class="btn" type="submit">Claim a beta seat</button>
       </div>
-      <p class="form-note">First trucks drop this summer.</p>
-      <div class="success">★ &nbsp;Pin dropped. You're on the beta map.</div>
+      <p class="form-note">Use your Google account email — that's how we send your Play Store beta invite.</p>
+      <div class="success">★ &nbsp;You're on the list. We'll send your Play Store beta invite soon.</div>
     </form>
 
     <div class="store">
       <div class="store-head">
-        <span class="soon-stamp"><svg viewBox="0 0 24 24" fill="none" stroke="#2a1a08" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg>Coming soon</span>
-        <span class="store-cap"><b>Apps drop at launch.</b> Beta seats get the first invite.</span>
+        <span class="soon-stamp" style="background: var(--cilantro); color: #fff;"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Android Beta</span>
+        <span class="store-cap"><b>Android beta is live.</b> iOS is coming soon. Beta seats get the first Play Store invite.</span>
       </div>
       <div class="badges" aria-hidden="true">
-        <span class="badge-locked"><span class="badge-lock"><svg viewBox="0 0 24 24" fill="none" stroke="#f1e7d3" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg></span><img src="assets/googleplay.png" alt="Google Play (coming soon)" /></span>
+        <span class="badge-beta"><span class="badge-label">Beta</span><img src="assets/googleplay.png" alt="Google Play (beta)" /></span>
+        <span class="badge-locked"><span class="badge-lock"><svg viewBox="0 0 24 24" fill="none" stroke="#f1e7d3" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg></span><img src="assets/appstore.png" alt="App Store (coming soon)" /></span>
       </div>
     </div>
   </section>
