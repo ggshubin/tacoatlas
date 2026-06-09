@@ -29,6 +29,8 @@ export function PrivacySelector({ value, onChange, isPro, isSignedIn, onUpgradeP
 
   // Free accounts only save privately — normalize any stale value (e.g. a
   // vendor created before gating, or a form store defaulting to 'public').
+  // onChange is intentionally omitted from deps: including it would loop if
+  // the parent recreates the callback on every render.
   useEffect(() => {
     if (!isPro && value !== 'private') onChange('private')
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -97,7 +99,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md, borderWidth: 1, borderColor: colors.surfaceBorder,
   },
   btnActive: { borderColor: colors.amber, backgroundColor: colors.amberSubtle },
-  btnLocked: { borderColor: colors.surfaceBorder },
+  btnLocked: { borderColor: colors.surfaceBorder, opacity: 0.45 },
   proBadge: {
     position: 'absolute', top: -7, right: -4, backgroundColor: colors.amber,
     paddingHorizontal: 5, paddingVertical: 1, borderRadius: 6,
