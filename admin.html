@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TacoAtlas Admin</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Hanken+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Hanken Grotesk', -apple-system, sans-serif;
+      background: #1a140d;
+      color: #f1e7d3;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .card {
+      background: #1f1910;
+      border: 1px solid rgba(241,231,211,0.08);
+      border-radius: 16px;
+      padding: 36px;
+      width: 100%;
+      max-width: 420px;
+    }
+
+    .header {
+      font-family: 'Anton', Impact, sans-serif;
+      font-size: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: #8c7e66;
+      margin-bottom: 28px;
+    }
+
+    /* Login state */
+    .login-section label {
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #8c7e66;
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    input {
+      width: 100%;
+      padding: 14px 16px;
+      border-radius: 10px;
+      border: 1px solid rgba(241,231,211,0.12);
+      background: rgba(241,231,211,0.04);
+      color: #f1e7d3;
+      font-size: 16px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input:focus { border-color: #e0922e; }
+    input::placeholder { color: #5c5040; }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      background: #e0922e;
+      color: #1a140d;
+      font-family: 'Anton', Impact, sans-serif;
+      font-size: 16px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      cursor: pointer;
+      margin-top: 16px;
+      transition: opacity 0.2s;
+    }
+    button:hover { opacity: 0.9; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .result {
+      margin-top: 16px;
+      padding: 14px 16px;
+      border-radius: 10px;
+      font-size: 14px;
+      line-height: 1.5;
+      display: none;
+    }
+    .result.success {
+      display: block;
+      background: rgba(74,222,128,0.1);
+      border: 1px solid rgba(74,222,128,0.25);
+      color: #4ade80;
+    }
+    .result.error {
+      display: block;
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.25);
+      color: #ef4444;
+    }
+
+    .approve-section { display: none; }
+    .approve-section.visible { display: block; }
+    .login-section.hidden { display: none; }
+
+    .logout {
+      background: none;
+      border: none;
+      color: #8c7e66;
+      font-size: 12px;
+      font-family: 'Hanken Grotesk', sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      cursor: pointer;
+      padding: 0;
+      margin-top: 20px;
+      width: auto;
+    }
+    .logout:hover { color: #f1e7d3; }
+
+    .history { margin-top: 24px; border-top: 1px solid rgba(241,231,211,0.08); padding-top: 20px; }
+    .history-title { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: #8c7e66; margin-bottom: 12px; }
+    .history-item {
+      font-size: 13px;
+      color: #b6a689;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(241,231,211,0.04);
+    }
+    .history-item .email { color: #f1e7d3; }
+    .history-item .time { color: #5c5040; font-size: 11px; }
+    .history-empty { font-size: 13px; color: #5c5040; font-style: italic; }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <div class="header">&#127790; Admin</div>
+  <div class="subtitle">Send beta approval emails</div>
+
+  <!-- Login -->
+  <div class="login-section" id="loginSection">
+    <label for="secret">Secret key</label>
+    <input type="password" id="secret" placeholder="Paste your secret key" autocomplete="off">
+    <button onclick="login()">Unlock</button>
+    <div class="result" id="loginResult"></div>
+  </div>
+
+  <!-- Approve form -->
+  <div class="approve-section" id="approveSection">
+    <label style="font-size:12px; letter-spacing:0.1em; text-transform:uppercase; color:#8c7e66; display:block; margin-bottom:8px;">Email to approve</label>
+    <input type="email" id="email" placeholder="user@example.com" autocomplete="off">
+    <button id="sendBtn" onclick="sendApproval()">Send Install Email</button>
+    <div class="result" id="approveResult"></div>
+
+    <div class="history" id="history">
+      <div class="history-title">Recent approvals</div>
+      <div id="historyList"></div>
+    </div>
+
+    <button class="logout" onclick="logout()">Lock &amp; log out</button>
+  </div>
+</div>
+
+<script>
+  const API = '/api/approve';
+
+  function getHistory() {
+    try { return JSON.parse(localStorage.getItem('ta_approve_history') || '[]'); }
+    catch { return []; }
+  }
+
+  function saveHistory(email) {
+    const history = getHistory();
+    history.unshift({ email, time: new Date().toLocaleString() });
+    if (history.length > 20) history.length = 20;
+    localStorage.setItem('ta_approve_history', JSON.stringify(history));
+    renderHistory();
+  }
+
+  function renderHistory() {
+    const list = document.getElementById('historyList');
+    const history = getHistory();
+    if (history.length === 0) {
+      list.innerHTML = '<div class="history-empty">No approvals yet</div>';
+      return;
+    }
+    list.innerHTML = history.map(h =>
+      '<div class="history-item"><span class="email">' + h.email + '</span><br><span class="time">' + h.time + '</span></div>'
+    ).join('');
+  }
+
+  function login() {
+    const secret = document.getElementById('secret').value.trim();
+    if (!secret) return;
+    localStorage.setItem('ta_approve_secret', secret);
+    showApproveSection();
+  }
+
+  function logout() {
+    localStorage.removeItem('ta_approve_secret');
+    document.getElementById('loginSection').classList.remove('hidden');
+    document.getElementById('approveSection').classList.remove('visible');
+    document.getElementById('secret').value = '';
+  }
+
+  function showApproveSection() {
+    document.getElementById('loginSection').classList.add('hidden');
+    document.getElementById('approveSection').classList.add('visible');
+    renderHistory();
+    document.getElementById('email').focus();
+  }
+
+  async function sendApproval() {
+    const email = document.getElementById('email').value.trim().toLowerCase();
+    const secret = localStorage.getItem('ta_approve_secret');
+    const btn = document.getElementById('sendBtn');
+    const result = document.getElementById('approveResult');
+
+    if (!email || !email.includes('@')) {
+      result.className = 'result error';
+      result.textContent = 'Enter a valid email';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
+    result.className = 'result';
+    result.style.display = 'none';
+
+    try {
+      const res = await fetch(API, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + secret
+        },
+        body: JSON.stringify({ email })
+      });
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        result.className = 'result success';
+        result.textContent = 'Sent to ' + email;
+        saveHistory(email);
+        document.getElementById('email').value = '';
+      } else if (res.status === 401) {
+        result.className = 'result error';
+        result.textContent = 'Invalid secret key. Try logging in again.';
+        logout();
+      } else {
+        result.className = 'result error';
+        result.textContent = data.error || 'Something went wrong';
+      }
+    } catch (err) {
+      result.className = 'result error';
+      result.textContent = 'Network error — check your connection';
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Send Install Email';
+  }
+
+  // Enter key support
+  document.getElementById('secret').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+  document.getElementById('email').addEventListener('keydown', e => { if (e.key === 'Enter') sendApproval(); });
+
+  // Auto-login if secret is saved
+  if (localStorage.getItem('ta_approve_secret')) {
+    showApproveSection();
+  }
+</script>
+
+</body>
+</html>
