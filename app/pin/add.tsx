@@ -11,18 +11,14 @@ import { useAuthStore } from '../../src/store/authStore'
 import { useProStore } from '../../src/store/proStore'
 import { syncService } from '../../src/services/syncService'
 import { LocationPicker } from '../../src/components/LocationPicker'
+import { PrivacySelector } from '../../src/components/PrivacySelector'
+import { ProPaywallModal } from '../../src/components/ProPaywallModal'
 import { colors, spacing, radius } from '../../src/utils/theme'
 import { spotNameSchema, firstError } from '../../src/utils/validation'
 import type { SpotType, PrivacySetting } from '../../src/types/app'
 import type { LocationResult } from '../../src/components/LocationPicker'
 
 const SPOT_TYPES: SpotType[] = ['Truck', 'Food Cart', 'Pop-up', 'Restaurant']
-
-const PRIVACY_OPTIONS: { value: PrivacySetting; label: string; icon: string }[] = [
-  { value: 'public', label: 'Public', icon: 'earth-outline' },
-  { value: 'friends', label: 'Mi Gente', icon: 'people-outline' },
-  { value: 'private', label: 'Just Me', icon: 'lock-closed-outline' },
-]
 
 export default function DropPinScreen() {
   const insets = useSafeAreaInsets()
@@ -36,6 +32,7 @@ export default function DropPinScreen() {
   const [showSpotNote, setShowSpotNote] = useState(false)
   const [saving, setSaving] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [showPaywall, setShowPaywall] = useState(false)
 
   async function handleSave() {
     setErrorMsg(null)
@@ -66,7 +63,7 @@ export default function DropPinScreen() {
         cityName: location?.cityName ?? null,
         hours: null,
         photoUri: null,
-        privacy,
+        privacy: isPro ? privacy : 'private',
         spotNote: spotNote.trim() || null,
         isVisited: false,
       })
@@ -130,20 +127,13 @@ export default function DropPinScreen() {
         <LocationPicker value={location} onChange={setLocation} />
 
         <Text style={styles.fieldLabel}>Who can see this?</Text>
-        <View style={styles.privacyRow}>
-          {PRIVACY_OPTIONS.map(opt => (
-            <TouchableOpacity
-              key={opt.value}
-              style={[styles.privacyBtn, privacy === opt.value && styles.privacyBtnActive]}
-              onPress={() => setPrivacy(opt.value)}
-            >
-              <Ionicons name={opt.icon as any} size={22} color={privacy === opt.value ? colors.amber : colors.creamMuted} style={styles.privacyIcon} />
-              <Text style={[styles.privacyLabel, privacy === opt.value && styles.privacyLabelActive]}>
-                {opt.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        <PrivacySelector
+          value={privacy}
+          onChange={setPrivacy}
+          isPro={isPro}
+          isSignedIn={!!session}
+          onUpgradePress={() => session ? setShowPaywall(true) : router.push('/(auth)/sign-up')}
+        />
 
         <TouchableOpacity
           style={styles.noteToggle}
@@ -170,6 +160,7 @@ export default function DropPinScreen() {
           <Text style={styles.saveBtnText}>{saving ? 'Saving...' : 'Save Pin'}</Text>
         </TouchableOpacity>
       </View>
+      <ProPaywallModal visible={showPaywall} onClose={() => setShowPaywall(false)} />
     </KeyboardAvoidingView>
   )
 }
@@ -208,16 +199,6 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: colors.amber, borderColor: colors.amber },
   chipText: { color: colors.creamMuted, fontSize: 13, fontWeight: '600' },
   chipTextActive: { color: colors.cream },
-  privacyRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
-  privacyBtn: {
-    flex: 1, alignItems: 'center', paddingVertical: spacing.sm + 4,
-    borderRadius: radius.md, borderWidth: 1, borderColor: colors.surfaceBorder,
-    backgroundColor: colors.surfaceRaised,
-  },
-  privacyBtnActive: { borderColor: colors.amber, backgroundColor: colors.amberSubtle },
-  privacyIcon: { marginBottom: 4 },
-  privacyLabel: { fontSize: 11, color: colors.creamMuted, fontWeight: '600' },
-  privacyLabelActive: { color: colors.amber },
   noteToggle: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: spacing.sm },
   noteToggleText: { color: colors.creamMuted, fontSize: 13 },
   noteInput: {
