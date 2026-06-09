@@ -68,3 +68,16 @@ describe('authStore signOut', () => {
     expect(useAuthStore.getState().profile).toBeNull()
   })
 })
+
+describe('authStore updateProfile', () => {
+  it('updateProfile type accepts privacy fields', () => {
+    const updateFn = useAuthStore.getState().updateProfile
+    // TypeScript will error here if privacy fields are not in the union:
+    const _check: typeof updateFn = async (updates: {
+      is_profile_public?: boolean
+      is_name_public?: boolean
+      are_reviews_public?: boolean
+    }) => ({ error: null })
+    expect(typeof _check).toBe('function')
+  })
+})

@@ -22,7 +22,11 @@ interface AuthState {
   setShowRestorePrompt: (value: boolean) => void
   dismissRestorePrompt: () => void
   loadProfile: () => Promise<void>
-  updateProfile: (updates: Partial<Pick<Profile, 'display_name' | 'username' | 'avatar_url' | 'bio' | 'home_city' | 'favorite_taco'>>) => Promise<{ error: string | null }>
+  updateProfile: (updates: Partial<Pick<Profile,
+    'display_name' | 'username' | 'avatar_url' | 'bio' |
+    'home_city' | 'favorite_taco' |
+    'is_profile_public' | 'is_name_public' | 'are_reviews_public'
+  >>) => Promise<{ error: string | null }>
   changePassword: (newPassword: string) => Promise<{ error: string | null }>
   changeEmail: (newEmail: string) => Promise<{ error: string | null }>
   deleteAccount: () => Promise<{ error: string | null }>
