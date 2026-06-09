@@ -27,7 +27,7 @@ export default function DropPinScreen() {
   const [name, setName] = useState('')
   const [spotType, setSpotType] = useState<SpotType | null>(null)
   const [location, setLocation] = useState<LocationResult | null>(null)
-  const [privacy, setPrivacy] = useState<PrivacySetting>('public')
+  const [privacy, setPrivacy] = useState<PrivacySetting>(isPro ? 'public' : 'private')
   const [spotNote, setSpotNote] = useState('')
   const [showSpotNote, setShowSpotNote] = useState(false)
   const [saving, setSaving] = useState(false)
