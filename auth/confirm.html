@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Open in TacoAtlas App</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:     #1f1910;
+      --bg-2:   #2a2218;
+      --card:   #251e16;
+      --cream:  #f1e7d3;
+      --tan:    #b6a689;
+      --tan-dim:#8c7e66;
+      --orange: #e0922e;
+      --line:   rgba(241,231,211,0.12);
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--cream);
+      font-family: 'Hanken Grotesk', sans-serif;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+      text-align: center;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 48px 40px;
+      max-width: 480px;
+      width: 100%;
+    }
+
+    .icon {
+      font-size: 64px;
+      margin-bottom: 24px;
+      display: block;
+    }
+
+    h1 {
+      font-family: 'Anton', sans-serif;
+      font-size: 28px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: var(--cream);
+      margin-bottom: 12px;
+    }
+
+    .subtitle {
+      font-size: 15px;
+      color: var(--tan);
+      line-height: 1.6;
+      margin-bottom: 32px;
+    }
+
+    .btn-primary {
+      display: inline-block;
+      width: 100%;
+      background: var(--orange);
+      color: var(--cream);
+      font-family: 'Hanken Grotesk', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      text-decoration: none;
+      padding: 14px 24px;
+      border-radius: 999px;
+      margin-bottom: 12px;
+      transition: opacity 0.15s;
+    }
+    .btn-primary:hover { opacity: 0.88; }
+
+    .btn-secondary {
+      display: inline-block;
+      width: 100%;
+      background: transparent;
+      color: var(--tan);
+      font-family: 'Hanken Grotesk', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      padding: 12px 24px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .btn-secondary:hover { border-color: var(--tan-dim); color: var(--cream); }
+
+    .divider {
+      border: none;
+      border-top: 1px solid var(--line);
+      margin: 28px 0;
+    }
+
+    .help {
+      font-size: 13px;
+      color: var(--tan-dim);
+      line-height: 1.6;
+    }
+
+    .help a {
+      color: var(--orange);
+      text-decoration: none;
+    }
+    .help a:hover { text-decoration: underline; }
+
+    .wordmark {
+      font-family: 'Anton', sans-serif;
+      font-size: 15px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--orange);
+      margin-top: 32px;
+      opacity: 0.7;
+    }
+
+    @media (max-width: 520px) {
+      .card { padding: 36px 24px; }
+      h1 { font-size: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <span class="icon">📱</span>
+    <h1>Open this on your phone</h1>
+    <p class="subtitle">
+      This link is meant to be opened in the TacoAtlas app.<br />
+      Please open it on the phone where you have TacoAtlas installed.
+    </p>
+
+    <a id="deep-link-btn" class="btn-primary" href="#">
+      Open in TacoAtlas App
+    </a>
+
+    <a
+      class="btn-secondary"
+      href="https://play.google.com/store/apps/details?id=com.tacooatlas.app"
+      target="_blank"
+      rel="noopener"
+    >
+      ↓ &nbsp;Download on Google Play
+    </a>
+
+    <hr class="divider" />
+
+    <p class="help">
+      If your link has expired, open the app and request a new one from the
+      sign-in screen.<br /><br />
+      Questions? Email us at
+      <a href="mailto:hello@tacoatlas.app">hello@tacoatlas.app</a>
+    </p>
+  </div>
+
+  <p class="wordmark">TacoAtlas</p>
+
+  <script>
+    // Build the deep link from whatever params/hash came in
+    var search = window.location.search;   // ?token_hash=...&type=...
+    var hash   = window.location.hash;     // #access_token=...
+
+    // Prefer query-string params (PKCE token_hash flow);
+    // fall back to hash params (implicit flow)
+    var deepLink;
+    if (search) {
+      deepLink = 'tacoatlas://auth/confirm' + search;
+    } else if (hash) {
+      // Convert #key=val to ?key=val for the deep link
+      deepLink = 'tacoatlas://auth/confirm?' + hash.slice(1);
+    } else {
+      deepLink = 'tacoatlas://auth/confirm';
+    }
+
+    document.getElementById('deep-link-btn').href = deepLink;
+
+    // On a mobile browser, attempt the redirect automatically.
+    // If the app isn't installed the browser will fall through and
+    // the user sees this page with the download button.
+    var isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (isMobile) {
+      window.location.href = deepLink;
+    }
+  </script>
+</body>
+</html>
