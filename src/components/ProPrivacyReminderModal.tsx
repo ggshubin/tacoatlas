@@ -12,6 +12,10 @@ interface Props {
 }
 
 export function ProPrivacyReminderModal({ visible, spotCount, onMakeAllPublic, onChoosePerSpot, onKeepPrivate }: Props) {
+  // Early return is load-bearing: the Jest RN Modal mock renders children
+  // even when visible=false, and it spares the native modal mount entirely.
+  if (!visible) return null
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onKeepPrivate}>
       <View style={styles.overlay}>
