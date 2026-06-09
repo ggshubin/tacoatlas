@@ -12,8 +12,6 @@ interface Props {
 }
 
 export function ProPrivacyReminderModal({ visible, spotCount, onMakeAllPublic, onChoosePerSpot, onKeepPrivate }: Props) {
-  if (!visible) return null
-
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onKeepPrivate}>
       <View style={styles.overlay}>
@@ -40,10 +38,13 @@ export function ProPrivacyReminderModal({ visible, spotCount, onMakeAllPublic, o
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: spacing.lg },
-  card: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg, alignItems: 'center' },
+  card: {
+    backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1,
+    borderColor: colors.surfaceBorder, padding: spacing.lg, alignItems: 'center',
+  },
   sparkle: { marginBottom: spacing.sm },
   title: { color: colors.cream, fontSize: 20, fontWeight: '800', marginBottom: spacing.xs },
-  message: { color: colors.creamMuted, fontSize: 14, textAlign: 'center', marginBottom: spacing.lg },
+  message: { color: colors.creamMuted, fontSize: 14, lineHeight: 20, textAlign: 'center', marginBottom: spacing.lg },
   primaryBtn: {
     backgroundColor: colors.amber, borderRadius: radius.md, paddingVertical: 12,
     alignItems: 'center', alignSelf: 'stretch', marginBottom: spacing.sm,

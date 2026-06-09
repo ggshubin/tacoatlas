@@ -14,9 +14,8 @@ describe('ProPrivacyReminderModal', () => {
   beforeEach(() => jest.clearAllMocks())
 
   it('shows the spot count in the message', () => {
-    const { getByTestId } = render(<ProPrivacyReminderModal {...props} />)
-    const text = getByTestId('reminder-message').props.children.join('')
-    expect(text).toContain('4')
+    const { getByText } = render(<ProPrivacyReminderModal {...props} />)
+    expect(getByText(/4 spots saved just for you/)).toBeTruthy()
   })
 
   it('does not render when not visible', () => {
