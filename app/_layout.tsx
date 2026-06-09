@@ -194,7 +194,7 @@ export default function RootLayout() {
           await setReminderShown()
           setPrivacyReminderCount(privateSpotCount)
         }
-      } catch (e) {
+      } catch (e: unknown) {
         console.warn('[layout] pro privacy reminder check failed:', e)
       }
     }
@@ -224,7 +224,7 @@ export default function RootLayout() {
         userEmail={session?.user.email}
         onClose={() => setFeedbackVisible(false)}
       />
-      <ProPrivacyReminderModal
+      {ready && <ProPrivacyReminderModal
         visible={privacyReminderCount !== null}
         spotCount={privacyReminderCount ?? 0}
         onMakeAllPublic={() => {
@@ -238,7 +238,13 @@ export default function RootLayout() {
                 text: 'Make Public',
                 onPress: async () => {
                   setPrivacyReminderCount(null)
-                  await syncService.bulkPublishPrivateSpots(session?.user.id)
+                  const published = await syncService.bulkPublishPrivateSpots(session?.user.id)
+                  if (published === 0 && count > 0) {
+                    Alert.alert(
+                      'Something went wrong',
+                      "We couldn't update your spots. You can change each spot's privacy from its detail page."
+                    )
+                  }
                 },
               },
             ]
@@ -249,7 +255,7 @@ export default function RootLayout() {
           router.push('/(tabs)/atlas')
         }}
         onKeepPrivate={() => setPrivacyReminderCount(null)}
-      />
+      />}
     </>
   )
 }
