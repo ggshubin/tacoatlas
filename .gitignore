@@ -40,3 +40,7 @@ yarn-error.*
 /ios
 /android
 .worktrees/
+
+# local tooling state
+.claude/
+supabase/.temp/
