@@ -321,15 +321,15 @@ export const syncService = {
    * Fire-and-forget safe — never throws.
    */
   async updateVendorPrivacy(vendorLocalId: string, privacy: PrivacySetting, userId?: string): Promise<void> {
-    await localStorageService.updateVendor(vendorLocalId, { privacy })
-    if (!userId) return
     try {
+      await localStorageService.updateVendor(vendorLocalId, { privacy })
+      if (!userId) return
       const reviews = await localStorageService.getReviewsForVendor(vendorLocalId)
       for (const review of reviews) {
         await syncService.liveSync(vendorLocalId, review, userId)
       }
     } catch (e) {
-      console.warn('[syncService] updateVendorPrivacy sync failed:', e)
+      console.warn('[syncService] updateVendorPrivacy failed:', e)
     }
   },
 
@@ -339,11 +339,16 @@ export const syncService = {
    * Returns the number of spots published.
    */
   async bulkPublishPrivateSpots(userId?: string): Promise<number> {
-    const vendors = await localStorageService.getVendors()
-    const privateVendors = vendors.filter(v => v.privacy === 'private')
-    for (const vendor of privateVendors) {
-      await syncService.updateVendorPrivacy(vendor.localId, 'public', userId)
+    try {
+      const vendors = await localStorageService.getVendors()
+      const privateVendors = vendors.filter(v => v.privacy === 'private')
+      for (const vendor of privateVendors) {
+        await syncService.updateVendorPrivacy(vendor.localId, 'public', userId)
+      }
+      return privateVendors.length
+    } catch (e) {
+      console.warn('[syncService] bulkPublishPrivateSpots failed:', e)
+      return 0
     }
-    return privateVendors.length
   },
 }

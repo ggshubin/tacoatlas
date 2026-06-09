@@ -59,3 +59,17 @@ describe('bulkPublishPrivateSpots', () => {
     updateSpy.mockRestore()
   })
 })
+
+describe('failure containment (fire-and-forget contract)', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  it('updateVendorPrivacy never throws when local storage fails', async () => {
+    mockStorage.updateVendor.mockRejectedValueOnce(new Error('storage unavailable'))
+    await expect(syncService.updateVendorPrivacy('v1', 'public', 'user-1')).resolves.toBeUndefined()
+  })
+
+  it('bulkPublishPrivateSpots returns 0 and never throws when getVendors fails', async () => {
+    mockStorage.getVendors.mockRejectedValueOnce(new Error('storage unavailable'))
+    await expect(syncService.bulkPublishPrivateSpots('user-1')).resolves.toBe(0)
+  })
+})
