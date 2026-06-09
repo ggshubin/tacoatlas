@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Taco Atlas — The taco nerd's field guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Hanken+Grotesk:wght@400;500;600;700&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #1f1910;
+    --bg-2: #2a2218;
+    --card: #251e16;
+    --cream: #f1e7d3;
+    --tan: #b6a689;
+    --tan-dim: #8c7e66;
+    --orange: #e0922e;
+    --salsa: #a8331e;
+    --cilantro: #62803a;
+    --line: rgba(241, 231, 211, 0.12);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Hanken Grotesk', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--cream);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+    position: relative;
+  }
+  /* page-wide faint map texture */
+  .map-tex {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background: url('assets/map-background.png') center/cover no-repeat fixed;
+    opacity: 0.22;
+  }
+  .page { position: relative; z-index: 2; }
+
+  /* ---------- shared bits ---------- */
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 9px;
+    font-family: 'Spline Sans Mono', monospace;
+    font-size: 12px; font-weight: 500; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--orange);
+  }
+  .eyebrow .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--orange); animation: blink 2.2s ease-in-out infinite; }
+  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.25; } }
+  .wordmark-display {
+    font-family: 'Anton', sans-serif; font-weight: 400;
+    text-transform: uppercase; color: var(--cream); letter-spacing: 0.01em;
+  }
+  .btn {
+    border: none; border-radius: 9px; background: var(--orange); color: #2a1a08;
+    font-family: 'Hanken Grotesk', sans-serif; font-weight: 700; font-size: 15px;
+    padding: 0 22px; cursor: pointer; white-space: nowrap; transition: transform 0.12s, background 0.2s;
+  }
+  .btn:hover { background: #efa23e; transform: translateY(-1px); }
+
+  /* ---------- top bar ---------- */
+  .topbar {
+    position: absolute; top: 0; left: 0; right: 0; z-index: 5;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 26px clamp(24px, 5vw, 64px);
+  }
+  .topbar .brand { display: flex; align-items: center; gap: 12px; }
+  .topbar .brand img { width: 34px; height: 34px; object-fit: contain; }
+  .topbar .brand span { font-family: 'Anton', sans-serif; font-size: 21px; letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap; }
+  .topbar .status { font-family: 'Spline Sans Mono', monospace; font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--tan-dim); }
+
+  /* ---------- hero ---------- */
+  .hero {
+    position: relative;
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 1.05fr 0.95fr;
+    align-items: center;
+    gap: 40px;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 130px clamp(24px, 5vw, 64px) 80px;
+  }
+  /* hero map glow + scattered pulsing pins live here */
+  .hero-bg { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+  .hero-bg .map {
+    position: absolute; inset: -10% -5%;
+    background: url('assets/map-background.png') center/cover no-repeat;
+    opacity: 0.5;
+  }
+  .hero-bg .glow {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(60% 70% at 72% 50%, rgba(224,146,46,0.16), transparent 60%),
+      linear-gradient(90deg, var(--bg) 18%, rgba(31,25,16,0.4) 55%, rgba(31,25,16,0.7) 100%),
+      linear-gradient(0deg, var(--bg), transparent 30%, transparent 70%, rgba(31,25,16,0.6));
+  }
+  .loc {
+    position: absolute; width: 14px; height: 14px;
+    border-radius: 50% 50% 50% 0; transform: rotate(-45deg);
+    background: var(--orange); opacity: 0.85;
+  }
+  .loc::after {
+    content: ''; position: absolute; inset: -4px; border-radius: 50% 50% 50% 0;
+    border: 1.5px solid currentColor; color: var(--orange); opacity: 0;
+    animation: ping 3.2s ease-out infinite;
+  }
+  .loc.salsa { background: var(--salsa); } .loc.salsa::after { color: var(--salsa); }
+  .loc.green { background: var(--cilantro); } .loc.green::after { color: var(--cilantro); }
+  @keyframes ping { 0% { transform: scale(0.5); opacity: 0.7; } 80%,100% { transform: scale(2.4); opacity: 0; } }
+
+  .hero-text { max-width: 540px; position: relative; z-index: 2; }
+  .hero-text .eyebrow { margin-bottom: 22px; }
+  h1.hero-title {
+    font-family: 'Anton', sans-serif; font-weight: 400;
+    font-size: clamp(56px, 7.4vw, 100px); line-height: 1.0; padding-bottom: 0.04em;
+    text-transform: uppercase; letter-spacing: 0.006em; color: var(--cream);
+  }
+  .hero-text .tagline { font-size: clamp(19px, 2.4vw, 25px); color: var(--tan); margin-top: 18px; font-weight: 500; }
+  .hero-text .lead { max-width: 460px; font-size: 16px; line-height: 1.65; color: var(--tan-dim); margin-top: 18px; }
+
+  /* signup */
+  .signup { margin-top: 30px; max-width: 460px; }
+  .form-row {
+    display: flex; gap: 8px; background: var(--bg-2);
+    border: 1px solid var(--line); border-radius: 14px; padding: 7px; transition: border-color 0.2s;
+  }
+  .form-row:focus-within { border-color: rgba(224,146,46,0.55); }
+  .form-row input {
+    flex: 1; min-width: 0; background: transparent; border: none; outline: none;
+    color: var(--cream); font-family: inherit; font-size: 16px; padding: 12px 14px;
+  }
+  .form-row input::placeholder { color: var(--tan-dim); }
+  .form-note { font-size: 13px; color: var(--tan-dim); margin-top: 12px; }
+  .success {
+    display: none; align-items: center; gap: 10px;
+    background: rgba(98,128,58,0.16); border: 1px solid rgba(98,128,58,0.5);
+    color: #b8d08a; border-radius: 14px; padding: 18px; font-size: 16px; font-weight: 600;
+  }
+  .signup.done .form-row, .signup.done .form-note { display: none; }
+  .signup.done .success { display: flex; }
+
+  /* store badges — pre-launch, non-clickable */
+  .store { margin-top: 30px; }
+  .store-head {
+    display: inline-flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    background: rgba(168,51,30,0.1); border: 1px solid rgba(224,146,46,0.32);
+    border-radius: 14px; padding: 12px 16px; margin-bottom: 16px; max-width: 460px;
+  }
+  .soon-stamp {
+    display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; white-space: nowrap;
+    font-family: 'Anton', sans-serif; font-size: 17px; letter-spacing: 0.06em; text-transform: uppercase;
+    color: #2a1a08; background: var(--orange); padding: 7px 14px; border-radius: 8px;
+  }
+  .soon-stamp svg { width: 16px; height: 16px; }
+  .store-cap { font-size: 13px; line-height: 1.45; color: var(--tan); }
+  .store-cap b { color: var(--cream); font-weight: 700; }
+  .badges { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+  .badge-locked {
+    position: relative; display: inline-block; cursor: not-allowed;
+  }
+  .badge-locked img { height: 50px; width: auto; display: block; filter: grayscale(0.5); opacity: 0.5; }
+  .badge-locked::after {
+    content: ''; position: absolute; inset: 0; border-radius: 11px;
+  }
+  .badge-lock {
+    position: absolute; top: -9px; right: -9px; z-index: 2;
+    width: 26px; height: 26px; border-radius: 50%;
+    background: var(--bg); border: 1px solid rgba(241,231,211,0.25);
+    display: flex; align-items: center; justify-content: center;
+    filter: none; opacity: 1;
+  }
+  .badge-lock svg { width: 13px; height: 13px; }
+
+  /* hero taco + named pins */
+  .hero-art { position: relative; display: flex; align-items: center; justify-content: center; min-height: 460px; z-index: 1; }
+  .hero-art .ring { position: absolute; border-radius: 50%; }
+  .hero-art .ring.r1 { width: 88%; aspect-ratio: 1; border: 1px solid rgba(241,231,211,0.1); }
+  .hero-art .ring.r2 { width: 64%; aspect-ratio: 1; border: 1px dashed rgba(224,146,46,0.22); animation: spin 70s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .hero-art .taco { position: relative; width: 78%; max-width: 430px; filter: drop-shadow(0 30px 50px rgba(0,0,0,0.6)); animation: bob 6.5s ease-in-out infinite; }
+  @keyframes bob { 0%,100% { transform: translateY(0) rotate(-2deg);} 50% { transform: translateY(-16px) rotate(2deg);} }
+  .npin {
+    position: absolute; display: flex; flex-direction: column; align-items: center;
+    font-family: 'Spline Sans Mono', monospace; font-size: 11px; letter-spacing: 0.05em; color: var(--tan); white-space: nowrap;
+  }
+  .npin i { width: 12px; height: 12px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); background: var(--salsa); margin-bottom: 8px; }
+  .npin.p1 { top: 12%; left: 2%; } .npin.p1 i { background: var(--cilantro); }
+  .npin.p2 { bottom: 14%; right: 0%; }
+
+  /* ---------- feature sections ---------- */
+  .feature {
+    max-width: 1180px; margin: 0 auto;
+    display: grid; grid-template-columns: 1fr 1fr; align-items: center;
+    gap: clamp(36px, 6vw, 90px);
+    padding: clamp(60px, 9vw, 120px) clamp(24px, 5vw, 64px);
+  }
+  .feature.flip .feat-media { order: 2; }
+  .feat-text .num { font-family: 'Anton', sans-serif; font-size: 16px; color: var(--orange); letter-spacing: 0.1em; }
+  .feat-text .eyebrow { margin: 14px 0 16px; }
+  .feat-text h2 {
+    font-family: 'Anton', sans-serif; font-weight: 400; text-transform: uppercase;
+    font-size: clamp(34px, 4.6vw, 56px); line-height: 1.02; color: var(--cream); letter-spacing: 0.01em;
+  }
+  .feat-text .sub { font-size: 17px; line-height: 1.6; color: var(--tan); margin-top: 16px; max-width: 460px; }
+  .blist { list-style: none; margin-top: 26px; display: flex; flex-direction: column; gap: 18px; max-width: 480px; }
+  .blist li { display: flex; gap: 14px; }
+  .blist .mk {
+    flex-shrink: 0; width: 30px; height: 30px; border-radius: 9px;
+    background: rgba(224,146,46,0.12); border: 1px solid rgba(224,146,46,0.3);
+    display: flex; align-items: center; justify-content: center; margin-top: 1px;
+  }
+  .blist .mk svg { width: 15px; height: 15px; }
+  .blist .bt { font-size: 15.5px; line-height: 1.55; color: var(--cream); }
+  .blist .bt b { color: var(--cream); font-weight: 700; }
+  .blist .bt span { color: var(--tan-dim); }
+
+  /* phone frame */
+  .feat-media { display: flex; justify-content: center; }
+  .phone {
+    position: relative; width: clamp(240px, 30vw, 300px);
+    border-radius: 42px; padding: 9px;
+    background: linear-gradient(155deg, #3a3026, #1a140d);
+    box-shadow: 0 40px 80px -24px rgba(0,0,0,0.75), inset 0 1px 0 rgba(241,231,211,0.1);
+    border: 1px solid rgba(241,231,211,0.08);
+  }
+  .phone::before {
+    content: ''; position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+    width: 64px; height: 5px; border-radius: 3px; background: rgba(0,0,0,0.4); z-index: 3;
+  }
+  .phone img { width: 100%; display: block; border-radius: 34px; }
+  .phone .pglow {
+    position: absolute; inset: -14% -10% auto; height: 60%; z-index: -1;
+    background: radial-gradient(circle, rgba(224,146,46,0.22), transparent 70%); filter: blur(10px);
+  }
+
+  /* ---------- final CTA ---------- */
+  .closer {
+    max-width: 900px; margin: 0 auto;
+    text-align: center; padding: clamp(70px, 10vw, 130px) 24px;
+  }
+  .closer .taco-sm { width: 92px; margin: 0 auto 24px; display: block; filter: drop-shadow(0 14px 22px rgba(0,0,0,0.5)); }
+  .closer h2 {
+    font-family: 'Anton', sans-serif; font-weight: 400; text-transform: uppercase;
+    font-size: clamp(40px, 6vw, 76px); line-height: 0.98; color: var(--cream);
+  }
+  .closer p { color: var(--tan); font-size: 18px; margin: 18px auto 0; max-width: 480px; }
+  .closer .signup { margin: 30px auto 0; }
+  .closer .store { display: flex; flex-direction: column; align-items: center; margin-top: 26px; }
+  .closer .badges { justify-content: center; }
+
+  /* ---------- footer ---------- */
+  .footer {
+    border-top: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;
+    max-width: 1180px; margin: 0 auto; padding: 30px clamp(24px, 5vw, 64px) 40px;
+    color: var(--tan-dim); font-size: 13px;
+  }
+  .footer .fbrand { display: flex; align-items: center; gap: 10px; font-family: 'Anton', sans-serif; letter-spacing: 0.04em; text-transform: uppercase; color: var(--tan); font-size: 16px; }
+  .footer .fbrand img { width: 24px; height: 24px; object-fit: contain; }
+
+  /* ---------- responsive ---------- */
+  @media (max-width: 880px) {
+    .hero { grid-template-columns: 1fr; text-align: center; padding-top: 116px; gap: 12px; }
+    .hero-text { max-width: 100%; margin: 0 auto; }
+    .hero-text .eyebrow, .signup, .lead, .store { margin-left: auto; margin-right: auto; }
+    .store { text-align: center; }
+    .store-head { margin-left: auto; margin-right: auto; }
+    .badges { justify-content: center; }
+    .hero-art { order: -1; min-height: 300px; }
+    .feature { grid-template-columns: 1fr; gap: 36px; }
+    .feature.flip .feat-media { order: 0; }
+    .feat-text { text-align: center; }
+    .feat-text .eyebrow { margin-left: auto; margin-right: auto; }
+    .feat-text .sub, .blist { margin-left: auto; margin-right: auto; }
+    .blist li { text-align: left; }
+  }
+  @media (max-width: 520px) {
+    .topbar .status { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .taco, .loc::after, .ring.r2, .dot { animation: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="map-tex"></div>
+
+<div class="page">
+  <!-- TOP BAR -->
+  <header class="topbar">
+    <div class="brand"><img src="assets/taco-icon.png" alt="" /><span>Taco Atlas</span></div>
+    <span class="status">Beta · 2026</span>
+  </header>
+
+  <!-- HERO -->
+  <section class="hero" data-screen-label="Hero">
+    <div class="hero-bg">
+      <div class="map"></div>
+      <span class="loc" style="top:18%;left:30%"></span>
+      <span class="loc salsa" style="top:30%;left:62%"></span>
+      <span class="loc green" style="top:54%;left:48%"></span>
+      <span class="loc" style="top:68%;left:74%"></span>
+      <span class="loc salsa" style="top:44%;left:84%"></span>
+      <span class="loc green" style="top:78%;left:38%"></span>
+      <span class="loc" style="top:22%;left:90%"></span>
+      <div class="glow"></div>
+    </div>
+
+    <div class="hero-text">
+      <span class="eyebrow"><span class="dot"></span>Coming soon · Now in beta</span>
+      <h1 class="hero-title">Taco Atlas</h1>
+      <p class="tagline">The taco nerd's field guide.</p>
+      <p class="lead">Find, map and rate every taco truck, cart and stand around you. Track your visits, follow your crew, and never lose the spot that changed your life.</p>
+
+      <form class="signup" id="signup">
+        <div class="form-row">
+          <input type="email" id="email" placeholder="you@email.com" required aria-label="Email address" />
+          <button class="btn" type="submit">Join the beta</button>
+        </div>
+        <p class="form-note">No spam — one note the day the trucks roll in.</p>
+        <div class="success">★ &nbsp;You're on the list. We'll be in touch.</div>
+      </form>
+
+      <div class="store">
+        <div class="store-head">
+          <span class="soon-stamp"><svg viewBox="0 0 24 24" fill="none" stroke="#2a1a08" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg>Coming soon</span>
+          <span class="store-cap"><b>Not in the stores yet.</b> Join the beta above for first access on iOS &amp; Android.</span>
+        </div>
+        <div class="badges" aria-hidden="true">
+          <span class="badge-locked"><span class="badge-lock"><svg viewBox="0 0 24 24" fill="none" stroke="#f1e7d3" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg></span><img src="assets/appstore.png" alt="App Store (coming soon)" /></span>
+          <span class="badge-locked"><span class="badge-lock"><svg viewBox="0 0 24 24" fill="none" stroke="#f1e7d3" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg></span><img src="assets/googleplay.png" alt="Google Play (coming soon)" /></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero-art">
+      <div class="ring r1"></div>
+      <div class="ring r2"></div>
+      <span class="npin p1"><i></i>El Güero</span>
+      <span class="npin p2"><i></i>Birria Bros</span>
+      <img class="taco" src="assets/taco-icon.png" alt="Taco Atlas" />
+    </div>
+  </section>
+
+  <!-- FEATURE 1 — EXPLORE / MAP -->
+  <section class="feature" data-screen-label="Explore">
+    <div class="feat-media">
+      <div class="phone"><div class="pglow"></div><img src="assets/screen-explore.jpg" alt="Taco Atlas explore map showing taco pins across the Portland metro" /></div>
+    </div>
+    <div class="feat-text">
+      <div class="num">01</div>
+      <span class="eyebrow">Explore</span>
+      <h2>The whole<br />taco map.</h2>
+      <p class="sub">Every pin is a real spot someone vouched for. Pan from your entire metro down to a single block and see what's worth the drive.</p>
+      <ul class="blist">
+        <li><span class="mk"><svg viewBox="0 0 24 24" fill="none" stroke="#e0922e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11z"/><circle cx="12" cy="10" r="2.4"/></svg></span><span class="bt"><b>A live map of trucks, carts &amp; stands</b> <span>near you — tap any taco pin to open the spot.</span></span></li>
+        <li><span class="mk"><svg viewBox="0 0 24 24" fill="none" stroke="#e0922e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M7 12h10M10 18h4"/></svg></span><span class="bt"><b>Filter by All, Mine, Friends &amp; Public</b> <span>to flip between your saves, your crew's finds, and the whole community.</span></span></li>
+        <li><span class="mk"><svg viewBox="0 0 24 24" fill="none" stroke="#e0922e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></span><span class="bt"><b>See how many pins are in view</b> <span>at a glance, with your own location anchored on the map.</span></span></li>
+        <li><span class="mk"><svg viewBox="0 0 24 24" fill="none" stroke="#e0922e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3 3 6v15l6-3 6 3 6-3V3l-6 3-6-3z"/><path d="M9 3v15M15 6v15"/></svg></span><span class="bt"><b>Atlas, Explore, Mi Gente &amp; Profile</b> <span>— jump between your map, discovery, friends, and account in a tap.</span></span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- FEATURE 2 — VENUE DETAIL -->
+  <section class="feature flip" data-screen-label="Venue">
+    <div class="feat-media">
+      <div class="phone"><div class="pglow"></div><img src="assets/screen-venue.jpg" alt="Taco Atlas venue profile for a food cart with visit log, photos and ratings" /></div>
+    </div>
+    <div class="feat-text">
+      <div class="num">02</div>
+      <span class="eyebrow">Every venue</span>
+      <h2>Rate it.<br />Remember it.</h2>
+      <p class="sub">Each spot gets a full profile — what it is, where it is, and the running record of every time you've been.</p>
+      <ul class="blist">
+        <li><span class="mk"><svg viewBox="0 0 24 24" fill="none" stroke="#e0922e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h10"/></svg></span><span class="bt"><b>Profiles for every spot</b> <span>— food cart, truck or restaurant — tagged by neighborhood with your own private notes.</span></span></li>
+        <li><span class="mk"><svg viewBox="0 0 24 24" fill="none" stroke="#e0922e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9 6.8 19.1l1-5.8L3.5 9.2l5.9-.9L12 3z"/></svg></span><span class="bt"><b>Rate the venue and each taco</b> <span>separately on a five-fork scale — so a great spot with a so-so al pastor still tells the full story.</span></span></li>
+        <li><span class="mk"><svg viewBox="0 0 24 24" fill="none" stroke="#e0922e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="15" rx="2"/><path d="m3 16 5-4 4 3 4-4 5 4"/><circle cx="8.5" cy="9.5" r="1.4"/></svg></span><span class="bt"><b>Log visits with photos</b> <span>— storefront, menu, the line — plus a date and a gut-reaction like "Hell yes."</span></span></li>
+        <li><span class="mk"><svg viewBox="0 0 24 24" fill="none" stroke="#e0922e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span><span class="bt"><b>Add another visit</b> <span>each time you go back — your history builds an average and a record of every spot you've conquered.</span></span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- CLOSER -->
+  <section class="closer" data-screen-label="Closer">
+    <img class="taco-sm" src="assets/taco-icon.png" alt="" />
+    <h2>Get in before<br />the first pin drops.</h2>
+    <p>Beta testers get the first map, lifetime pin privileges, and bragging rights over everyone still using a notes app.</p>
+
+    <form class="signup" id="signup2">
+      <div class="form-row">
+        <input type="email" id="email2" placeholder="you@email.com" required aria-label="Email address" />
+        <button class="btn" type="submit">Claim a beta seat</button>
+      </div>
+      <p class="form-note">First trucks drop this summer.</p>
+      <div class="success">★ &nbsp;Pin dropped. You're on the beta map.</div>
+    </form>
+
+    <div class="store">
+      <div class="store-head">
+        <span class="soon-stamp"><svg viewBox="0 0 24 24" fill="none" stroke="#2a1a08" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg>Coming soon</span>
+        <span class="store-cap"><b>Apps drop at launch.</b> Beta seats get the first invite.</span>
+      </div>
+      <div class="badges" aria-hidden="true">
+        <span class="badge-locked"><span class="badge-lock"><svg viewBox="0 0 24 24" fill="none" stroke="#f1e7d3" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg></span><img src="assets/googleplay.png" alt="Google Play (coming soon)" /></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="fbrand"><img src="assets/taco-icon.png" alt="" />Taco Atlas</div>
+    <div>Made for people who drive across town for the good salsa. © 2026</div>
+  </footer>
+</div>
+
+<script>
+  (function () {
+    // Form handler for beta signups
+    var KEY = 'tacoatlas_beta_signup';
+
+    function markAllDone() {
+      document.querySelectorAll('.signup').forEach(function (f) { f.classList.add('done'); });
+    }
+
+    function wire(formId, emailId) {
+      var form = document.getElementById(formId);
+      if (!form) return;
+      if (localStorage.getItem(KEY)) form.classList.add('done');
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var input = document.getElementById(emailId);
+        var email = input.value.trim();
+        if (!email) return;
+
+        var btn = form.querySelector('.btn');
+        var label = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = 'Joining…';
+
+        var payload = {
+          email: email,
+          source: 'taco-atlas-landing-page',
+          submittedAt: new Date().toISOString()
+        };
+
+        fetch('/api/webhook', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          if (data.success) {
+            localStorage.setItem(KEY, email);
+            markAllDone();
+          } else {
+            alert('Error: ' + (data.error || 'Something went wrong'));
+          }
+        })
+        .catch(function(err) {
+          console.error('Submission error:', err);
+          alert('Network error. Please try again.');
+        })
+        .finally(function() {
+          btn.disabled = false;
+          btn.textContent = label;
+        });
+      });
+    }
+
+    wire('signup', 'email');
+    wire('signup2', 'email2');
+  })();
+</script>
+</body>
+</html>

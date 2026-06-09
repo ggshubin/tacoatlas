@@ -1,0 +1,16 @@
+{
+  "name": "tacoatlas-landing",
+  "version": "1.0.0",
+  "description": "TacoAtlas landing page and beta signup",
+  "type": "module",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "echo 'Static site with serverless functions'",
+    "start": "echo 'Deploy to Vercel'"
+  },
+  "dependencies": {
+    "resend": "^3.0.0",
+    "@supabase/supabase-js": "^2.38.0"
+  },
+  "devDependencies": {}
+}
