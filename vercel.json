@@ -1,5 +1,6 @@
 {
-  "installCommand": "npm install",
+  "buildCommand": "npm install",
+  "outputDirectory": ".",
   "functions": {
     "api/**/*.js": {
       "memory": 1024,
