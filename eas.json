@@ -11,13 +11,15 @@
       },
       "ios": {
         "simulator": false
-      }
+      },
+      "channel": "preview"
     },
     "production": {
       "android": {
         "buildType": "app-bundle",
         "autoIncrement": true
-      }
+      },
+      "channel": "production"
     }
   }
 }
