@@ -57,6 +57,26 @@ Client gating alone can be bypassed by stale store state. Both flows keep/gain a
 - `app/review/add.tsx`: keep existing `effectivePrivacy = isPro ? store.privacy : 'private'`.
 - `app/pin/add.tsx`: add the same guard before `localStorageService.addVendor(...)` (currently missing — this is the leak fix).
 
+### Post-conversion privacy reminder
+
+When a free user converts to Pro, their previously logged spots are all `private`. They get a one-time reminder that those spots can now be shared. **Nothing changes automatically — default stays private unless the user acts.**
+
+**Trigger.** Show once, when all of these are true:
+
+- `isPro` transitions false → true during the session (purchase, restore, or `checkPro()` returning Pro for the first time on this device)
+- The user has ≥ 1 locally stored spot with `privacy = 'private'`
+- AsyncStorage flag `proPrivacyReminderShown` is not set
+
+Set the flag immediately after showing, so the reminder never repeats (including for users who are already Pro when this ships — their first `checkPro()` transition sets the flag and shows it once, which is acceptable and arguably desirable).
+
+**Modal.** "You're Pro! You have N spots saved just for you. Want to share them?" with three actions:
+
+- **Make all Public** — bulk-updates `privacy = 'public'` on all the user's local vendors and their reviews, then triggers the existing sync path. Confirmation alert first ("This makes N spots visible to everyone").
+- **I'll choose per spot** — navigates to the Atlas list; each spot detail screen now has a privacy control (below).
+- **Keep private** — dismisses; no data changes.
+
+**Per-spot privacy control.** `app/spot/[localId].tsx` gets the same `PrivacySelector` component (Pro mode), saving immediately on change. A spot's privacy value applies to the vendor row and that user's reviews of it together — same coupling the wizard already uses. For free users the spot detail screen shows the selector in its locked state (consistent with the composer).
+
 ### Out of scope
 
 - RLS/policy changes on `vendors`/`reviews` (separate backlog item).
@@ -73,4 +93,9 @@ Component tests (`src/components/__tests__/PrivacySelector.test.tsx`), following
 4. Free: tapping a locked option shows the upgrade nudge; Upgrade visible when `isSignedIn`, Sign Up when not.
 5. Free: mounting with `value='public'` and `isPro=false` normalizes to `private`.
 
-Integration check (manual): review wizard step 1 and drop-pin screen render the shared component; free-tier pin save stores `privacy='private'` regardless of prior store state.
+Reminder logic tests (pure function extracted, e.g. `shouldShowProPrivacyReminder(wasPro, isPro, privateSpotCount, flagSet)`):
+
+6. Fires only on false→true transition with private spots and unset flag; never fires twice.
+7. Bulk update: all private vendors and their reviews become `public`; non-private rows untouched.
+
+Integration check (manual): review wizard step 1, drop-pin screen, and spot detail render the shared component; free-tier pin save stores `privacy='private'` regardless of prior store state; conversion on a device with private spots shows the modal once.
