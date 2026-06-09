@@ -32,7 +32,7 @@ function getInitials(name: string): string {
   return (name.trim().slice(0, 2) || '?').toUpperCase()
 }
 
-function otaLabel: string | null {
+function getOtaLabel(): string | null {
   if (Updates.isEmbeddedLaunch) return null
   const id = Updates.updateId
   if (!id) return null
