@@ -44,14 +44,6 @@ Four small/medium items the user has flagged for near-term work. Surgical, mostl
 
 - **Price logging on review entries.** Add an optional `price_cents` column to `taco_entries`, `burrito_entries`, `torta_entries`, `salsa_entries`. Powers personal stats — "$312 spent on tacos this year, avg $9.40, best value at El Chato." Sticky, shareable, easy to ignore if a user doesn't care. Display in currency formatted to user's locale.
 
-### Legal pages
-
-- **Publish Terms of Service and Privacy Policy pages.** The profile screen links to `https://tacoatlas.app/terms` and `https://tacoatlas.app/privacy` — these pages need to exist. Draft the legal copy (or use a generator like Termly/GetTerms as a starting point), host them as static pages on the tacoatlas.app domain (Vercel). Update the URLs in [`app/(tabs)/profile.tsx:470`](../app/(tabs)/profile.tsx) once the pages are live.
-
-### Auth & web
-
-- **Desktop browser bounce page for email links.** Currently a spawned chip (`task_f3e49c0d`). Hosted page at `https://tacoatlas.app/auth/confirm` that handles the case where someone clicks a confirmation/reset link on a desktop browser instead of their phone. See chip prompt for full spec.
-
 ### Visibility & contribution policy
 
 - **Tighten the read/write split between guests, free, and Pro users.** Intent:
@@ -104,26 +96,25 @@ Four small/medium items the user has flagged for near-term work. Surgical, mostl
 
 ## Known issues / fixes
 
-- **Stale Expo package versions.** SDK 55 patch drift on ~15 packages (expo, expo-camera, expo-router, react-native, etc.). Surfaced as a warning every `expo start` / `eas build`. Run `npx expo install --check` and align. Low priority but accumulates risk.
-
-- **Pre-existing TypeScript errors** unrelated to auth work, leftover from earlier sessions:
-  - `app/mi-gente/add.tsx` — CameraView `barcodeScannerEnabled` prop removed in newer expo-camera
-  - `app/review/add.tsx` — `HeatLevel` narrowing on a `string | null`
-  - `app/spot/[localId].tsx` — `Alert` not imported
-  - `src/services/notificationService.ts` — `NotificationBehavior` shape changed (missing `shouldShowBanner`, `shouldShowList`)
-  - `src/services/syncService.ts` — `boolean | null` vs `boolean | undefined`
-  - `src/services/__tests__/reviewRepository.test.ts` — `isPublic` not in `CreateReviewInput`
-  - None block the build, but they should be cleaned up before they multiply.
-
 - **Three test accounts stuck with NULL username.** `mashashubin@gmail.com`, `kyrashubin@gmail.com`, `georgie.shubin@gmail.com` were created before the signup metadata fix and have `profiles.username = NULL`. They appear in-app without usernames. Either ask each to edit their profile in-app, or backfill via SQL.
 
 - **Existing profile rows for new signups still empty if metadata wasn't passed.** Same root cause as above. Going forward (v29+) this can't recur, but worth a one-time sweep if any test users got created between v27 and v29.
 
 ---
 
-## Recently shipped (June 6, 2026 — session highlights)
+## Recently shipped
 
 For context; remove entries from this list as they age out.
+
+### June 8–9, 2026
+
+- Terms of Service + Privacy Policy pages live at `tacoatlas.app/terms` and `/privacy` — profile links now resolve
+- Desktop browser bounce page live at `tacoatlas.app/auth/confirm`
+- Beta feedback banner shipped and working
+- EAS Update configured (`updates.url`, `runtimeVersion`, preview/production channels) — OTA delivery works starting with the next binary build
+- All pre-existing TypeScript errors fixed and Expo SDK 55 packages aligned (`1af0d49`)
+
+### June 6, 2026
 
 - Resend SMTP wired through Supabase (Auth → Emails → SMTP) — domain `tacoatlas.app` verified
 - Branded email templates in `docs/email-templates/` for confirm-signup, reset-password, change-email
