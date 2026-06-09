@@ -221,6 +221,7 @@ export default function ProfileScreen() {
     field: 'is_profile_public' | 'is_name_public' | 'are_reviews_public',
     value: boolean,
   ) {
+    if (!profile) return
     setPrivacySaving(true)
     await updateProfile({ [field]: value })
     setPrivacySaving(false)
