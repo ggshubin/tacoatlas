@@ -295,8 +295,26 @@ export default async function handler(req, res) {
       });
     } catch (emailError) {
       console.error('Email sending error:', emailError);
-      // Don't fail the whole request if email fails
-      // The signup was successful even if email didn't send
+    }
+
+    // Notify admin of new signup
+    const notifyEmail = process.env.NOTIFY_EMAIL;
+    if (notifyEmail) {
+      try {
+        await resend.emails.send({
+          from: `TacoAtlas <${fromEmail}>`,
+          to: notifyEmail,
+          subject: `🌮 New beta signup: ${normalizedEmail}`,
+          html: `<div style="font-family:sans-serif;max-width:480px;padding:20px;background:#1f1910;color:#f1e7d3;border-radius:12px;">
+            <h2 style="color:#e0922e;margin:0 0 16px;">New Beta Signup</h2>
+            <p style="margin:0 0 8px;"><strong style="color:#b6a689;">Email:</strong> ${normalizedEmail}</p>
+            <p style="margin:0 0 8px;"><strong style="color:#b6a689;">Source:</strong> ${source || 'landing-page'}</p>
+            <p style="margin:0;"><strong style="color:#b6a689;">Time:</strong> ${new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })}</p>
+          </div>`
+        });
+      } catch (notifyError) {
+        console.error('Admin notification error:', notifyError);
+      }
     }
 
     return res.status(200).json({
