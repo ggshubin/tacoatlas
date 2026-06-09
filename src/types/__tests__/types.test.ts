@@ -25,4 +25,25 @@ describe('Type shapes', () => {
     expect(r.overall_rating).toBeGreaterThanOrEqual(1)
     expect(r.overall_rating).toBeLessThanOrEqual(5)
   })
+
+  it('Profile includes privacy fields', () => {
+    const p: import('../database').Profile = {
+      id: 'x',
+      username: null,
+      display_name: null,
+      avatar_url: null,
+      bio: null,
+      home_city: null,
+      favorite_taco: null,
+      is_admin: false,
+      is_pro: false,
+      created_at: '',
+      is_profile_public: true,
+      is_name_public: true,
+      are_reviews_public: true,
+    }
+    expect(p.is_profile_public).toBe(true)
+    expect(p.is_name_public).toBe(true)
+    expect(p.are_reviews_public).toBe(true)
+  })
 })
