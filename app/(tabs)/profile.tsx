@@ -1,10 +1,11 @@
 import { useState, useCallback } from 'react'
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Image, Modal, TextInput, KeyboardAvoidingView, Platform, Alert,
+  ActivityIndicator, Image, Modal, TextInput, KeyboardAvoidingView, Platform, Alert, Switch, Linking,
 } from 'react-native'
 import { useFocusEffect, router } from 'expo-router'
 import Constants from 'expo-constants'
+import * as Updates from 'expo-updates'
 import { Ionicons } from '@expo/vector-icons'
 import { AppBottomSheet } from '../../src/components/AppBottomSheet'
 import { useAuthStore } from '../../src/store/authStore'
@@ -31,12 +32,20 @@ function getInitials(name: string): string {
   return (name.trim().slice(0, 2) || '?').toUpperCase()
 }
 
+function getOtaLabel(): string | null {
+  if (Updates.isEmbeddedLaunch) return null
+  const id = Updates.updateId
+  if (!id) return null
+  return id.replace(/-/g, '').slice(0, 8)
+}
+
 export default function ProfileScreen() {
   const { session, profile, loadProfile, updateProfile, changeEmail, changePassword } = useAuthStore()
   const { isPro, checkPro } = useProStore()
   const insets = useSafeAreaInsets()
   const [stats, setStats] = useState<Stats | null>(null)
   const [purchasing, setPurchasing] = useState(false)
+  const [privacySaving, setPrivacySaving] = useState(false)
 
   // Edit profile state
   const [editMode, setEditMode] = useState(false)
@@ -206,6 +215,15 @@ export default function ProfileScreen() {
     const { signOut } = useAuthStore.getState()
     await signOut()
     router.replace('/landing')
+  }
+
+  async function handlePrivacyToggle(
+    field: 'is_profile_public' | 'is_name_public' | 'are_reviews_public',
+    value: boolean,
+  ) {
+    setPrivacySaving(true)
+    await updateProfile({ [field]: value })
+    setPrivacySaving(false)
   }
 
   return (
@@ -426,12 +444,102 @@ export default function ProfileScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>App</Text>
           <View style={styles.card}>
-            <View style={styles.accountRow}>
+            <View style={[styles.accountRow, getOtaLabel() ? styles.accountRowBorder : undefined]}>
               <Ionicons name="information-circle-outline" size={18} color={colors.creamMuted} />
-              <Text style={styles.accountLabel}>TacoAtlas v{Constants.expoConfig?.version ?? '1.1.0'}</Text>
+              <View style={styles.accountRowText}>
+                <Text style={styles.accountLabel}>TacoAtlas v{Constants.expoConfig?.version ?? '1.3.0'}</Text>
+                <Text style={styles.accountSub}>App version</Text>
+              </View>
             </View>
+            {getOtaLabel() && (
+              <View style={styles.accountRow}>
+                <Ionicons name="cloud-download-outline" size={18} color={colors.creamMuted} />
+                <View style={styles.accountRowText}>
+                  <Text style={styles.accountLabel}>OTA {getOtaLabel()}</Text>
+                  <Text style={styles.accountSub}>
+                    Over-the-air update{Updates.createdAt ? ` · ${Updates.createdAt.toLocaleDateString()}` : ''}
+                  </Text>
+                </View>
+              </View>
+            )}
           </View>
         </View>
+
+        {/* Legal section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Legal</Text>
+          <View style={styles.card}>
+            <TouchableOpacity
+              style={[styles.accountRow, styles.accountRowBorder]}
+              onPress={() => Linking.openURL('https://tacoatlas.app/terms')}
+            >
+              <Ionicons name="document-text-outline" size={18} color={colors.creamMuted} />
+              <Text style={[styles.accountLabel, { flex: 1 }]}>Terms of Service</Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.creamDim} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.accountRow}
+              onPress={() => Linking.openURL('https://tacoatlas.app/privacy')}
+            >
+              <Ionicons name="shield-checkmark-outline" size={18} color={colors.creamMuted} />
+              <Text style={[styles.accountLabel, { flex: 1 }]}>Privacy Policy</Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.creamDim} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {session && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Privacy</Text>
+            <View style={styles.card}>
+              <View style={[styles.accountRow, styles.accountRowBorder]}>
+                <Ionicons name="eye-outline" size={18} color={colors.creamMuted} />
+                <View style={styles.accountRowText}>
+                  <Text style={styles.accountLabel}>Public Profile</Text>
+                  <Text style={styles.accountSub}>Let others find and view your profile</Text>
+                </View>
+                <Switch
+                  value={profile?.is_profile_public ?? true}
+                  onValueChange={(v) => handlePrivacyToggle('is_profile_public', v)}
+                  disabled={privacySaving}
+                  trackColor={{ false: colors.surfaceBorder, true: colors.amberDim }}
+                  thumbColor={profile?.is_profile_public ? colors.amber : colors.creamMuted}
+                  ios_backgroundColor={colors.surfaceBorder}
+                />
+              </View>
+              <View style={[styles.accountRow, styles.accountRowBorder]}>
+                <Ionicons name="person-outline" size={18} color={colors.creamMuted} />
+                <View style={styles.accountRowText}>
+                  <Text style={styles.accountLabel}>Show Display Name</Text>
+                  <Text style={styles.accountSub}>Others see your name instead of @username</Text>
+                </View>
+                <Switch
+                  value={profile?.is_name_public ?? true}
+                  onValueChange={(v) => handlePrivacyToggle('is_name_public', v)}
+                  disabled={privacySaving}
+                  trackColor={{ false: colors.surfaceBorder, true: colors.amberDim }}
+                  thumbColor={profile?.is_name_public ? colors.amber : colors.creamMuted}
+                  ios_backgroundColor={colors.surfaceBorder}
+                />
+              </View>
+              <View style={styles.accountRow}>
+                <Ionicons name="star-outline" size={18} color={colors.creamMuted} />
+                <View style={styles.accountRowText}>
+                  <Text style={styles.accountLabel}>Public Reviews</Text>
+                  <Text style={styles.accountSub}>Allow your reviews to appear in friends' feeds</Text>
+                </View>
+                <Switch
+                  value={profile?.are_reviews_public ?? true}
+                  onValueChange={(v) => handlePrivacyToggle('are_reviews_public', v)}
+                  disabled={privacySaving}
+                  trackColor={{ false: colors.surfaceBorder, true: colors.amberDim }}
+                  thumbColor={profile?.are_reviews_public ? colors.amber : colors.creamMuted}
+                  ios_backgroundColor={colors.surfaceBorder}
+                />
+              </View>
+            </View>
+          </View>
+        )}
       </ScrollView>
 
       <AppBottomSheet
