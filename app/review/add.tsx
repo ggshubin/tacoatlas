@@ -15,18 +15,14 @@ import { useProStore } from '../../src/store/proStore'
 import { LocationPicker } from '../../src/components/LocationPicker'
 import { FoodIconBar } from '../../src/components/FoodIconBar'
 import { ChipScorecard } from '../../src/components/ChipScorecard'
+import { PrivacySelector } from '../../src/components/PrivacySelector'
+import { ProPaywallModal } from '../../src/components/ProPaywallModal'
 import { colors, spacing, radius } from '../../src/utils/theme'
 import { spotNameSchema, notesSchema, firstError } from '../../src/utils/validation'
-import type { SpotType, PrivacySetting, HeatLevel } from '../../src/types/app'
+import type { SpotType, HeatLevel } from '../../src/types/app'
 import { debounce } from '../../src/utils/debounce'
 
 const SPOT_TYPES: SpotType[] = ['Truck', 'Food Cart', 'Pop-up', 'Restaurant']
-
-const PRIVACY_OPTIONS: { value: PrivacySetting; label: string; icon: string }[] = [
-  { value: 'public', label: 'Public', icon: 'earth-outline' },
-  { value: 'friends', label: 'Mi Gente', icon: 'people-outline' },
-  { value: 'private', label: 'Just Me', icon: 'lock-closed-outline' },
-]
 
 const TACO_TYPES = ['Al Pastor', 'Carne Asada', 'Carnitas', 'Birria', 'Pollo', 'Fish', 'Shrimp', 'Lengua', 'Cabeza', 'Chorizo', 'Veggie', 'Other']
 const BURRITO_TYPES = ['California', 'Birria', 'Carne Asada', 'Pollo', 'Chorizo', 'Bean & Cheese', 'Wet', 'Other']
@@ -65,6 +61,7 @@ export default function ReviewWizard() {
   const [showSpotNote, setShowSpotNote] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [showDitchModal, setShowDitchModal] = useState(false)
+  const [showPaywall, setShowPaywall] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [pickingPhoto, setPickingPhoto] = useState(false)
   const [lightboxUri, setLightboxUri] = useState<string | null>(null)
@@ -469,30 +466,13 @@ export default function ReviewWizard() {
                   />
 
                   <Text style={styles.fieldLabel}>Who can see this?</Text>
-                  {isPro ? (
-                    <View style={styles.privacyRow}>
-                      {PRIVACY_OPTIONS.map(opt => (
-                        <TouchableOpacity
-                          key={opt.value}
-                          style={[styles.privacyBtn, store.privacy === opt.value && styles.privacyBtnActive]}
-                          onPress={() => store.setField('privacy', opt.value)}
-                        >
-                          <Ionicons name={opt.icon as any} size={18} color={store.privacy === opt.value ? colors.amber : colors.creamMuted} style={styles.privacyIcon} />
-                          <Text style={[styles.privacyLabel, store.privacy === opt.value && styles.privacyLabelActive]}>
-                            {opt.label}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  ) : (
-                    <View style={styles.privacyLockedRow}>
-                      <Ionicons name="lock-closed-outline" size={16} color={colors.creamMuted} />
-                      <Text style={styles.privacyLockedText}>Just Me — upgrade to Pro to share your atlas</Text>
-                      <TouchableOpacity style={styles.privacySignUpBtn} onPress={() => router.push('/(auth)/sign-up')}>
-                        <Text style={styles.privacySignUpText}>Sign Up</Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
+                  <PrivacySelector
+                    value={store.privacy}
+                    onChange={v => store.setField('privacy', v)}
+                    isPro={isPro}
+                    isSignedIn={!!session}
+                    onUpgradePress={() => session ? setShowPaywall(true) : router.push('/(auth)/sign-up')}
+                  />
 
                   <TouchableOpacity
                     style={styles.noteToggle}
@@ -715,6 +695,8 @@ export default function ReviewWizard() {
           </View>
         )}
       />
+
+      <ProPaywallModal visible={showPaywall} onClose={() => setShowPaywall(false)} />
     </KeyboardAvoidingView>
   )
 }
@@ -834,29 +816,6 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: colors.amber, borderColor: colors.amber },
   chipText: { color: colors.creamMuted, fontSize: 12, fontWeight: '600' },
   chipTextActive: { color: colors.cream },
-  privacyRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
-  privacyLockedRow: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
-    backgroundColor: colors.surfaceRaised, borderRadius: radius.md,
-    borderWidth: 1, borderColor: colors.surfaceBorder,
-    paddingHorizontal: spacing.md, paddingVertical: spacing.sm + 2,
-    marginBottom: spacing.md,
-  },
-  privacyLockedText: { color: colors.creamMuted, fontSize: 13, flex: 1 },
-  privacySignUpBtn: {
-    backgroundColor: colors.amber, borderRadius: radius.full,
-    paddingHorizontal: spacing.sm + 4, paddingVertical: spacing.xs + 2,
-  },
-  privacySignUpText: { color: colors.cream, fontWeight: '700', fontSize: 12 },
-  privacyBtn: {
-    flex: 1, alignItems: 'center', paddingVertical: spacing.sm,
-    borderRadius: radius.md, borderWidth: 1, borderColor: colors.surfaceBorder,
-    backgroundColor: colors.surfaceRaised,
-  },
-  privacyBtnActive: { borderColor: colors.amber, backgroundColor: colors.amberSubtle },
-  privacyIcon: { marginBottom: 2 },
-  privacyLabel: { fontSize: 11, color: colors.creamMuted, fontWeight: '600' },
-  privacyLabelActive: { color: colors.amber },
   noteToggle: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: spacing.sm },
   noteToggleText: { color: colors.creamMuted, fontSize: 13 },
   spotNoteInput: {
