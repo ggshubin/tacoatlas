@@ -15,6 +15,7 @@
       "typedRoutes": true
     },
     "plugins": [
+      "expo-updates",
       "expo-router",
       "expo-location",
       [
