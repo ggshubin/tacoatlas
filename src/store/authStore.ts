@@ -14,6 +14,7 @@ interface AuthState {
   signIn: (email: string, password: string) => Promise<{ error: string | null }>
   signUp: (email: string, password: string, displayName: string, username: string) => Promise<{ error: string | null; needsConfirmation?: boolean }>
   resendConfirmation: (email: string) => Promise<{ error: string | null }>
+  sendPasswordReset: (email: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
   setSession: (session: Session | null) => void
   setHasCompletedOnboarding: (val: boolean) => Promise<void>
@@ -66,22 +67,40 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   signUp: async (email, password, displayName, username) => {
-    const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { display_name: displayName } } })
+    const cleanUsername = username.trim().toLowerCase()
+
+    // Pre-flight: avoid creating an auth user we'd have to roll back if the
+    // username collides. The RPC is SECURITY DEFINER and only returns a boolean.
+    const { data: available, error: rpcError } = await supabase
+      .rpc('username_available', { uname: cleanUsername })
+    if (rpcError) return { error: rpcError.message }
+    if (available === false) {
+      return { error: 'That username is already taken. Please choose another.' }
+    }
+
+    // username + display_name are persisted in user_metadata so the
+    // handle_new_user() trigger can populate the profile row, even when
+    // email confirmation defers session creation. emailRedirectTo brings
+    // the user back to the app once they click the confirmation link.
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { display_name: displayName, username: cleanUsername },
+        emailRedirectTo: 'tacooatlas://atlas',
+      },
+    })
     if (error) return { error: error.message }
+
     if (!data.session) {
       return { error: null, needsConfirmation: true }
     }
+
+    // Auto-confirm path (email confirmations disabled at project level).
+    // The trigger already created the profile from metadata; just sync
+    // guest data and load the profile into state.
     setUserScope(data.session.user.id)
     set({ session: data.session })
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .upsert({ id: data.session.user.id, display_name: displayName, username: username.toLowerCase() })
-    if (profileError?.message?.includes('unique') || profileError?.message?.includes('duplicate')) {
-      await supabase.auth.signOut()
-      setUserScope(null)
-      set({ session: null })
-      return { error: 'That username is already taken. Please choose another.' }
-    }
     await syncService.syncGuestDataToSupabase(data.session.user.id)
     await get().loadProfile()
     return { error: null }
@@ -89,6 +108,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   resendConfirmation: async (email) => {
     const { error } = await supabase.auth.resend({ type: 'signup', email })
+    if (error) return { error: error.message }
+    return { error: null }
+  },
+
+  sendPasswordReset: async (email) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: 'tacooatlas://reset-password',
+    })
     if (error) return { error: error.message }
     return { error: null }
   },
@@ -117,7 +144,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   changeEmail: async (newEmail) => {
-    const { error } = await supabase.auth.updateUser({ email: newEmail })
+    const { error } = await supabase.auth.updateUser(
+      { email: newEmail },
+      { emailRedirectTo: 'tacooatlas://account' }
+    )
     if (error) return { error: error.message }
     return { error: null }
   },

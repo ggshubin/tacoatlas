@@ -42,6 +42,7 @@ const HEAT_ICONS: Record<HeatLevel, string> = {
 
 const STEPS = [
   { id: 'spot', title: 'The Spot' },
+  { id: 'photos', title: 'Photos' },
   { id: 'food', title: "What'd You Have?" },
   { id: 'verdict', title: 'Your Verdict' },
 ]
@@ -66,6 +67,7 @@ export default function ReviewWizard() {
   const [showDitchModal, setShowDitchModal] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [pickingPhoto, setPickingPhoto] = useState(false)
+  const [lightboxUri, setLightboxUri] = useState<string | null>(null)
 
   const flatListRef = useRef<FlatList>(null)
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
@@ -120,8 +122,8 @@ export default function ReviewWizard() {
         }
       })
 
-      // Auto-scroll to Step 2 since Step 1 is already filled
-      scrollToStep(1)
+      // Start at page 1 for editing
+      scrollToStep(0)
     })
   }, [params.editReviewId])
 
@@ -222,6 +224,7 @@ export default function ReviewWizard() {
       Alert.alert('Photo Error', 'Could not add photo. Try again.')
     } finally {
       setPickingPhoto(false)
+      setTimeout(() => scrollToStep(currentStepIndex), 100)
     }
   }
 
@@ -295,15 +298,15 @@ export default function ReviewWizard() {
 
       const reviewPayload = {
         vendorLocalId,
-        overallRating: 0,
-        returnIntent: null as any,
-        notes: null,
+        overallRating: store.overallRating,
+        returnIntent: store.returnIntent,
+        notes: store.notes.trim() || null,
         photoUris: finalPhotoUris,
-        tacoEntries: [],
-        salsaEntries: [],
-        condiments: [],
-        burritoEntries: [],
-        tortaEntries: [],
+        tacoEntries: store.tacoEntries.map(e => ({ tacoType: e.tacoType || '', rating: e.rating, notes: e.notes })),
+        salsaEntries: store.salsaEntries,
+        condiments: store.condiments,
+        burritoEntries: store.burritoEntries,
+        tortaEntries: store.tortaEntries,
       }
 
       let savedReview
@@ -320,7 +323,7 @@ export default function ReviewWizard() {
         syncService.liveSync(vendorLocalId, savedReview, session.user.id)
       }
 
-      scrollToStep(1)
+      router.back()
     } catch (e) {
       setErrorMsg('Could not save spot info. Try again.')
     } finally {
@@ -331,7 +334,7 @@ export default function ReviewWizard() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <Image source={require('../../assets/background.png')} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
 
@@ -353,6 +356,18 @@ export default function ReviewWizard() {
         </View>
       </Modal>
 
+      {/* Full-screen image lightbox */}
+      <Modal visible={!!lightboxUri} transparent animationType="fade" onRequestClose={() => { setLightboxUri(null); scrollToStep(currentStepIndex) }}>
+        <View style={styles.lightboxOverlay}>
+          <TouchableOpacity style={styles.lightboxClose} onPress={() => { setLightboxUri(null); scrollToStep(currentStepIndex) }}>
+            <Ionicons name="close" size={28} color={colors.cream} />
+          </TouchableOpacity>
+          {lightboxUri && (
+            <Image source={{ uri: lightboxUri }} style={styles.lightboxImage} resizeMode="contain" />
+          )}
+        </View>
+      </Modal>
+
       {/* Header — Review Page Only */}
       <View style={[styles.header, { paddingTop: insets.top }]}>
         <View style={styles.headerRow}>
@@ -361,7 +376,7 @@ export default function ReviewWizard() {
             style={styles.headerLogo}
             resizeMode="contain"
           />
-          <Text style={styles.headerTitle}>Log a Visit</Text>
+          <Text style={styles.headerTitle}>{store.editingReviewLocalId ? 'Edit a Visit' : 'Log a Visit'}</Text>
           <TouchableOpacity
             style={styles.closeBtn}
             onPress={handleClose}
@@ -372,17 +387,24 @@ export default function ReviewWizard() {
         </View>
       </View>
 
-      {/* Step indicator */}
+      {/* Step indicator + Save */}
       <View style={styles.stepIndicator}>
-        {STEPS.map((step, idx) => (
-          <TouchableOpacity
-            key={step.id}
-            style={[styles.stepDot, idx === currentStepIndex && styles.stepDotActive]}
-            onPress={() => scrollToStep(idx)}
-          >
-            <Text style={styles.stepDotLabel}>{idx + 1}</Text>
-          </TouchableOpacity>
-        ))}
+        <View style={styles.stepDots}>
+          {STEPS.map((step, idx) => (
+            <TouchableOpacity
+              key={step.id}
+              style={[styles.stepDot, idx === currentStepIndex && styles.stepDotActive]}
+              onPress={() => scrollToStep(idx)}
+            >
+              <Text style={styles.stepDotLabel}>{idx + 1}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        <TouchableOpacity style={styles.headerSaveBtn} onPress={handleSaveStep1} disabled={submitting}>
+          {submitting
+            ? <ActivityIndicator size="small" color={colors.cream} />
+            : <Text style={styles.headerSaveBtnText}>Save</Text>}
+        </TouchableOpacity>
       </View>
 
       {errorMsg && (
@@ -455,7 +477,7 @@ export default function ReviewWizard() {
                           style={[styles.privacyBtn, store.privacy === opt.value && styles.privacyBtnActive]}
                           onPress={() => store.setField('privacy', opt.value)}
                         >
-                          <Ionicons name={opt.icon as any} size={22} color={store.privacy === opt.value ? colors.amber : colors.creamMuted} style={styles.privacyIcon} />
+                          <Ionicons name={opt.icon as any} size={18} color={store.privacy === opt.value ? colors.amber : colors.creamMuted} style={styles.privacyIcon} />
                           <Text style={[styles.privacyLabel, store.privacy === opt.value && styles.privacyLabelActive]}>
                             {opt.label}
                           </Text>
@@ -466,6 +488,9 @@ export default function ReviewWizard() {
                     <View style={styles.privacyLockedRow}>
                       <Ionicons name="lock-closed-outline" size={16} color={colors.creamMuted} />
                       <Text style={styles.privacyLockedText}>Just Me — upgrade to Pro to share your atlas</Text>
+                      <TouchableOpacity style={styles.privacySignUpBtn} onPress={() => router.push('/(auth)/sign-up')}>
+                        <Text style={styles.privacySignUpText}>Sign Up</Text>
+                      </TouchableOpacity>
                     </View>
                   )}
 
@@ -478,26 +503,29 @@ export default function ReviewWizard() {
                   </TouchableOpacity>
                   {showSpotNote && (
                     <TextInput
-                      style={styles.noteInput}
+                      style={styles.spotNoteInput}
                       placeholder="Cash only, opens at 3pm..."
                       placeholderTextColor={colors.creamDim}
                       value={store.spotNote}
                       onChangeText={v => store.setField('spotNote', v)}
-                      multiline
-                      numberOfLines={3}
                     />
                   )}
 
-                  {/* Photos — moved here from Step 3 */}
+                </>
+              )}
+
+              {index === 1 && (
+                <>
+                  {/* === STEP 2: Photos === */}
                   <Text style={styles.fieldLabel}>Photos</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoScroll} contentContainerStyle={styles.photoScrollContent}>
                     {store.photoUris.map((uri) => (
-                      <View key={uri} style={styles.photoThumb}>
+                      <TouchableOpacity key={uri} style={styles.photoThumb} onPress={() => setLightboxUri(uri)} activeOpacity={0.8}>
                         <Image source={{ uri }} style={styles.thumbImg} />
                         <TouchableOpacity style={styles.removePhotoBtn} onPress={() => store.removePhoto(uri)}>
                           <Ionicons name="close-circle" size={20} color={colors.cream} />
                         </TouchableOpacity>
-                      </View>
+                      </TouchableOpacity>
                     ))}
                     <TouchableOpacity style={styles.addPhotoBtn} onPress={() => handleAddPhoto('library')} disabled={pickingPhoto}>
                       {pickingPhoto
@@ -510,16 +538,10 @@ export default function ReviewWizard() {
                       <Text style={styles.addPhotoText}>Camera</Text>
                     </TouchableOpacity>
                   </ScrollView>
-
-                  <TouchableOpacity style={styles.step1SaveBtn} onPress={handleSaveStep1} disabled={submitting}>
-                    {submitting
-                      ? <ActivityIndicator color={colors.cream} />
-                      : <Text style={styles.step1SaveBtnText}>Save & Continue</Text>}
-                  </TouchableOpacity>
                 </>
               )}
 
-              {index === 1 && (
+              {index === 2 && (
                 <>
                   {/* === STEP 2: What'd You Have? === */}
                   <FoodIconBar
@@ -642,9 +664,9 @@ export default function ReviewWizard() {
                 </>
               )}
 
-              {index === 2 && (
+              {index === 3 && (
                 <>
-                  {/* === STEP 3: Your Verdict === */}
+                  {/* === STEP 4: Your Verdict === */}
                   <Text style={styles.fieldLabel}>Overall Rating</Text>
                   <View style={{ flexDirection: 'row', gap: 4, marginBottom: spacing.md }}>
                     {[1,2,3,4,5].map(n => (
@@ -728,10 +750,27 @@ const styles = StyleSheet.create({
   },
   stepIndicator: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    gap: spacing.md,
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
+  },
+  stepDots: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  headerSaveBtn: {
+    backgroundColor: colors.amber,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerSaveBtnText: {
+    color: colors.cream,
+    fontWeight: '700',
+    fontSize: 13,
   },
   stepDot: {
     width: 32,
@@ -758,42 +797,42 @@ const styles = StyleSheet.create({
   stepPageContent: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.lg,
-    paddingBottom: 100,
+    paddingBottom: 300,
   },
   nameInput: {
     backgroundColor: colors.surface, borderRadius: radius.md,
-    padding: spacing.md, fontSize: 18, fontWeight: '700', color: colors.cream,
-    borderWidth: 1, borderColor: colors.surfaceBorder, marginBottom: spacing.md,
+    padding: spacing.sm + 4, fontSize: 16, fontWeight: '700', color: colors.cream,
+    borderWidth: 1, borderColor: colors.surfaceBorder, marginBottom: spacing.sm,
   },
   fieldLabel: {
     fontSize: 12,
     fontWeight: '600',
     color: colors.creamMuted,
-    marginBottom: spacing.md,
-    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+    marginTop: spacing.md,
     textTransform: 'uppercase',
     letterSpacing: 0.3,
   },
   chipGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.md,
+    gap: spacing.sm,
     marginBottom: spacing.md,
     justifyContent: 'flex-start',
   },
   chip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm + 4,
+    paddingVertical: spacing.sm,
     borderRadius: radius.full,
     borderWidth: 1,
     borderColor: colors.surfaceBorder,
     backgroundColor: colors.surfaceRaised,
-    minHeight: 44,
+    minHeight: 34,
     justifyContent: 'center',
     alignItems: 'center',
   },
   chipActive: { backgroundColor: colors.amber, borderColor: colors.amber },
-  chipText: { color: colors.creamMuted, fontSize: 13, fontWeight: '600' },
+  chipText: { color: colors.creamMuted, fontSize: 12, fontWeight: '600' },
   chipTextActive: { color: colors.cream },
   privacyRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
   privacyLockedRow: {
@@ -804,17 +843,28 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   privacyLockedText: { color: colors.creamMuted, fontSize: 13, flex: 1 },
+  privacySignUpBtn: {
+    backgroundColor: colors.amber, borderRadius: radius.full,
+    paddingHorizontal: spacing.sm + 4, paddingVertical: spacing.xs + 2,
+  },
+  privacySignUpText: { color: colors.cream, fontWeight: '700', fontSize: 12 },
   privacyBtn: {
-    flex: 1, alignItems: 'center', paddingVertical: spacing.sm + 4,
+    flex: 1, alignItems: 'center', paddingVertical: spacing.sm,
     borderRadius: radius.md, borderWidth: 1, borderColor: colors.surfaceBorder,
     backgroundColor: colors.surfaceRaised,
   },
   privacyBtnActive: { borderColor: colors.amber, backgroundColor: colors.amberSubtle },
-  privacyIcon: { marginBottom: 4 },
+  privacyIcon: { marginBottom: 2 },
   privacyLabel: { fontSize: 11, color: colors.creamMuted, fontWeight: '600' },
   privacyLabelActive: { color: colors.amber },
   noteToggle: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: spacing.sm },
   noteToggleText: { color: colors.creamMuted, fontSize: 13 },
+  spotNoteInput: {
+    backgroundColor: colors.surfaceRaised, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.surfaceBorder,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
+    color: colors.cream, fontSize: 14, marginBottom: spacing.md,
+  },
   noteInput: {
     backgroundColor: colors.surfaceRaised, borderRadius: radius.md,
     borderWidth: 1, borderColor: colors.surfaceBorder,
@@ -889,14 +939,14 @@ const styles = StyleSheet.create({
   },
   photoScroll: { marginBottom: spacing.md },
   photoScrollContent: { gap: spacing.sm, paddingVertical: 4 },
-  photoThumb: { width: 80, height: 80, borderRadius: radius.md, overflow: 'hidden', position: 'relative' },
-  thumbImg: { width: 80, height: 80 },
+  photoThumb: { width: 64, height: 64, borderRadius: radius.md, overflow: 'hidden', position: 'relative' },
+  thumbImg: { width: 64, height: 64 },
   removePhotoBtn: {
     position: 'absolute', top: 2, right: 2,
     backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 10,
   },
   addPhotoBtn: {
-    width: 80, height: 80, borderRadius: radius.md,
+    width: 64, height: 64, borderRadius: radius.md,
     borderWidth: 1, borderColor: colors.amberDim, borderStyle: 'dashed',
     backgroundColor: colors.surfaceRaised,
     alignItems: 'center', justifyContent: 'center', gap: 4,
@@ -909,24 +959,13 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.md, marginBottom: spacing.xs,
   },
   errorText: { flex: 1, color: colors.error, fontSize: 13 },
-  step1SaveBtn: {
-    backgroundColor: colors.amber,
-    borderRadius: radius.full,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md + 4,
-    alignItems: 'center',
-    marginTop: spacing.xl,
-    marginBottom: spacing.lg,
-  },
-  step1SaveBtnText: {
-    color: colors.cream,
-    fontWeight: '700',
-    fontSize: 15,
-  },
   autoSaveIndicator: {
     textAlign: 'center',
     fontSize: 12,
     color: colors.creamMuted,
     marginTop: spacing.lg,
   },
+  lightboxOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', justifyContent: 'center', alignItems: 'center' },
+  lightboxImage: { width: '100%', height: '85%' },
+  lightboxClose: { position: 'absolute', top: 60, right: spacing.lg, zIndex: 10, width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(36,28,22,0.85)', alignItems: 'center', justifyContent: 'center' },
 })

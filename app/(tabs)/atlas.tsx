@@ -106,13 +106,14 @@ export default function MyTacosScreen() {
         <Text style={styles.headerTitle}>
           {profile?.display_name ? `${profile.display_name}'s Atlas` : 'My Atlas'}
         </Text>
-        <View style={styles.statsRow}>
-          <View style={styles.statPill}>
-            <Text style={styles.statNumber}>{rows.length}</Text>
-            <Text style={styles.statLabel}> spot{rows.length !== 1 ? 's' : ''} tracked</Text>
+        {isPro ? (
+          <View style={styles.statsRow}>
+            <View style={styles.statPill}>
+              <Text style={styles.statNumber}>{rows.length}</Text>
+              <Text style={styles.statLabel}> spot{rows.length !== 1 ? 's' : ''} tracked</Text>
+            </View>
           </View>
-        </View>
-        {!isPro && (
+        ) : (
           <>
             <DotProgressIndicator placesLogged={rows.length} />
             <UpgradeNudge

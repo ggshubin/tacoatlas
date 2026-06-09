@@ -4,6 +4,7 @@
     "slug": "tacooatlas",
     "scheme": "tacooatlas",
     "version": "1.3.0",
+    "orientation": "portrait",
     "icon": "./assets/icon.png",
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -50,6 +51,7 @@
         }
       },
       "navigationBar": {
+        "visible": "immersive",
         "backgroundColor": "#18140F",
         "barStyle": "light-content"
       }

@@ -74,5 +74,6 @@ export interface Profile {
   home_city: string | null
   favorite_taco: string | null
   is_admin: boolean
+  is_pro: boolean
   created_at: string
 }

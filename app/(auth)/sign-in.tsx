@@ -133,6 +133,13 @@ export default function SignInScreen() {
             </Text>
           </TouchableOpacity>
 
+          <TouchableOpacity
+            style={styles.forgotRow}
+            onPress={() => router.push('/(auth)/forgot-password')}
+          >
+            <Text style={styles.link}>Forgot password?</Text>
+          </TouchableOpacity>
+
           <View style={styles.footer}>
             <Text style={styles.footerText}>No account? </Text>
             <TouchableOpacity onPress={() => router.push('/(auth)/sign-up')}>
@@ -216,6 +223,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   errorText: { flex: 1, color: colors.error, fontSize: 13 },
+  forgotRow: { alignItems: 'center', marginTop: spacing.md },
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: spacing.lg },
   footerText: { color: colors.creamMuted, fontSize: 14 },
   link: { color: colors.amber, fontWeight: '700', fontSize: 14 },

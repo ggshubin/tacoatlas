@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Modal, View, Text, TouchableOpacity, StyleSheet, Image, ActivityIndicator } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { colors, spacing, radius } from '../utils/theme'
@@ -17,6 +17,13 @@ export function ProPaywallModal({ visible, onClose }: Props) {
   const session = useAuthStore(s => s.session)
   const [purchasing, setPurchasing] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [priceString, setPriceString] = useState<string | null>(null)
+
+  useEffect(() => {
+    proService.getProPackage().then(pkg => {
+      if (pkg) setPriceString(pkg.product.priceString)
+    })
+  }, [])
 
   function triggerMigration() {
     if (session) {
@@ -98,7 +105,7 @@ export function ProPaywallModal({ visible, onClose }: Props) {
             {purchasing ? (
               <ActivityIndicator color={colors.cream} />
             ) : (
-              <Text style={styles.upgradeBtnText}>Upgrade for $3.99</Text>
+              <Text style={styles.upgradeBtnText}>Upgrade{priceString ? ` for ${priceString}` : ''}</Text>
             )}
           </TouchableOpacity>
           <TouchableOpacity style={styles.cancelBtn} onPress={onClose} disabled={purchasing}>

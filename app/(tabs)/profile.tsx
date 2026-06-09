@@ -10,6 +10,7 @@ import { AppBottomSheet } from '../../src/components/AppBottomSheet'
 import { useAuthStore } from '../../src/store/authStore'
 import { useProStore } from '../../src/store/proStore'
 import { localStorageService } from '../../src/services/localStorage'
+import { proService } from '../../src/services/proService'
 import { photoService } from '../../src/services/photoService'
 import { getFriends } from '../../src/services/miGenteService'
 import { colors, spacing, radius } from '../../src/utils/theme'
@@ -32,9 +33,10 @@ function getInitials(name: string): string {
 
 export default function ProfileScreen() {
   const { session, profile, loadProfile, updateProfile, changeEmail, changePassword } = useAuthStore()
-  const { isPro } = useProStore()
+  const { isPro, checkPro } = useProStore()
   const insets = useSafeAreaInsets()
   const [stats, setStats] = useState<Stats | null>(null)
+  const [purchasing, setPurchasing] = useState(false)
 
   // Edit profile state
   const [editMode, setEditMode] = useState(false)
@@ -348,14 +350,29 @@ export default function ProfileScreen() {
 
         {/* Pro upgrade card */}
         {!isPro && (
-          <TouchableOpacity style={styles.upgradeCard} onPress={() => {}}>
+          <TouchableOpacity
+            style={styles.upgradeCard}
+            disabled={purchasing}
+            onPress={async () => {
+              setPurchasing(true)
+              try {
+                const pkg = await proService.getProPackage()
+                if (pkg) {
+                  const success = await proService.purchase(pkg)
+                  if (success) await checkPro()
+                }
+              } finally {
+                setPurchasing(false)
+              }
+            }}
+          >
             <View style={styles.upgradeCardInner}>
               <Text style={styles.upgradeTitle}>Unlock TacoAtlas Pro</Text>
               <Text style={styles.upgradePrice}>$3.99 one-time</Text>
             </View>
             <Text style={styles.upgradeSubtitle}>Cloud sync · Burritos & Tortas · Mi Gente · Advanced Stats</Text>
             <View style={styles.upgradeBtn}>
-              <Text style={styles.upgradeBtnText}>Upgrade Now</Text>
+              <Text style={styles.upgradeBtnText}>{purchasing ? 'Processing…' : 'Upgrade Now'}</Text>
             </View>
           </TouchableOpacity>
         )}

@@ -23,7 +23,7 @@ export const proService = {
     if (isExpoGo) return false
     try {
       const info = await Purchases.getCustomerInfo()
-      return info.entitlements.active['pro'] !== undefined
+      return info.entitlements.active['TacoAtlas Pro'] !== undefined
     } catch {
       return false
     }
@@ -43,7 +43,7 @@ export const proService = {
     if (isExpoGo) return false
     try {
       const { customerInfo } = await Purchases.purchasePackage(pkg)
-      return customerInfo.entitlements.active['pro'] !== undefined
+      return customerInfo.entitlements.active['TacoAtlas Pro'] !== undefined
     } catch (e: any) {
       if (e.userCancelled) return false
       throw e
@@ -54,9 +54,27 @@ export const proService = {
     if (isExpoGo) return false
     try {
       const info = await Purchases.restorePurchases()
-      return info.entitlements.active['pro'] !== undefined
+      return info.entitlements.active['TacoAtlas Pro'] !== undefined
     } catch {
       return false
     }
+  },
+
+  async logIn(userId: string, email?: string | null, displayName?: string | null): Promise<void> {
+    if (isExpoGo || __DEV__) return
+    try {
+      await Purchases.logIn(userId)
+      if (email) Purchases.setEmail(email)
+      if (displayName) Purchases.setDisplayName(displayName)
+    } catch {
+      // non-fatal — RC will fall back to anonymous ID
+    }
+  },
+
+  async logOut(): Promise<void> {
+    if (isExpoGo || __DEV__) return
+    try {
+      await Purchases.logOut()
+    } catch {}
   },
 }
