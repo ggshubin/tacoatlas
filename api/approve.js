@@ -2,7 +2,7 @@ import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-const BETA_LINK = 'PLACEHOLDER_GOOGLE_PLAY_BETA_LINK';
+const BETA_LINK = 'https://play.google.com/apps/internaltest/4701312022362928546';
 
 function buildApprovalEmail() {
   return `<!DOCTYPE html>
