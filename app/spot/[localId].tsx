@@ -8,10 +8,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { localStorageService } from '../../src/services/localStorage'
 import { reviewRepository } from '../../src/services/reviewRepository'
 import { vendorRepository } from '../../src/services/vendorRepository'
+import { syncService } from '../../src/services/syncService'
 import { useReviewFormStore } from '../../src/store/reviewFormStore'
+import { useProStore } from '../../src/store/proStore'
+import { useAuthStore } from '../../src/store/authStore'
 import { TacoRating } from '../../src/components/TacoRating'
 import { ConfirmModal } from '../../src/components/ConfirmModal'
 import { AppBottomSheet } from '../../src/components/AppBottomSheet'
+import { PrivacySelector } from '../../src/components/PrivacySelector'
+import { ProPaywallModal } from '../../src/components/ProPaywallModal'
 import { shareSpot } from '../../src/utils/shareSpot'
 import { colors, spacing, radius, typography } from '../../src/utils/theme'
 import type { LocalVendor, LocalReview } from '../../src/types/app'
@@ -31,6 +36,9 @@ export default function SpotDetailScreen() {
   const [reviews, setReviews] = useState<LocalReview[]>([])
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const loadForEdit = useReviewFormStore(s => s.loadForEdit)
+  const isPro = useProStore(s => s.isPro)
+  const session = useAuthStore(s => s.session)
+  const [showPaywall, setShowPaywall] = useState(false)
   const [showSpotMenu, setShowSpotMenu] = useState(false)
   const [showDeleteSpotModal, setShowDeleteSpotModal] = useState(false)
   const [reviewToDelete, setReviewToDelete] = useState<LocalReview | null>(null)
@@ -175,6 +183,8 @@ export default function SpotDetailScreen() {
         </View>
       </Modal>
 
+      <ProPaywallModal visible={showPaywall} onClose={() => setShowPaywall(false)} />
+
       <ScrollView contentContainerStyle={styles.scroll}>
 
         {/* About This Spot note */}
@@ -209,6 +219,19 @@ export default function SpotDetailScreen() {
             </View>
           )}
         </View>
+
+        {/* Privacy */}
+        <Text style={styles.privacyHeading}>Who can see this?</Text>
+        <PrivacySelector
+          value={vendor.privacy ?? 'public'}
+          onChange={v => {
+            setVendor(prev => (prev ? { ...prev, privacy: v } : prev))
+            syncService.updateVendorPrivacy(vendor.localId, v, session?.user.id)
+          }}
+          isPro={isPro}
+          isSignedIn={!!session}
+          onUpgradePress={() => session ? setShowPaywall(true) : router.push('/(auth)/sign-up')}
+        />
 
         {/* Log Your First Visit CTA */}
         {vendor.isVisited === false && (
@@ -499,6 +522,8 @@ const styles = StyleSheet.create({
   modalCancelText: { color: colors.cream, fontWeight: '600', fontSize: 14 },
   modalDeleteBtn: { flex: 1, paddingVertical: 12, borderRadius: radius.full, backgroundColor: colors.error, alignItems: 'center' },
   modalDeleteText: { color: colors.cream, fontWeight: '700', fontSize: 14 },
+
+  privacyHeading: { color: colors.cream, fontSize: 13, fontWeight: '700', marginTop: spacing.md, marginBottom: spacing.sm, marginHorizontal: spacing.md },
 
   spotNoteRow: { flexDirection: 'row', gap: spacing.sm, padding: spacing.md, backgroundColor: colors.surfaceRaised, borderRadius: radius.md, marginHorizontal: spacing.md, marginBottom: spacing.sm, alignItems: 'flex-start' },
   spotNoteText: { flex: 1, color: colors.creamMuted, fontSize: 13, lineHeight: 18 },
