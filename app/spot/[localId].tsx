@@ -222,6 +222,7 @@ export default function SpotDetailScreen() {
 
         {/* Privacy */}
         <Text style={styles.privacyHeading}>Who can see this?</Text>
+        <View style={styles.privacyBlock}>
         <PrivacySelector
           value={vendor.privacy ?? 'public'}
           onChange={v => {
@@ -232,6 +233,7 @@ export default function SpotDetailScreen() {
           isSignedIn={!!session}
           onUpgradePress={() => session ? setShowPaywall(true) : router.push('/(auth)/sign-up')}
         />
+        </View>
 
         {/* Log Your First Visit CTA */}
         {vendor.isVisited === false && (
@@ -524,6 +526,7 @@ const styles = StyleSheet.create({
   modalDeleteText: { color: colors.cream, fontWeight: '700', fontSize: 14 },
 
   privacyHeading: { color: colors.cream, fontSize: 13, fontWeight: '700', marginTop: spacing.md, marginBottom: spacing.sm, marginHorizontal: spacing.md },
+  privacyBlock: { marginHorizontal: spacing.md },
 
   spotNoteRow: { flexDirection: 'row', gap: spacing.sm, padding: spacing.md, backgroundColor: colors.surfaceRaised, borderRadius: radius.md, marginHorizontal: spacing.md, marginBottom: spacing.sm, alignItems: 'flex-start' },
   spotNoteText: { flex: 1, color: colors.creamMuted, fontSize: 13, lineHeight: 18 },
