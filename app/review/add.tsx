@@ -620,7 +620,7 @@ export default function ReviewWizard() {
                       heatLevels={HEAT_LEVELS}
                       heatLevelIcons={HEAT_ICONS}
                       items={store.salsaEntries.map(e => ({ label: e.salsaName, rating: e.flavorRating, notes: e.notes ?? null, heatLevel: e.heatLevel }))}
-                      onAdd={item => { store.addSalsaEntry({ salsaName: item.label, flavorRating: item.rating, heatLevel: item.heatLevel ?? null, notes: item.notes }); debouncedAutoSave() }}
+                      onAdd={item => { store.addSalsaEntry({ salsaName: item.label, flavorRating: item.rating, heatLevel: (item.heatLevel ?? null) as HeatLevel | null, notes: item.notes }); debouncedAutoSave() }}
                       onRemove={idx => { store.removeSalsaEntry(idx); debouncedAutoSave() }}
                       onUpdate={(idx, updates) => {
                         const entries = [...store.salsaEntries]

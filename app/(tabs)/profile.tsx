@@ -46,7 +46,10 @@ export default function ProfileScreen() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [purchasing, setPurchasing] = useState(false)
   const [privacySaving, setPrivacySaving] = useState(false)
-  const otaLabel = useMemo(() => otaLabel, [])
+  const [privacyExpanded, setPrivacyExpanded] = useState(false)
+  const [checkingUpdate, setCheckingUpdate] = useState(false)
+  const [updateStatus, setUpdateStatus] = useState<string | null>(null)
+  const otaLabel = useMemo(() => getOtaLabel(), [])
 
   // Edit profile state
   const [editMode, setEditMode] = useState(false)
@@ -229,6 +232,28 @@ export default function ProfileScreen() {
     setPrivacySaving(false)
   }
 
+  async function handleCheckForUpdate() {
+    setCheckingUpdate(true)
+    setUpdateStatus(null)
+    try {
+      const result = await Updates.checkForUpdateAsync()
+      if (result.isAvailable) {
+        setUpdateStatus('Downloading update…')
+        await Updates.fetchUpdateAsync()
+        setUpdateStatus('Restarting to apply update…')
+        await Updates.reloadAsync()
+      } else {
+        setUpdateStatus("You're up to date!")
+        setTimeout(() => setUpdateStatus(null), 3000)
+      }
+    } catch {
+      setUpdateStatus('Could not check for updates')
+      setTimeout(() => setUpdateStatus(null), 3000)
+    } finally {
+      setCheckingUpdate(false)
+    }
+  }
+
   return (
     <View style={styles.container}>
       <Image source={require('../../assets/background.png')} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
@@ -398,6 +423,69 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         )}
 
+        {/* Privacy section — collapsible, only for signed-in users */}
+        {session && (
+          <View style={styles.section}>
+            <TouchableOpacity style={styles.sectionHeader} onPress={() => setPrivacyExpanded(v => !v)} activeOpacity={0.7}>
+              <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>Privacy</Text>
+              <Ionicons
+                name={privacyExpanded ? 'chevron-up' : 'chevron-down'}
+                size={14}
+                color={colors.creamDim}
+              />
+            </TouchableOpacity>
+            {privacyExpanded && (
+              <View style={styles.card}>
+                <View style={[styles.accountRow, styles.accountRowBorder]}>
+                  <Ionicons name="eye-outline" size={18} color={colors.creamMuted} />
+                  <View style={styles.accountRowText}>
+                    <Text style={styles.accountLabel}>Public Profile</Text>
+                    <Text style={styles.accountSub}>Let others find and view your profile</Text>
+                  </View>
+                  <Switch
+                    value={profile?.is_profile_public ?? true}
+                    onValueChange={(v) => handlePrivacyToggle('is_profile_public', v)}
+                    disabled={privacySaving}
+                    trackColor={{ false: colors.surfaceBorder, true: colors.amberDim }}
+                    thumbColor={profile?.is_profile_public ? colors.amber : colors.creamMuted}
+                    ios_backgroundColor={colors.surfaceBorder}
+                  />
+                </View>
+                <View style={[styles.accountRow, styles.accountRowBorder]}>
+                  <Ionicons name="person-outline" size={18} color={colors.creamMuted} />
+                  <View style={styles.accountRowText}>
+                    <Text style={styles.accountLabel}>Show Display Name</Text>
+                    <Text style={styles.accountSub}>Others see your name instead of @username</Text>
+                  </View>
+                  <Switch
+                    value={profile?.is_name_public ?? true}
+                    onValueChange={(v) => handlePrivacyToggle('is_name_public', v)}
+                    disabled={privacySaving}
+                    trackColor={{ false: colors.surfaceBorder, true: colors.amberDim }}
+                    thumbColor={profile?.is_name_public ? colors.amber : colors.creamMuted}
+                    ios_backgroundColor={colors.surfaceBorder}
+                  />
+                </View>
+                <View style={styles.accountRow}>
+                  <Ionicons name="star-outline" size={18} color={colors.creamMuted} />
+                  <View style={styles.accountRowText}>
+                    <Text style={styles.accountLabel}>Public Reviews</Text>
+                    <Text style={styles.accountSub}>Allow your reviews to appear in friends' feeds</Text>
+                  </View>
+                  <Switch
+                    value={profile?.are_reviews_public ?? true}
+                    onValueChange={(v) => handlePrivacyToggle('are_reviews_public', v)}
+                    disabled={privacySaving}
+                    trackColor={{ false: colors.surfaceBorder, true: colors.amberDim }}
+                    thumbColor={profile?.are_reviews_public ? colors.amber : colors.creamMuted}
+                    ios_backgroundColor={colors.surfaceBorder}
+                  />
+                </View>
+              </View>
+            )}
+          </View>
+        )}
+
         {/* Account section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account</Text>
@@ -447,15 +535,15 @@ export default function ProfileScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>App</Text>
           <View style={styles.card}>
-            <View style={[styles.accountRow, otaLabel ? styles.accountRowBorder : undefined]}>
+            <View style={[styles.accountRow, styles.accountRowBorder]}>
               <Ionicons name="information-circle-outline" size={18} color={colors.creamMuted} />
               <View style={styles.accountRowText}>
                 <Text style={styles.accountLabel}>TacoAtlas v{Constants.expoConfig?.version ?? '1.3.0'}</Text>
                 <Text style={styles.accountSub}>App version</Text>
               </View>
             </View>
-            {otaLabel && (
-              <View style={styles.accountRow}>
+            {otaLabel ? (
+              <View style={[styles.accountRow, styles.accountRowBorder]}>
                 <Ionicons name="cloud-download-outline" size={18} color={colors.creamMuted} />
                 <View style={styles.accountRowText}>
                   <Text style={styles.accountLabel}>OTA {otaLabel}</Text>
@@ -464,7 +552,24 @@ export default function ProfileScreen() {
                   </Text>
                 </View>
               </View>
-            )}
+            ) : null}
+            <TouchableOpacity
+              style={styles.accountRow}
+              onPress={handleCheckForUpdate}
+              disabled={checkingUpdate}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="refresh-outline" size={18} color={colors.creamMuted} />
+              <View style={styles.accountRowText}>
+                <Text style={styles.accountLabel}>Check for Updates</Text>
+                {updateStatus ? (
+                  <Text style={styles.accountSub}>{updateStatus}</Text>
+                ) : null}
+              </View>
+              {checkingUpdate
+                ? <ActivityIndicator size="small" color={colors.amber} />
+                : <Ionicons name="chevron-forward" size={16} color={colors.creamDim} />}
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -490,59 +595,6 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
         </View>
-
-        {session && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Privacy</Text>
-            <View style={styles.card}>
-              <View style={[styles.accountRow, styles.accountRowBorder]}>
-                <Ionicons name="eye-outline" size={18} color={colors.creamMuted} />
-                <View style={styles.accountRowText}>
-                  <Text style={styles.accountLabel}>Public Profile</Text>
-                  <Text style={styles.accountSub}>Let others find and view your profile</Text>
-                </View>
-                <Switch
-                  value={profile?.is_profile_public ?? true}
-                  onValueChange={(v) => handlePrivacyToggle('is_profile_public', v)}
-                  disabled={privacySaving}
-                  trackColor={{ false: colors.surfaceBorder, true: colors.amberDim }}
-                  thumbColor={profile?.is_profile_public ? colors.amber : colors.creamMuted}
-                  ios_backgroundColor={colors.surfaceBorder}
-                />
-              </View>
-              <View style={[styles.accountRow, styles.accountRowBorder]}>
-                <Ionicons name="person-outline" size={18} color={colors.creamMuted} />
-                <View style={styles.accountRowText}>
-                  <Text style={styles.accountLabel}>Show Display Name</Text>
-                  <Text style={styles.accountSub}>Others see your name instead of @username</Text>
-                </View>
-                <Switch
-                  value={profile?.is_name_public ?? true}
-                  onValueChange={(v) => handlePrivacyToggle('is_name_public', v)}
-                  disabled={privacySaving}
-                  trackColor={{ false: colors.surfaceBorder, true: colors.amberDim }}
-                  thumbColor={profile?.is_name_public ? colors.amber : colors.creamMuted}
-                  ios_backgroundColor={colors.surfaceBorder}
-                />
-              </View>
-              <View style={styles.accountRow}>
-                <Ionicons name="star-outline" size={18} color={colors.creamMuted} />
-                <View style={styles.accountRowText}>
-                  <Text style={styles.accountLabel}>Public Reviews</Text>
-                  <Text style={styles.accountSub}>Allow your reviews to appear in friends' feeds</Text>
-                </View>
-                <Switch
-                  value={profile?.are_reviews_public ?? true}
-                  onValueChange={(v) => handlePrivacyToggle('are_reviews_public', v)}
-                  disabled={privacySaving}
-                  trackColor={{ false: colors.surfaceBorder, true: colors.amberDim }}
-                  thumbColor={profile?.are_reviews_public ? colors.amber : colors.creamMuted}
-                  ios_backgroundColor={colors.surfaceBorder}
-                />
-              </View>
-            </View>
-          </View>
-        )}
       </ScrollView>
 
       <AppBottomSheet
@@ -791,6 +843,7 @@ const styles = StyleSheet.create({
   upgradeBtnText: { color: colors.cream, fontWeight: '700', fontSize: 14 },
 
   section: { marginBottom: spacing.md },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },
   sectionTitle: { fontSize: 11, fontWeight: '700', color: colors.creamDim, letterSpacing: 1, textTransform: 'uppercase', marginBottom: spacing.sm },
   card: { backgroundColor: colors.surface, borderRadius: radius.md, paddingHorizontal: spacing.md, borderWidth: 1, borderColor: colors.surfaceBorder },
   accountRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm + 2 },

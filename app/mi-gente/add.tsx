@@ -289,7 +289,6 @@ export default function AddFriendsScreen() {
           <CameraView
             style={StyleSheet.absoluteFillObject}
             facing="back"
-            barcodeScannerEnabled={!scanned}
             barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
             onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
           />

@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, Modal,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, Modal, Alert,
 } from 'react-native'
 import { useLocalSearchParams, router, useFocusEffect } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'

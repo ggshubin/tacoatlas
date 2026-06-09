@@ -40,7 +40,7 @@ describe('reviewRepository', () => {
     await reviewRepository.createReview({
       vendorId: 'v1', userId: 'u1', overallRating: 4,
       returnIntent: 'yes', notes: null, photos: [],
-      isPublic: false, tacoEntries: [], salsaEntries: [], condiments: [],
+      privacy: 'private', tacoEntries: [], salsaEntries: [], condiments: [],
     })
     expect(supabase.from).toHaveBeenCalledWith('reviews')
   })

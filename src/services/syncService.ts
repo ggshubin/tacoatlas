@@ -150,7 +150,7 @@ export const syncService = {
             hours: v.hours ?? null,
             photoUri: null,
             privacy: hasReviews ? (reviews![0].privacy as any ?? 'private') : 'private',
-            isVisited: hasReviews,
+            isVisited: hasReviews ?? false,
             supabaseVendorId: v.id,
           })
           vendorLocalId = created.localId
