@@ -80,6 +80,11 @@ export const Platform = {
   select: (obj: any) => obj.web || obj.default,
 }
 
+export const KeyboardAvoidingView = React.forwardRef((props: any, ref: any) =>
+  React.createElement('div', { ...props, ref })
+)
+KeyboardAvoidingView.displayName = 'KeyboardAvoidingView'
+
 export const Dimensions = {
   get: jest.fn(() => ({ width: 1024, height: 768 })),
   addEventListener: jest.fn(() => ({ remove: jest.fn() })),
