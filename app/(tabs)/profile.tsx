@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   ActivityIndicator, Image, Modal, TextInput, KeyboardAvoidingView, Platform, Alert, Switch, Linking,
@@ -32,7 +32,7 @@ function getInitials(name: string): string {
   return (name.trim().slice(0, 2) || '?').toUpperCase()
 }
 
-function getOtaLabel(): string | null {
+function otaLabel: string | null {
   if (Updates.isEmbeddedLaunch) return null
   const id = Updates.updateId
   if (!id) return null
@@ -46,6 +46,7 @@ export default function ProfileScreen() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [purchasing, setPurchasing] = useState(false)
   const [privacySaving, setPrivacySaving] = useState(false)
+  const otaLabel = useMemo(() => otaLabel, [])
 
   // Edit profile state
   const [editMode, setEditMode] = useState(false)
@@ -223,7 +224,8 @@ export default function ProfileScreen() {
   ) {
     if (!profile) return
     setPrivacySaving(true)
-    await updateProfile({ [field]: value })
+    const { error } = await updateProfile({ [field]: value })
+    if (error) Alert.alert('Could not save', error)
     setPrivacySaving(false)
   }
 
@@ -445,18 +447,18 @@ export default function ProfileScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>App</Text>
           <View style={styles.card}>
-            <View style={[styles.accountRow, getOtaLabel() ? styles.accountRowBorder : undefined]}>
+            <View style={[styles.accountRow, otaLabel ? styles.accountRowBorder : undefined]}>
               <Ionicons name="information-circle-outline" size={18} color={colors.creamMuted} />
               <View style={styles.accountRowText}>
                 <Text style={styles.accountLabel}>TacoAtlas v{Constants.expoConfig?.version ?? '1.3.0'}</Text>
                 <Text style={styles.accountSub}>App version</Text>
               </View>
             </View>
-            {getOtaLabel() && (
+            {otaLabel && (
               <View style={styles.accountRow}>
                 <Ionicons name="cloud-download-outline" size={18} color={colors.creamMuted} />
                 <View style={styles.accountRowText}>
-                  <Text style={styles.accountLabel}>OTA {getOtaLabel()}</Text>
+                  <Text style={styles.accountLabel}>OTA {otaLabel}</Text>
                   <Text style={styles.accountSub}>
                     Over-the-air update{Updates.createdAt ? ` · ${Updates.createdAt.toLocaleDateString()}` : ''}
                   </Text>

@@ -86,7 +86,7 @@
       "^expo-updates$": "<rootDir>/src/__mocks__/expo-updates.ts"
     },
     "transformIgnorePatterns": [
-      "node_modules/(?!(react-native|expo-router|expo-status-bar|expo|expo-camera|expo-image-picker|expo-location)/)"
+      "node_modules/(?!(react-native|expo-router|expo-status-bar|expo|expo-camera|expo-image-picker|expo-location|expo-updates)/)"
     ]
   },
   "private": true
