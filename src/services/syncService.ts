@@ -2,7 +2,7 @@ import { vendorRepository } from './vendorRepository'
 import { reviewRepository } from './reviewRepository'
 import { localStorageService } from './localStorage'
 import { supabase } from './supabase'
-import type { LocalVendor, LocalReview } from '../types/app'
+import type { LocalVendor, LocalReview, PrivacySetting } from '../types/app'
 
 export const syncService = {
   /**
@@ -312,5 +312,38 @@ export const syncService = {
     } catch (e) {
       console.warn('[syncService] syncVendorOnly failed:', e)
     }
+  },
+
+  /**
+   * Change a spot's privacy locally and propagate it to Supabase.
+   * Review rows in Supabase carry the privacy value (liveSync reads it
+   * from the vendor), so each review is re-synced after the update.
+   * Fire-and-forget safe — never throws.
+   */
+  async updateVendorPrivacy(vendorLocalId: string, privacy: PrivacySetting, userId?: string): Promise<void> {
+    await localStorageService.updateVendor(vendorLocalId, { privacy })
+    if (!userId) return
+    try {
+      const reviews = await localStorageService.getReviewsForVendor(vendorLocalId)
+      for (const review of reviews) {
+        await syncService.liveSync(vendorLocalId, review, userId)
+      }
+    } catch (e) {
+      console.warn('[syncService] updateVendorPrivacy sync failed:', e)
+    }
+  },
+
+  /**
+   * Post-conversion bulk action: make every explicitly private spot public.
+   * Vendors with undefined privacy default to 'public' and are untouched.
+   * Returns the number of spots published.
+   */
+  async bulkPublishPrivateSpots(userId?: string): Promise<number> {
+    const vendors = await localStorageService.getVendors()
+    const privateVendors = vendors.filter(v => v.privacy === 'private')
+    for (const vendor of privateVendors) {
+      await syncService.updateVendorPrivacy(vendor.localId, 'public', userId)
+    }
+    return privateVendors.length
   },
 }
