@@ -206,15 +206,15 @@ function buildWelcomeEmail() {
 
         <!-- Footer -->
         <tr>
-          <td style="padding: 24px 36px 32px; border-top: 1px solid rgba(241,231,211,0.08);">
+          <td style="padding: 28px 36px 36px; border-top: 1px solid rgba(241,231,211,0.08);">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
               <tr>
-                <td style="font-size:13px; color:#8c7e66; line-height:1.5;">
-                  Made for people who drive across town<br>for the good salsa.
+                <td style="font-size:13px; color:#8c7e66; line-height:1.6; padding-bottom: 20px;">
+                  Made for people who drive across town for the good salsa.
                 </td>
               </tr>
               <tr>
-                <td style="padding-top:14px;">
+                <td>
                   <span style="font-family:'Anton', Impact, sans-serif; font-size:14px; letter-spacing:0.04em; text-transform:uppercase; color:#b6a689;">
                     &#127790; Taco Atlas
                   </span>
