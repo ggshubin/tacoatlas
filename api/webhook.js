@@ -47,8 +47,8 @@ function buildWelcomeEmail() {
           <td style="padding: 28px 36px; border-bottom: 1px solid rgba(241,231,211,0.1);">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
               <tr>
-                <td style="font-family: 'Anton', Impact, sans-serif; font-size: 22px; letter-spacing: 0.04em; text-transform: uppercase; color: #f1e7d3;">
-                  &#127790; TACO ATLAS
+                <td style="font-family: 'Anton', Impact, sans-serif; font-size: 22px; letter-spacing: 0.04em; text-transform: uppercase; color: #f1e7d3; white-space: nowrap;">
+                  <span style="font-size:18px; vertical-align:middle;">&#127790;</span> TACO ATLAS
                 </td>
                 <td align="right" style="font-family: 'Hanken Grotesk', sans-serif; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: #8c7e66;">
                   BETA &middot; 2026
@@ -215,8 +215,8 @@ function buildWelcomeEmail() {
               </tr>
               <tr>
                 <td>
-                  <span style="font-family:'Anton', Impact, sans-serif; font-size:14px; letter-spacing:0.04em; text-transform:uppercase; color:#b6a689;">
-                    &#127790; Taco Atlas
+                  <span style="font-family:'Anton', Impact, sans-serif; font-size:14px; letter-spacing:0.04em; text-transform:uppercase; color:#b6a689; white-space:nowrap;">
+                    <span style="font-size:12px; vertical-align:middle;">&#127790;</span> Taco Atlas
                   </span>
                   <span style="font-size:12px; color:#8c7e66;"> &middot; </span>
                   <a href="https://tacoatlas.app" style="font-size:12px; color:#8c7e66;">tacoatlas.app</a>
