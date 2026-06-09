@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { BetaBanner } from '../src/components/BetaBanner'
 import { BetaFeedbackModal } from '../src/components/BetaFeedbackModal'
-import { Platform, Linking } from 'react-native'
+import { Alert, Platform, Linking } from 'react-native'
 import { Stack, router } from 'expo-router'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as NavigationBar from 'expo-navigation-bar'
@@ -15,7 +15,9 @@ import { useNotificationStore } from '../src/store/notificationStore'
 import { registerForPushNotifications, savePushToken } from '../src/services/notificationService'
 import { syncService } from '../src/services/syncService'
 import { RestorePromptModal } from '../src/components/RestorePromptModal'
+import { ProPrivacyReminderModal } from '../src/components/ProPrivacyReminderModal'
 import { parseAuthFragment } from '../src/utils/authLinking'
+import { shouldShowProPrivacyReminder, getReminderShown, setReminderShown } from '../src/utils/proPrivacyReminder'
 
 async function handleAuthDeepLink(url: string) {
   if (!url.startsWith('tacooatlas://')) return
@@ -67,6 +69,8 @@ export default function RootLayout() {
   const { setPendingFriendCount } = useNotificationStore()
   const [ready, setReady] = useState(false)
   const [feedbackVisible, setFeedbackVisible] = useState(false)
+  const [privacyReminderCount, setPrivacyReminderCount] = useState<number | null>(null)
+  const prevIsPro = useRef(false)
 
   useEffect(() => {
     if (Platform.OS === 'android') {
@@ -172,6 +176,31 @@ export default function RootLayout() {
     }
   }, [])
 
+  // One-time post-conversion reminder: when isPro flips false→true and the
+  // user has private spots, offer to publish them. The AsyncStorage flag
+  // ensures this shows exactly once per device; default stays private.
+  useEffect(() => {
+    async function maybeShowReminder() {
+      const wasPro = prevIsPro.current
+      prevIsPro.current = isPro
+      if (!isPro || wasPro) return
+      try {
+        const [vendors, alreadyShown] = await Promise.all([
+          localStorageService.getVendors(),
+          getReminderShown(),
+        ])
+        const privateSpotCount = vendors.filter(v => v.privacy === 'private').length
+        if (shouldShowProPrivacyReminder({ wasPro, isPro, privateSpotCount, alreadyShown })) {
+          await setReminderShown()
+          setPrivacyReminderCount(privateSpotCount)
+        }
+      } catch (e) {
+        console.warn('[layout] pro privacy reminder check failed:', e)
+      }
+    }
+    maybeShowReminder()
+  }, [isPro])
+
   return (
     <>
       <Stack screenOptions={{ contentStyle: { backgroundColor: '#18140F' } }}>
@@ -194,6 +223,32 @@ export default function RootLayout() {
         userId={session?.user.id}
         userEmail={session?.user.email}
         onClose={() => setFeedbackVisible(false)}
+      />
+      <ProPrivacyReminderModal
+        visible={privacyReminderCount !== null}
+        spotCount={privacyReminderCount ?? 0}
+        onMakeAllPublic={() => {
+          const count = privacyReminderCount ?? 0
+          Alert.alert(
+            'Make all spots public?',
+            `This makes ${count} spot${count !== 1 ? 's' : ''} visible to everyone on TacoAtlas.`,
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Make Public',
+                onPress: async () => {
+                  setPrivacyReminderCount(null)
+                  await syncService.bulkPublishPrivateSpots(session?.user.id)
+                },
+              },
+            ]
+          )
+        }}
+        onChoosePerSpot={() => {
+          setPrivacyReminderCount(null)
+          router.push('/(tabs)/atlas')
+        }}
+        onKeepPrivate={() => setPrivacyReminderCount(null)}
       />
     </>
   )
