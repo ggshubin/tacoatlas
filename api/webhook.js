@@ -40,15 +40,14 @@ export default async function handler(req, res) {
     }
 
     // Save to Supabase
-    const { error: insertError, data: insertedData } = await supabase
+    const { error: insertError } = await supabase
       .from('beta_signups')
       .insert([
         {
           email: normalizedEmail,
           subscribed: true
         }
-      ])
-      .select();
+      ]);
 
     if (insertError) {
       console.error('Insert error:', insertError);
