@@ -12,10 +12,8 @@ import { QuickActionSheet } from '../../src/components/QuickActionSheet'
 import { DotProgressIndicator } from '../../src/components/DotProgressIndicator'
 import { UpgradeNudge } from '../../src/components/UpgradeNudge'
 import { ProPaywallModal } from '../../src/components/ProPaywallModal'
-import { getFriends, getFriendActivity } from '../../src/services/miGenteService'
 import { colors, spacing, radius } from '../../src/utils/theme'
 import type { LocalVendor, SpotType } from '../../src/types/app'
-import type { ActivityStub } from '../../src/data/mi-gente-stubs'
 
 interface VendorRow {
   vendor: LocalVendor
@@ -34,20 +32,8 @@ export default function MyTacosScreen() {
   const [filterType, setFilterType] = useState<SpotType | null>(null)
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list')
   const [showActionSheet, setShowActionSheet] = useState(false)
-  const [friendSpots, setFriendSpots] = useState<ActivityStub[]>([])
   const [nudgeDismissed, setNudgeDismissed] = useState(false)
   const [showPaywall, setShowPaywall] = useState(false)
-
-  useEffect(() => {
-    if (viewMode !== 'map' || !session) return
-    async function loadFriendSpots() {
-      const friends = await getFriends(session!.user.id)
-      if (friends.length === 0) return
-      const spots = await getFriendActivity(friends.map(f => f.userId))
-      setFriendSpots(spots.filter(s => s.lat !== 0 && s.lng !== 0))
-    }
-    loadFriendSpots()
-  }, [viewMode, session])
 
   const filteredRows = rows
     .filter(({ vendor }) => {
@@ -164,7 +150,7 @@ export default function MyTacosScreen() {
       </View>
 
       {viewMode === 'map' ? (
-        <AtlasMapView rows={rows} friendSpots={friendSpots} />
+        <AtlasMapView rows={rows} />
       ) : (
         <FlatList
           data={filteredRows}

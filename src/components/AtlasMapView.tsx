@@ -3,7 +3,6 @@ import { View, Text, StyleSheet } from 'react-native'
 import { router } from 'expo-router'
 import { colors, spacing } from '../utils/theme'
 import type { LocalVendor } from '../types/app'
-import type { ActivityStub } from '../data/mi-gente-stubs'
 
 interface VendorRow {
   vendor: LocalVendor
@@ -12,18 +11,9 @@ interface VendorRow {
 
 interface Props {
   rows: VendorRow[]
-  friendSpots?: ActivityStub[]
 }
 
-const FRIEND_PIN_COLORS = ['#E05C2A', '#2A7BE0', '#2ABF6F', '#B82AE0', '#E0B82A']
-
-function friendColor(username: string): string {
-  let hash = 0
-  for (let i = 0; i < username.length; i++) hash = username.charCodeAt(i) + ((hash << 5) - hash)
-  return FRIEND_PIN_COLORS[Math.abs(hash) % FRIEND_PIN_COLORS.length]
-}
-
-export function AtlasMapView({ rows, friendSpots = [] }: Props) {
+export function AtlasMapView({ rows }: Props) {
   const locatedRows = rows.filter(r => r.vendor.lat !== 0 || r.vendor.lng !== 0)
 
   const initialRegion = locatedRows.length > 0
@@ -72,27 +62,6 @@ export function AtlasMapView({ rows, friendSpots = [] }: Props) {
                 {avgRating !== null ? `${avgRating.toFixed(1)} tacos` : 'No rating yet'}
               </Text>
               <Text style={styles.calloutTap}>Tap to view</Text>
-            </View>
-          </Callout>
-        </Marker>
-      ))}
-
-      {friendSpots.map((spot) => (
-        <Marker
-          key={spot.id}
-          coordinate={{ latitude: spot.lat, longitude: spot.lng }}
-          pinColor={friendColor(spot.friend.username)}
-        >
-          <Callout>
-            <View style={styles.callout}>
-              <Text style={styles.calloutName}>{spot.spotName}</Text>
-              <Text style={[styles.calloutType, { color: friendColor(spot.friend.username) }]}>
-                @{spot.friend.username}
-              </Text>
-              {spot.address ? <Text style={styles.calloutRating}>{spot.address}</Text> : null}
-              {spot.rating !== undefined && (
-                <Text style={styles.calloutRating}>{spot.rating.toFixed(1)} tacos</Text>
-              )}
             </View>
           </Callout>
         </Marker>

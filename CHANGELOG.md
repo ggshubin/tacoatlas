@@ -8,7 +8,8 @@ Maintenance rule: when a production build is cut, add its entry here in the same
 
 ## Unreleased
 
-_Nothing yet._
+### Fixed
+- My Atlas map now shows only your own recorded spots — friends' pins no longer appear there (the Mi Gente friend map is the place for those).
 
 ## versionCode 34 — 2026-06-09
 
