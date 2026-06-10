@@ -8,10 +8,14 @@ Maintenance rule: when a production build is cut, add its entry here in the same
 
 ## Unreleased
 
+_Nothing yet._
+
+## versionCode 35 — 2026-06-09
+
 ### Fixed
 - My Atlas map now shows only your own recorded spots — friends' pins no longer appear there (the Mi Gente friend map is the place for those).
 
-## versionCode 34 — 2026-06-09
+## versionCode 34 — 2026-06-09 (superseded by 35, not shipped)
 
 ### Added
 - **Privacy selector** — picking who can see a spot is now one clear control with plain language ("Anyone on TacoAtlas can see this spot and your review" / "Only your friends can see this" / "Saved to your personal log — only you can see it"), used in the review wizard, the drop-pin flow, and the spot detail screen.
