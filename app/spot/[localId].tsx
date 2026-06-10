@@ -232,6 +232,7 @@ export default function SpotDetailScreen() {
             isPro={isPro}
             isSignedIn={!!session}
             onUpgradePress={() => session ? setShowPaywall(true) : router.push('/(auth)/sign-up')}
+            autoNormalize={false}
           />
         </View>
 

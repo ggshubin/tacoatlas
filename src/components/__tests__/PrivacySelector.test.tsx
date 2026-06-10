@@ -87,4 +87,12 @@ describe('PrivacySelector — free', () => {
     )
     expect(onChange).toHaveBeenCalledWith('private')
   })
+
+  it('does not auto-normalize on mount when autoNormalize is false', () => {
+    const onChange = jest.fn()
+    render(
+      <PrivacySelector value="public" onChange={onChange} isPro={false} isSignedIn onUpgradePress={noop} autoNormalize={false} />
+    )
+    expect(onChange).not.toHaveBeenCalled()
+  })
 })

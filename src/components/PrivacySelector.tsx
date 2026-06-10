@@ -22,9 +22,13 @@ interface PrivacySelectorProps {
   isPro: boolean
   isSignedIn: boolean
   onUpgradePress: () => void
+  /** When false, a non-private value is displayed as-is for free users instead
+   *  of being corrected via onChange on mount. Screens that persist onChange
+   *  (e.g. spot detail) must pass false so viewing never writes data. */
+  autoNormalize?: boolean
 }
 
-export function PrivacySelector({ value, onChange, isPro, isSignedIn, onUpgradePress }: PrivacySelectorProps) {
+export function PrivacySelector({ value, onChange, isPro, isSignedIn, onUpgradePress, autoNormalize = true }: PrivacySelectorProps) {
   const [showNudge, setShowNudge] = useState(false)
 
   // Free accounts only save privately — normalize any stale value (e.g. a
@@ -32,9 +36,9 @@ export function PrivacySelector({ value, onChange, isPro, isSignedIn, onUpgradeP
   // onChange is intentionally omitted from deps: including it would loop if
   // the parent recreates the callback on every render.
   useEffect(() => {
-    if (!isPro && value !== 'private') onChange('private')
+    if (autoNormalize && !isPro && value !== 'private') onChange('private')
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPro, value])
+  }, [autoNormalize, isPro, value])
 
   function handlePress(opt: PrivacySetting) {
     if (!isPro && opt !== 'private') {
