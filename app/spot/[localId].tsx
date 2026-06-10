@@ -223,16 +223,16 @@ export default function SpotDetailScreen() {
         {/* Privacy */}
         <Text style={styles.privacyHeading}>Who can see this?</Text>
         <View style={styles.privacyBlock}>
-        <PrivacySelector
-          value={vendor.privacy ?? 'public'}
-          onChange={v => {
-            setVendor(prev => (prev ? { ...prev, privacy: v } : prev))
-            syncService.updateVendorPrivacy(vendor.localId, v, session?.user.id)
-          }}
-          isPro={isPro}
-          isSignedIn={!!session}
-          onUpgradePress={() => session ? setShowPaywall(true) : router.push('/(auth)/sign-up')}
-        />
+          <PrivacySelector
+            value={vendor.privacy ?? 'public'}
+            onChange={v => {
+              setVendor(prev => (prev ? { ...prev, privacy: v } : prev))
+              syncService.updateVendorPrivacy(vendor.localId, v, session?.user.id)
+            }}
+            isPro={isPro}
+            isSignedIn={!!session}
+            onUpgradePress={() => session ? setShowPaywall(true) : router.push('/(auth)/sign-up')}
+          />
         </View>
 
         {/* Log Your First Visit CTA */}
