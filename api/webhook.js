@@ -270,6 +270,21 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Email already registered' });
     }
 
+    // Enforce beta capacity limit
+    const { count: signupCount, error: countError } = await supabase
+      .from('beta_signups')
+      .select('*', { count: 'exact', head: true });
+
+    if (countError) {
+      console.error('Count error:', countError);
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    const BETA_LIMIT = 20;
+    if (signupCount >= BETA_LIMIT) {
+      return res.status(409).json({ error: 'beta_full', message: 'The beta is full' });
+    }
+
     // Save to Supabase
     const { error: insertError } = await supabase
       .from('beta_signups')
@@ -311,7 +326,8 @@ export default async function handler(req, res) {
             <h2 style="color:#e0922e;margin:0 0 16px;">New Beta Signup</h2>
             <p style="margin:0 0 8px;"><strong style="color:#b6a689;">Email:</strong> ${normalizedEmail}</p>
             <p style="margin:0 0 8px;"><strong style="color:#b6a689;">Source:</strong> ${source || 'landing-page'}</p>
-            <p style="margin:0;"><strong style="color:#b6a689;">Time:</strong> ${new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })}</p>
+            <p style="margin:0 0 8px;"><strong style="color:#b6a689;">Time:</strong> ${new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })}</p>
+            <p style="margin:0;"><strong style="color:#b6a689;">Spots left:</strong> ${Math.max(0, BETA_LIMIT - signupCount - 1)} of ${BETA_LIMIT}</p>
           </div>`
         });
       } catch (notifyError) {

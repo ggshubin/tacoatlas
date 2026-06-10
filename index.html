@@ -139,6 +139,33 @@
   }
   .signup.done .form-row, .signup.done .form-note { display: none; }
   .signup.done .success { display: flex; }
+  .beta-full {
+    display: none; align-items: center; gap: 10px;
+    background: rgba(168,51,30,0.10); border: 1px solid rgba(168,51,30,0.38);
+    color: #c87060; border-radius: 14px; padding: 18px; font-size: 16px; font-weight: 600;
+  }
+  .signup.full .form-row, .signup.full .form-note, .signup.full .beta-banner { display: none !important; }
+  .signup.full .beta-full { display: flex; }
+  .beta-banner {
+    display: flex; align-items: center; gap: 18px;
+    background: rgba(224,146,46,0.07); border: 1px solid rgba(224,146,46,0.30);
+    border-radius: 12px; padding: 14px 18px; margin-bottom: 16px;
+  }
+  .beta-banner .bb-num {
+    font-family: 'Anton', sans-serif; font-size: 44px; line-height: 1;
+    color: var(--orange); flex-shrink: 0; min-width: 2ch; text-align: center;
+  }
+  .beta-banner .bb-text { display: flex; flex-direction: column; gap: 5px; }
+  .beta-banner .bb-head {
+    font-family: 'Anton', sans-serif; font-size: 16px;
+    letter-spacing: 0.06em; text-transform: uppercase; color: var(--cream);
+  }
+  .beta-banner .bb-sub {
+    font-family: 'Spline Sans Mono', monospace; font-size: 11px;
+    letter-spacing: 0.12em; text-transform: uppercase; color: var(--tan-dim);
+  }
+  .beta-banner.low .bb-num { color: var(--salsa); }
+  .beta-banner.low { border-color: rgba(168,51,30,0.45); background: rgba(168,51,30,0.07); }
 
   /* store badges — pre-launch, non-clickable */
   .store { margin-top: 30px; }
@@ -323,12 +350,20 @@
       <p class="lead">Find, map and rate every taco truck, cart and stand around you. Track your visits, follow your crew, and never lose the spot that changed your life.</p>
 
       <form class="signup" id="signup">
+        <div class="beta-banner" id="bb1">
+          <div class="bb-num" id="bc1">—</div>
+          <div class="bb-text">
+            <span class="bb-head">Limited to 20 beta testers</span>
+            <span class="bb-sub">spots remaining · first come, first served</span>
+          </div>
+        </div>
         <div class="form-row">
           <input type="email" id="email" placeholder="you@email.com" required aria-label="Email address" />
           <button class="btn" type="submit">Join the beta</button>
         </div>
         <p class="form-note">Use your Google account email — that's how we send your Play Store beta invite.</p>
         <div class="success">★ &nbsp;You're on the list. We'll send your Play Store beta invite soon.</div>
+        <div class="beta-full">🌮 &nbsp;All 20 beta spots are claimed. iOS is up next — stay tuned.</div>
       </form>
 
       <div class="store">
@@ -397,12 +432,20 @@
     <p>Beta testers get the first map, lifetime pin privileges, and bragging rights over everyone still using a notes app.</p>
 
     <form class="signup" id="signup2">
+      <div class="beta-banner" id="bb2">
+        <div class="bb-num" id="bc2">—</div>
+        <div class="bb-text">
+          <span class="bb-head">Limited to 20 beta testers</span>
+          <span class="bb-sub">spots remaining · first come, first served</span>
+        </div>
+      </div>
       <div class="form-row">
         <input type="email" id="email2" placeholder="you@email.com" required aria-label="Email address" />
         <button class="btn" type="submit">Claim a beta seat</button>
       </div>
       <p class="form-note">Use your Google account email — that's how we send your Play Store beta invite.</p>
       <div class="success">★ &nbsp;You're on the list. We'll send your Play Store beta invite soon.</div>
+      <div class="beta-full">🌮 &nbsp;All 20 beta spots are claimed. iOS is up next — stay tuned.</div>
     </form>
 
     <div class="store">
@@ -426,11 +469,44 @@
 
 <script>
   (function () {
-    // Form handler for beta signups
     var KEY = 'tacoatlas_beta_signup';
 
     function markAllDone() {
       document.querySelectorAll('.signup').forEach(function (f) { f.classList.add('done'); });
+    }
+
+    function markAllFull() {
+      document.querySelectorAll('.signup').forEach(function (f) {
+        f.classList.remove('done');
+        f.classList.add('full');
+      });
+      setSpotCount(0);
+    }
+
+    function setSpotCount(n) {
+      ['bc1', 'bc2'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.textContent = n;
+      });
+      ['bb1', 'bb2'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        if (n <= 5) el.classList.add('low');
+        else el.classList.remove('low');
+      });
+    }
+
+    function loadCount() {
+      fetch('/api/count')
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (d.isFull) {
+            markAllFull();
+          } else {
+            setSpotCount(d.spotsLeft);
+          }
+        })
+        .catch(function () {}); // fail silently — form still usable
     }
 
     function wire(formId, emailId) {
@@ -449,31 +525,33 @@
         btn.disabled = true;
         btn.textContent = 'Joining…';
 
-        var payload = {
-          email: email,
-          source: 'taco-atlas-landing-page',
-          submittedAt: new Date().toISOString()
-        };
-
         fetch('/api/webhook', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
+          body: JSON.stringify({
+            email: email,
+            source: 'taco-atlas-landing-page',
+            submittedAt: new Date().toISOString()
+          })
         })
-        .then(function(res) { return res.json(); })
-        .then(function(data) {
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
           if (data.success) {
             localStorage.setItem(KEY, email);
             markAllDone();
+            var cur = parseInt(document.getElementById('bc1').textContent, 10);
+            if (!isNaN(cur)) setSpotCount(Math.max(0, cur - 1));
+          } else if (data.error === 'beta_full') {
+            markAllFull();
           } else {
             alert('Error: ' + (data.error || 'Something went wrong'));
           }
         })
-        .catch(function(err) {
+        .catch(function (err) {
           console.error('Submission error:', err);
           alert('Network error. Please try again.');
         })
-        .finally(function() {
+        .finally(function () {
           btn.disabled = false;
           btn.textContent = label;
         });
@@ -482,6 +560,7 @@
 
     wire('signup', 'email');
     wire('signup2', 'email2');
+    loadCount();
   })();
 </script>
 </body>
