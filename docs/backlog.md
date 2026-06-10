@@ -8,9 +8,7 @@ Single source of truth for outstanding work. Keep entries short — link to desi
 
 ### Priority polish (next implementation pass)
 
-Four small/medium items the user has flagged for near-term work. Surgical, mostly contained, each ships independently.
-
-- **Privacy clarity in the review composer.** Data model is fine (`reviews.privacy` = `public | friends | private`). UI surfaces it as a single tap with three obvious states + icons + plain language: "Anyone can see this," "Friends only," "Just me." Same data model, much clearer UX. Touches: the review wizard (`app/review/add.tsx`) and the spot/add flow.
+Three small/medium items the user has flagged for near-term work. Surgical, mostly contained, each ships independently. (Privacy clarity shipped 2026-06-09 — see Recently shipped.)
 
 - **Public profile screen.** New screen at `app/profile/[username].tsx` (or similar). Display the existing fields a visitor would see — avatar, display_name, username, bio, home_city, favorite_taco, plus stats (spots logged, reviews written). Link to it from `mi-gente` friend rows. Friend-vs-stranger view: friends see private/friends-scope spots, strangers see only public. Already-stored fields, so it's mostly UI work + one query.
 
@@ -108,6 +106,8 @@ For context; remove entries from this list as they age out.
 
 ### June 8–9, 2026
 
+- **Privacy selector** (spec: `docs/superpowers/specs/2026-06-09-privacy-selector-design.md`): shared `PrivacySelector` component in the review wizard, drop-pin flow, and spot detail (per-spot privacy editing is new); free tier locked to Just Me with PRO badges + upgrade nudge; fixed leak where free users could save public pins; one-time post-Pro-conversion reminder with bulk "Make all Public" option. Shipped in versionCode 34.
+- **Production AAB versionCode 34** — first OTA-capable binary (EAS Update configured: updates.url + runtimeVersion + production/preview channels). JS-only fixes can now ship via `eas update --channel production`.
 - Terms of Service + Privacy Policy pages live at `tacoatlas.app/terms` and `/privacy` — profile links now resolve
 - Desktop browser bounce page live at `tacoatlas.app/auth/confirm`
 - Beta feedback banner shipped and working
