@@ -270,6 +270,65 @@
     background: radial-gradient(circle, rgba(224,146,46,0.22), transparent 70%); filter: blur(10px);
   }
 
+  /* ---------- iOS waitlist section ---------- */
+  .ios-waitlist {
+    max-width: 780px; margin: 0 auto;
+    padding: clamp(60px, 9vw, 100px) clamp(24px, 5vw, 64px);
+  }
+  .ios-card {
+    background: var(--card);
+    border: 1px solid rgba(241,231,211,0.12);
+    border-radius: 20px;
+    padding: clamp(32px, 5vw, 52px);
+    position: relative;
+    overflow: hidden;
+  }
+  .ios-card::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 220px; height: 220px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(224,146,46,0.09), transparent 70%);
+    pointer-events: none;
+  }
+  .ios-card .platform-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(241,231,211,0.06); border: 1px solid rgba(241,231,211,0.16);
+    border-radius: 8px; padding: 6px 12px; margin-bottom: 20px;
+    font-family: 'Spline Sans Mono', monospace; font-size: 11px;
+    letter-spacing: 0.18em; text-transform: uppercase; color: var(--tan-dim);
+  }
+  .ios-card h2 {
+    font-family: 'Anton', sans-serif; font-weight: 400; text-transform: uppercase;
+    font-size: clamp(30px, 4vw, 48px); line-height: 1.02; color: var(--cream);
+    margin-bottom: 12px;
+  }
+  .ios-card .ios-sub {
+    font-size: 16px; line-height: 1.6; color: var(--tan); max-width: 520px; margin-bottom: 28px;
+  }
+  .ios-signup .form-row { max-width: 480px; }
+  .ios-signup .form-note { max-width: 480px; }
+  .ios-signup .success {
+    max-width: 480px;
+  }
+  .ios-signup .ios-already {
+    display: none; align-items: center; gap: 10px;
+    background: rgba(241,231,211,0.05); border: 1px solid rgba(241,231,211,0.15);
+    color: var(--tan); border-radius: 14px; padding: 18px; font-size: 16px; font-weight: 600;
+    max-width: 480px;
+  }
+  .ios-signup.done .form-row,
+  .ios-signup.done .form-note { display: none; }
+  .ios-signup.done .success { display: flex; }
+  .ios-signup.already .form-row,
+  .ios-signup.already .form-note { display: none; }
+  .ios-signup.already .ios-already { display: flex; }
+  .ios-divider {
+    border: none; border-top: 1px solid var(--line);
+    max-width: 1180px; margin: 0 auto;
+  }
+
   /* ---------- final CTA ---------- */
   .closer {
     max-width: 900px; margin: 0 auto;
@@ -425,6 +484,30 @@
     </div>
   </section>
 
+  <!-- iOS WAITLIST -->
+  <hr class="ios-divider" />
+  <section class="ios-waitlist" aria-label="iOS Waitlist">
+    <div class="ios-card">
+      <div class="platform-badge">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.94c1.5 0 2.75-.73 3.58-1.84.58-.77.42-1.1 0-2.1M17 12c0-2.76-2.24-5-5-5s-5 2.24-5 5c0 2 1.17 3.76 2.9 4.6"/><path d="M12 3v2M12 3c-1.1 0-2 .9-2 2"/><path d="M12 3c1.1 0 2 .9 2 2"/><circle cx="12" cy="12" r="2"/></svg>
+        iPhone · Coming Soon
+      </div>
+      <h2>TacoAtlas<br>on iPhone.</h2>
+      <p class="ios-sub">Android beta is live — iPhone is next. Drop your email and we'll send you a direct App Store link the day it launches. <strong style="color:var(--cream);">This is not the Android beta signup.</strong></p>
+
+      <form class="ios-signup" id="ios-signup">
+        <div class="form-row">
+          <input type="email" id="ios-email" placeholder="you@email.com" required aria-label="Email address for iOS waitlist" />
+          <button class="btn" type="submit" style="background: var(--cream); color: #2a1a08;">Notify me</button>
+        </div>
+        <p class="form-note">We'll email you when TacoAtlas hits the App Store — nothing else.</p>
+        <div class="success">★ &nbsp;You're on the iOS waitlist. We'll email you when it's live.</div>
+        <div class="ios-already">&#10003; &nbsp;You're already on the iOS waitlist.</div>
+      </form>
+    </div>
+  </section>
+  <hr class="ios-divider" />
+
   <!-- CLOSER -->
   <section class="closer" data-screen-label="Closer">
     <img class="taco-sm" src="assets/taco-icon.png" alt="" />
@@ -561,6 +644,50 @@
     wire('signup', 'email');
     wire('signup2', 'email2');
     loadCount();
+
+    // iOS waitlist
+    var IOS_KEY = 'tacoatlas_ios_waitlist';
+    var iosForm = document.getElementById('ios-signup');
+    if (iosForm) {
+      if (localStorage.getItem(IOS_KEY)) iosForm.classList.add('done');
+
+      iosForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var input = document.getElementById('ios-email');
+        var email = input.value.trim();
+        if (!email) return;
+
+        var btn = iosForm.querySelector('.btn');
+        var label = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = 'Adding…';
+
+        fetch('/api/ios-waitlist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email, submittedAt: new Date().toISOString() })
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (data.success) {
+            localStorage.setItem(IOS_KEY, email);
+            iosForm.classList.add('done');
+          } else if (data.error === 'Email already on iOS waitlist') {
+            iosForm.classList.add('already');
+          } else {
+            alert('Error: ' + (data.error || 'Something went wrong'));
+          }
+        })
+        .catch(function (err) {
+          console.error('iOS signup error:', err);
+          alert('Network error. Please try again.');
+        })
+        .finally(function () {
+          btn.disabled = false;
+          btn.textContent = label;
+        });
+      });
+    }
   })();
 </script>
 </body>

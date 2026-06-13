@@ -15,7 +15,8 @@ export default async function handler(req, res) {
   try {
     const { count, error } = await supabase
       .from('beta_signups')
-      .select('*', { count: 'exact', head: true });
+      .select('*', { count: 'exact', head: true })
+      .eq('platform', 'android');
 
     if (error) {
       console.error('Count error:', error);
