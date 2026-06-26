@@ -27,10 +27,16 @@ export default function FriendMapScreen() {
 
   useEffect(() => {
     if (!userId) { setLoading(false); return }
-    getFriendActivity([userId]).then(data => {
-      setPins(data.filter(p => p.lat !== 0 && p.lng !== 0))
-      setLoading(false)
-    })
+    ;(async () => {
+      try {
+        const data = await getFriendActivity([userId])
+        setPins(data.filter(p => p.lat !== 0 && p.lng !== 0))
+      } catch {
+        // leave pins empty on error
+      } finally {
+        setLoading(false)
+      }
+    })()
   }, [userId])
 
   if (loading || pins.length === 0) {
