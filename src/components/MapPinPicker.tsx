@@ -1,9 +1,13 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native'
-import MapView, { PROVIDER_GOOGLE } from 'react-native-maps'
+import MapboxGL from '@rnmapbox/maps'
 import { Ionicons } from '@expo/vector-icons'
 import { colors, spacing, radius } from '../utils/theme'
 import type { LocationResult } from './LocationPicker'
+
+// San Diego default — same as original
+const DEFAULT_CENTER: [number, number] = [-117.1611, 32.7157]
+const DEFAULT_ZOOM = 13
 
 interface Props {
   onConfirm: (result: LocationResult) => void
@@ -11,45 +15,50 @@ interface Props {
 }
 
 export function MapPinPicker({ onConfirm, onCancel }: Props) {
-  const [region, setRegion] = useState({
-    latitude: 32.7157,
-    longitude: -117.1611,
-    latitudeDelta: 0.05,
-    longitudeDelta: 0.05,
-  })
+  const mapRef = useRef<MapboxGL.MapView>(null)
   const [resolving, setResolving] = useState(false)
 
   async function handleConfirm() {
+    if (!mapRef.current) return
     setResolving(true)
+
+    // getCenter() returns [longitude, latitude] — Mapbox GeoJSON order
+    const center = await mapRef.current.getCenter() as [number, number]
+    const longitude = center[0]
+    const latitude = center[1]
+
     let cityName: string | null = null
     try {
       const Location = await import('expo-location')
-      const results = await Location.reverseGeocodeAsync({
-        latitude: region.latitude, longitude: region.longitude,
-      })
+      const results = await Location.reverseGeocodeAsync({ latitude, longitude })
       cityName = results[0]?.city ?? null
     } catch {}
-    onConfirm({
-      lat: region.latitude,
-      lng: region.longitude,
-      address: null,
-      cityName,
-    })
+
+    onConfirm({ lat: latitude, lng: longitude, address: null, cityName })
     setResolving(false)
   }
 
   return (
     <View style={styles.container}>
-      <MapView
-        provider={PROVIDER_GOOGLE}
+      <MapboxGL.MapView
+        ref={mapRef}
         style={StyleSheet.absoluteFillObject}
-        initialRegion={region}
-        onRegionChangeComplete={setRegion}
-        showsUserLocation
-      />
+        logoEnabled={false}
+        attributionEnabled={false}
+      >
+        <MapboxGL.Camera
+          centerCoordinate={DEFAULT_CENTER}
+          zoomLevel={DEFAULT_ZOOM}
+          animationDuration={0}
+        />
+        <MapboxGL.UserLocation visible />
+      </MapboxGL.MapView>
+
+      {/* Fixed crosshair — pointerEvents="none" so map receives all touches */}
       <View style={styles.crosshairContainer} pointerEvents="none">
         <Ionicons name="location" size={40} color={colors.amber} />
       </View>
+
       <View style={styles.header}>
         <TouchableOpacity style={styles.cancelBtn} onPress={onCancel}>
           <Ionicons name="close" size={20} color={colors.cream} />
@@ -57,6 +66,7 @@ export function MapPinPicker({ onConfirm, onCancel }: Props) {
         <Text style={styles.headerTitle}>Move map to the spot</Text>
         <View style={{ width: 36 }} />
       </View>
+
       <View style={styles.footer}>
         <TouchableOpacity style={styles.confirmBtn} onPress={handleConfirm} disabled={resolving}>
           {resolving
