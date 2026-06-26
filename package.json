@@ -83,10 +83,11 @@
       "^expo-location$": "<rootDir>/src/__mocks__/expo-location.ts",
       "^expo-image-picker$": "<rootDir>/src/__mocks__/expo-image-picker.ts",
       "^@expo/vector-icons$": "<rootDir>/src/__mocks__/@expo/vector-icons.ts",
-      "^expo-updates$": "<rootDir>/src/__mocks__/expo-updates.ts"
+      "^expo-updates$": "<rootDir>/src/__mocks__/expo-updates.ts",
+      "^@rnmapbox/maps$": "<rootDir>/src/__mocks__/@rnmapbox/maps.ts"
     },
     "transformIgnorePatterns": [
-      "node_modules/(?!(react-native|expo-router|expo-status-bar|expo|expo-camera|expo-image-picker|expo-location|expo-updates)/)"
+      "node_modules/(?!(react-native|expo-router|expo-status-bar|expo|expo-camera|expo-image-picker|expo-location|expo-updates|@rnmapbox)/)"
     ]
   },
   "private": true
