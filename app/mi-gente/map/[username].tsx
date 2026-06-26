@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native'
-import MapView, { Marker } from 'react-native-maps'
+import MapboxGL from '@rnmapbox/maps'
+import { toBoundsFromCoords, toMapboxCoord } from '../../../src/utils/mapboxHelpers'
 import * as Location from 'expo-location'
 import { router, useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
@@ -46,16 +47,16 @@ export default function FriendMapScreen() {
     )
   }
 
-  // Compute a bounding region that fits all pins with padding
-  const minLat = Math.min(...pins.map(p => p.lat))
-  const maxLat = Math.max(...pins.map(p => p.lat))
-  const minLng = Math.min(...pins.map(p => p.lng))
-  const maxLng = Math.max(...pins.map(p => p.lng))
-  const centerLat = (minLat + maxLat) / 2
-  const centerLng = (minLng + maxLng) / 2
-  const PADDING = 1.4 // 40% padding around the bounding box
-  const latDelta = Math.max((maxLat - minLat) * PADDING, 0.01)
-  const lngDelta = Math.max((maxLng - minLng) * PADDING, 0.01)
+  const mapBounds =
+    pins.length > 1
+      ? toBoundsFromCoords(
+          pins.map(p => ({ latitude: p.lat, longitude: p.lng })),
+          0.01,
+        )
+      : null
+
+  const singleCenter: [number, number] | null =
+    pins.length === 1 ? toMapboxCoord({ latitude: pins[0].lat, longitude: pins[0].lng }) : null
 
   const PANEL_PINS = pins.slice(0, 3)
 
@@ -74,21 +75,44 @@ export default function FriendMapScreen() {
       </View>
 
       {/* Map */}
-      <MapView
+      <MapboxGL.MapView
         style={styles.map}
-        initialRegion={{ latitude: centerLat, longitude: centerLng, latitudeDelta: latDelta, longitudeDelta: lngDelta }}
-        showsUserLocation={locationGranted}
+        logoEnabled={false}
+        attributionEnabled={false}
       >
-        {pins.map(pin => (
-          <Marker
-            key={pin.id}
-            coordinate={{ latitude: pin.lat, longitude: pin.lng }}
-            title={pin.spotName}
-            description={pin.type === 'reviewed' && pin.rating ? `${'★'.repeat(pin.rating)}` : 'Pinned spot'}
-            pinColor={pin.type === 'reviewed' ? colors.amber : '#B37318'}
+        {mapBounds ? (
+          <MapboxGL.Camera
+            bounds={{
+              ...mapBounds,
+              paddingTop: 40,
+              paddingBottom: 40,
+              paddingLeft: 40,
+              paddingRight: 40,
+            }}
+            animationDuration={0}
           />
+        ) : (
+          <MapboxGL.Camera
+            centerCoordinate={singleCenter ?? [-122.4194, 37.7749]}
+            zoomLevel={14}
+            animationDuration={0}
+          />
+        )}
+        <MapboxGL.UserLocation visible={locationGranted} />
+        {pins.map(pin => (
+          <MapboxGL.MarkerView
+            key={pin.id}
+            coordinate={toMapboxCoord({ latitude: pin.lat, longitude: pin.lng })}
+          >
+            <View
+              style={[
+                styles.friendDot,
+                { backgroundColor: pin.type === 'reviewed' ? colors.amber : '#B37318' },
+              ]}
+            />
+          </MapboxGL.MarkerView>
         ))}
-      </MapView>
+      </MapboxGL.MapView>
 
       {/* Bottom panel */}
       <View style={[styles.panel, { paddingBottom: spacing.md + insets.bottom }]}>
@@ -128,4 +152,16 @@ const styles = StyleSheet.create({
   goBtn: { backgroundColor: colors.amber, borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: 3 },
   goBtnText: { fontSize: 10, fontWeight: '800', color: colors.bg },
   errorText: { color: colors.creamMuted, fontSize: 14 },
+  friendDot: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#fff',
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 3,
+  },
 })
