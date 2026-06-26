@@ -31,7 +31,10 @@
           "color": "#F5A623",
           "androidMode": "default"
         }
-      ]
+      ],
+      ["@rnmapbox/maps", {
+        "RNMapboxMapsDownloadToken": "MAPBOX_DOWNLOADS_TOKEN"
+      }]
     ],
     "android": {
       "icon": "./assets/icon.png",
@@ -46,11 +49,6 @@
       ],
       "package": "com.tacooatlas.app",
       "versionCode": 2,
-      "config": {
-        "googleMaps": {
-          "apiKey": "AIzaSyDvWs4orTUGdsKhu195FUWldN0OosGSrqQ"
-        }
-      },
       "navigationBar": {
         "visible": "immersive",
         "backgroundColor": "#18140F",

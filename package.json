@@ -12,6 +12,7 @@
   "dependencies": {
     "@expo/log-box": "^55.0.6",
     "@react-native-async-storage/async-storage": "2.2.0",
+    "@rnmapbox/maps": "^10.3.1",
     "@supabase/supabase-js": "^2.99.1",
     "expo": "~55.0.26",
     "expo-camera": "~55.0.19",
@@ -31,7 +32,6 @@
     "nanoid": "^5.1.7",
     "react": "19.2.0",
     "react-native": "0.83.6",
-    "react-native-maps": "^1.27.2",
     "react-native-purchases": "^9.14.0",
     "react-native-qrcode-svg": "^6.3.21",
     "react-native-safe-area-context": "~5.6.2",
