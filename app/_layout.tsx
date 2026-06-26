@@ -5,6 +5,7 @@ import { Alert, Platform, Linking } from 'react-native'
 import { Stack, router } from 'expo-router'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as NavigationBar from 'expo-navigation-bar'
+import MapboxGL from '@rnmapbox/maps'
 import { supabase } from '../src/services/supabase'
 import { useAuthStore } from '../src/store/authStore'
 import { proService } from '../src/services/proService'
@@ -18,6 +19,8 @@ import { RestorePromptModal } from '../src/components/RestorePromptModal'
 import { ProPrivacyReminderModal } from '../src/components/ProPrivacyReminderModal'
 import { parseAuthFragment } from '../src/utils/authLinking'
 import { shouldShowProPrivacyReminder, getReminderShown, setReminderShown } from '../src/utils/proPrivacyReminder'
+
+MapboxGL.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN ?? '')
 
 async function handleAuthDeepLink(url: string) {
   if (!url.startsWith('tacooatlas://')) return
