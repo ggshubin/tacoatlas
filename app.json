@@ -32,9 +32,7 @@
           "androidMode": "default"
         }
       ],
-      ["@rnmapbox/maps", {
-        "RNMapboxMapsDownloadToken": "MAPBOX_DOWNLOADS_TOKEN"
-      }]
+      "@rnmapbox/maps"
     ],
     "android": {
       "icon": "./assets/icon.png",
