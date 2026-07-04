@@ -17,7 +17,20 @@
     "plugins": [
       "expo-updates",
       "expo-router",
-      "expo-location",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "TacoAtlas uses your location to place taco spots on the map and center it near you."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "TacoAtlas uses the camera to scan a friend's QR code to add them.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ],
       [
         "expo-image-picker",
         {
@@ -55,7 +68,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.tacooatlas.app"
+      "bundleIdentifier": "com.tacooatlas.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "web": {
       "bundler": "metro",

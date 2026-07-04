@@ -41,7 +41,10 @@ Quick reference for every external service the app depends on: what it does, why
   - Validating TacoAtlas Pro one-time purchase
   - `TACOATLAS_PRO` entitlement gating features
   - Restore purchases flow
-- **Note:** RevenueCat does NOT store payment card details — that stays with Google Play
+- **Note:** RevenueCat does NOT store payment card details — that stays with the store (Google Play / Apple)
+- **Per-platform SDK keys:** the app picks the key by platform in `src/services/proService.ts`:
+  - Android → `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY`
+  - iOS → `EXPO_PUBLIC_REVENUECAT_IOS_KEY` *(add an iOS app under the RevenueCat project for iOS builds)*
 
 ### Google Play Billing *(via RevenueCat)*
 - **What:** Underlying Android payment processor
@@ -49,17 +52,36 @@ Quick reference for every external service the app depends on: what it does, why
 - **Manage:** [Google Play Console](https://play.google.com/console) → Monetization → Products
 - **Package:** `com.tacooatlas.app`
 
+### Apple In-App Purchase *(via RevenueCat)*
+- **What:** Underlying iOS payment processor (StoreKit)
+- **Why:** Required by Apple for all in-app purchases on iOS
+- **Manage:** [App Store Connect](https://appstoreconnect.apple.com) → your app → Monetization → In-App Purchases
+- **Product:** Pro tier — non-consumable, $3.99 one-time (mirror in App Store Connect and RevenueCat)
+- **Bundle ID:** `com.tacooatlas.app`
+
 ---
 
 ## Maps & Location
 
-### Google Maps Platform
-- **What:** Interactive map SDK + Places API
-- **Why:** Powers the core map view, spot searching, and geocoding (converting addresses to lat/lng coordinates)
+### Mapbox
+- **What:** Interactive map SDK (`@rnmapbox/maps`)
+- **Why:** Powers the core map view on both Android and iOS (migrated from Google Maps)
+- **Cost:** Free tier — 25k monthly active users / 50k map loads before charges
+- **Manage:** [account.mapbox.com](https://account.mapbox.com) → Access tokens
+- **Two tokens required:**
+  - **Public runtime token** (`pk.*`) → `EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN`; set at runtime in `app/_layout.tsx`
+  - **Secret downloads token** (`sk.*`, scope **Downloads: Read**) → `MAPBOX_DOWNLOADS_TOKEN`; a
+    **build-time** secret read by the `@rnmapbox/maps` plugin during prebuild. Register as an EAS
+    secret (`eas secret:create --name MAPBOX_DOWNLOADS_TOKEN ...`). Required for **iOS** builds in
+    particular. Never prefix with `EXPO_PUBLIC_`.
+
+### Google Maps Platform *(Places / Geocoding)*
+- **What:** Places API + geocoding
+- **Why:** Spot searching/autocomplete and converting addresses to lat/lng coordinates
 - **Cost:** $200/month free credit — covers most small-app usage. Charges kick in beyond that.
 - **Manage:** [Google Cloud Console](https://console.cloud.google.com) → APIs & Services → Google Maps Platform
+- **Keys:** `EXPO_PUBLIC_GOOGLE_PLACES_API_KEY`, `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY`
 - **APIs used:**
-  - Maps SDK for Android
   - Places API (spot search / autocomplete)
   - Geocoding API
 
@@ -69,9 +91,10 @@ Quick reference for every external service the app depends on: what it does, why
 
 ### Expo Push Notification Service
 - **What:** Notification delivery infrastructure
-- **Why:** Expo's push service sits between our app and Google's FCM (Firebase Cloud Messaging), abstracting away platform differences. We send one API call to Expo, they handle delivery.
+- **Why:** Expo's push service sits between our app and the platform push networks — Google FCM (Android) and Apple APNs (iOS) — abstracting away platform differences. We send one API call to Expo, they handle delivery.
 - **Cost:** Free
 - **Manage:** Automatically managed via EAS — no separate dashboard
+- **iOS:** requires an APNs key uploaded to Expo (`eas credentials` → iOS → Push Notifications) — see [`docs/ios-release.md`](./ios-release.md)
 - **Note:** Push notifications do NOT work in Expo Go — must use a dev client or production build
 
 ---
@@ -91,13 +114,15 @@ Quick reference for every external service the app depends on: what it does, why
 
 ### EAS (Expo Application Services)
 - **What:** Cloud build service for React Native apps
-- **Why:** Builds Android AAB / APK files in the cloud without needing a local Android SDK setup. Also manages OTA update channels.
+- **Why:** Builds Android (AAB/APK) and iOS (IPA) binaries in the cloud without needing local Android SDK / Xcode setup. Also manages OTA update channels and app signing credentials.
 - **Cost:** Free tier includes limited builds/month; paid plans for more
 - **Manage:** [expo.dev](https://expo.dev) → TacoAtlas project
-- **To build a production AAB:**
+- **To build a production binary:**
   ```bash
-  eas build --platform android --profile production
+  eas build --platform android --profile production   # Android AAB
+  eas build --platform ios --profile production        # iOS IPA
   ```
+- **iOS runbook:** see [`docs/ios-release.md`](./ios-release.md) for the full build & submit steps.
 
 ### Google Play Console
 - **What:** Android app store distribution
@@ -106,6 +131,15 @@ Quick reference for every external service the app depends on: what it does, why
 - **Manage:** [play.google.com/console](https://play.google.com/console)
 - **App package:** `com.tacooatlas.app`
 - **Tracks:** Internal → Closed testing (beta) → Production
+
+### Apple App Store Connect
+- **What:** iOS app store distribution + TestFlight
+- **Why:** Where the iOS app lives — manage releases, TestFlight beta testers, IAP products, crash reports, and ratings
+- **Cost:** Apple Developer Program — $99/year
+- **Manage:** [appstoreconnect.apple.com](https://appstoreconnect.apple.com)
+- **Bundle ID:** `com.tacooatlas.app`
+- **Tracks:** TestFlight (internal/external) → App Store review → Production
+- **Setup:** see the prerequisites checklist in [`docs/ios-release.md`](./ios-release.md)
 
 ---
 
@@ -186,14 +220,16 @@ Quick reference for every external service the app depends on: what it does, why
 |---------|-------------|
 | Supabase | Free (Hobby) |
 | RevenueCat | Free (< $2,500 MRR) |
+| Mapbox | Free (< 25k MAU) |
 | Google Maps Platform | Free (< $200/mo usage) |
 | EAS | Free tier |
 | Vercel | Free (Hobby) |
 | Resend | Free (< 3k emails/mo) |
 | Google Play Console | $25 one-time |
+| Apple Developer Program | $99/year |
 | Forward Email (future) | Free |
-| **Total monthly** | **~$0** |
+| **Total** | **~$99/yr (Apple) + ~$0/mo** |
 
 ---
 
-*Last updated: June 2026*
+*Last updated: July 2026*

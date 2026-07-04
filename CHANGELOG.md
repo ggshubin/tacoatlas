@@ -8,7 +8,11 @@ Maintenance rule: when a production build is cut, add its entry here in the same
 
 ## Unreleased
 
-_Nothing yet._
+### Changed
+- **Maps now powered by Mapbox** — all four map screens (Explore, My Atlas, Friend map, Drop-pin picker) migrated from Google Maps to Mapbox. Visual style and interaction are the same; the underlying SDK is Mapbox Maps v10. Google Places search is unchanged.
+
+### Internal
+- **iOS build groundwork** — the project is now config-ready for an iOS build: iOS permissions (camera QR-scan, location, photos) and export-compliance flag set in `app.json`, iOS build + submit profiles added to `eas.json`, and a full release runbook at `docs/ios-release.md`. No user-facing change yet; the App Store version still requires Apple Developer account setup.
 
 ## versionCode 35 — 2026-06-09
 

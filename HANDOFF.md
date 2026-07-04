@@ -303,6 +303,9 @@ eas build --platform android --profile preview
 
 # Build AAB for Play Store upload
 eas build --platform android --profile production
+
+# Build IPA for App Store / TestFlight (see docs/ios-release.md for prerequisites)
+eas build --platform ios --profile production
 ```
 
 ### Play Store Notes
@@ -310,6 +313,22 @@ eas build --platform android --profile production
 - **versionName** (user-visible): set via `version` in `app.json`
 - **versionCode** (internal, must increment each upload): managed automatically by EAS `autoIncrement: true`
 - Bump `version` in `app.json` when releasing a new user-visible version
+
+### iOS / App Store
+
+iOS is **config-ready** (managed Expo/CNG — `app.json` + `eas.json` drive the build; no native
+folder editing). Still requires account setup before the first build. Full runbook + prerequisites:
+**[`docs/ios-release.md`](docs/ios-release.md)**.
+
+- Bundle ID: `com.tacooatlas.app` (shared with Android)
+- iOS permissions (camera QR-scan, location, photos) and `ITSAppUsesNonExemptEncryption: false`
+  are configured in `app.json`
+- `eas.json` has an iOS production build profile (`autoIncrement` for buildNumber) and a
+  `submit.production.ios` profile with **placeholder** Apple IDs to fill in
+- New env vars for iOS: `EXPO_PUBLIC_REVENUECAT_IOS_KEY` (public) and `MAPBOX_DOWNLOADS_TOKEN`
+  (build-time EAS secret) — see `.env.example`
+- Outstanding user actions: Apple Developer Program enrollment, App Store Connect app record,
+  APNs key, iOS IAP product + RevenueCat iOS app
 
 ---
 
