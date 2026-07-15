@@ -1,7 +1,7 @@
 // Mock dependencies
 jest.mock('../vendorRepository', () => ({
   vendorRepository: {
-    createVendor: jest.fn().mockResolvedValue({ id: 'server-vendor-id', name: 'El Gordo' }),
+    upsertPersonalVendor: jest.fn().mockResolvedValue('server-vendor-id'),
   },
 }))
 
@@ -58,7 +58,8 @@ describe('syncService', () => {
 
     const result = await syncService.syncGuestDataToSupabase('user-1')
 
-    expect(vendorRepository.createVendor).toHaveBeenCalledWith(
+    expect(vendorRepository.upsertPersonalVendor).toHaveBeenCalledWith(
+      null,
       expect.objectContaining({ name: 'El Gordo', submitted_by: 'user-1' })
     )
     expect(reviewRepository.createReview).toHaveBeenCalledTimes(1)

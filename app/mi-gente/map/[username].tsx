@@ -88,6 +88,7 @@ export default function FriendMapScreen() {
         styleJSON={espressoMapStyleJSON}
         logoEnabled={false}
         attributionEnabled={false}
+        surfaceView={false}
       >
         {mapBounds ? (
           <MapboxGL.Camera

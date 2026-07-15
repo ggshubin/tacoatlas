@@ -25,6 +25,7 @@
     "expo-image-picker": "~55.0.20",
     "expo-linking": "~55.0.15",
     "expo-location": "~55.1.10",
+    "expo-media-library": "~55.0.18",
     "expo-navigation-bar": "~55.0.13",
     "expo-notifications": "~55.0.23",
     "expo-router": "~55.0.16",
@@ -58,6 +59,9 @@
   },
   "jest": {
     "testEnvironment": "node",
+    "setupFiles": [
+      "<rootDir>/jest.setup.js"
+    ],
     "transform": {
       "^.+\\.tsx?$": [
         "ts-jest",
@@ -89,6 +93,8 @@
       "^@react-native-async-storage/async-storage$": "<rootDir>/src/__mocks__/async-storage.ts",
       "^expo-location$": "<rootDir>/src/__mocks__/expo-location.ts",
       "^expo-image-picker$": "<rootDir>/src/__mocks__/expo-image-picker.ts",
+      "^expo-media-library$": "<rootDir>/src/__mocks__/expo-media-library.ts",
+      "^expo-image-manipulator$": "<rootDir>/src/__mocks__/expo-image-manipulator.ts",
       "^@expo/vector-icons$": "<rootDir>/src/__mocks__/@expo/vector-icons.ts",
       "^expo-updates$": "<rootDir>/src/__mocks__/expo-updates.ts",
       "^@rnmapbox/maps$": "<rootDir>/src/__mocks__/@rnmapbox/maps.ts"

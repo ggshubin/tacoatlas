@@ -66,7 +66,8 @@ describe('localStorageService', () => {
 
   describe('normalizeVendor via getVendors', () => {
     it('fills privacy default when missing', async () => {
-      await AsyncStorage.setItem('local_vendors', JSON.stringify([
+      // Storage keys are scoped per user; unauthenticated tests run under 'guest'
+      await AsyncStorage.setItem('local_vendors_guest', JSON.stringify([
         { localId: 'abc', name: 'Test', spotType: null, lat: 0, lng: 0,
           address: null, cityName: null, hours: null, photoUri: null, createdAt: '2026-01-01' }
       ]))
@@ -79,7 +80,7 @@ describe('localStorageService', () => {
 
   describe('normalizeReview via getReviewsForVendor', () => {
     it('fills burritoEntries and tortaEntries defaults when missing', async () => {
-      await AsyncStorage.setItem('local_reviews', JSON.stringify([
+      await AsyncStorage.setItem('local_reviews_guest', JSON.stringify([
         { localId: 'r1', vendorLocalId: 'abc', overallRating: 4,
           returnIntent: 'yes', notes: null, photoUris: [], tacoEntries: [],
           salsaEntries: [], condiments: [], createdAt: '2026-01-01' }

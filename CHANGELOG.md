@@ -6,6 +6,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/) loosely. Android 
 
 Maintenance rule: when a production build is cut, add its entry here in the same commit/session.
 
+## versionCode 48 — 2026-07-14 (v1.3.1, beta feedback fixes)
+
+Fixes from the first beta-tester feedback round on the design-audit build, verified on device.
+
+### Added
+- **Save Visit button** — the review form now ends with a prominent sticky amber "Save Visit" button pinned above the bottom edge ("Save Changes" when editing). Replaces the small header Save pill that testers couldn't find.
+- **Camera photos land in your gallery** — any photo taken with the in-app camera (review form, "Snap It" quick action, profile avatar) is also saved to the phone's photo gallery, not just inside the app. Asks once for add-to-gallery permission; if declined, the photo still attaches to the review.
+
+### Fixed
+- **Beta feedback form ghosting** — opening the beta feedback sheet over a map produced a "double vision" artifact on Android (and blocked input). Maps now render via TextureView instead of SurfaceView so overlays composite correctly.
+
+### Internal
+- New native dependency: expo-media-library (requires full rebuild).
+- Test suite restored to green (26 suites / 132 tests): stale mocks updated for the vendor status filter and `upsertPersonalVendor` refactor, user-scoped storage keys in localStorage tests, jest env vars for the Supabase client, new mocks for expo-media-library and expo-image-manipulator, and removal of the obsolete mi-gente stub-data test.
+
 ## versionCode 47 — 2026-07-04 (v1.3.1, design audit release)
 
 The July design-audit overhaul, built across versionCodes 44–47 (44–45 were internal test builds; 46 was superseded same-day by 47, which swaps in the final taco glyph artwork with a transparent background).

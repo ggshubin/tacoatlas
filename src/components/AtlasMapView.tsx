@@ -47,6 +47,9 @@ export function AtlasMapView({ rows }: Props) {
         styleJSON={espressoMapStyleJSON}
         logoEnabled={false}
         attributionEnabled={false}
+        // TextureView on Android: SurfaceView composites on a separate hardware
+        // layer and ghosts when transparent modals animate over the map
+        surfaceView={false}
         onPress={() => setSelectedRow(null)}
       >
         <MapboxGL.Camera animationDuration={0} {...cameraProps} />

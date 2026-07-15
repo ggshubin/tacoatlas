@@ -18,11 +18,11 @@ describe('VendorCard', () => {
     expect(vendorName).toBeTruthy()
   })
 
-  it('shows "No ratings yet" when avgRating is null', () => {
+  it('shows "Be the first to review" when avgRating is null', () => {
     const { root } = render(
       <VendorCard vendor={mockVendor} avgRating={null} onPress={() => {}} />
     )
-    const noRatingText = root.findByProps({ children: 'No ratings yet' })
+    const noRatingText = root.findByProps({ children: 'Be the first to review' })
     expect(noRatingText).toBeTruthy()
   })
 

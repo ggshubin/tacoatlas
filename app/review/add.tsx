@@ -374,11 +374,6 @@ export default function ReviewWizard() {
       <View style={[styles.header, { paddingTop: insets.top }]}>
         <View style={styles.headerRow}>
           <Text style={styles.headerTitle}>{store.editingReviewLocalId ? 'Edit a Visit' : 'Log a Visit'}</Text>
-          <TouchableOpacity style={styles.headerSaveBtn} onPress={handleSaveStep1} disabled={submitting}>
-            {submitting
-              ? <ActivityIndicator size="small" color={colors.cream} />
-              : <Text style={styles.headerSaveBtnText}>Save</Text>}
-          </TouchableOpacity>
           <TouchableOpacity
             style={styles.closeBtn}
             onPress={handleClose}
@@ -652,6 +647,19 @@ export default function ReviewWizard() {
 
       </ScrollView>
 
+      {/* Sticky finish action — always visible so a visit can be saved from anywhere in the form */}
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
+        <TouchableOpacity
+          style={[styles.saveBtn, submitting && styles.saveBtnDisabled]}
+          onPress={handleSaveStep1}
+          disabled={submitting}
+        >
+          {submitting
+            ? <ActivityIndicator size="small" color={colors.bg} />
+            : <Text style={styles.saveBtnText}>{store.editingReviewLocalId ? 'Save Changes' : 'Save Visit'}</Text>}
+        </TouchableOpacity>
+      </View>
+
       <ProPaywallModal visible={showPaywall} onClose={() => setShowPaywall(false)} />
 
       <SaveCelebration
@@ -695,18 +703,26 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.cream,
   },
-  headerSaveBtn: {
+  footer: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    backgroundColor: colors.bg,
+    borderTopWidth: 1,
+    borderTopColor: colors.surfaceBorder,
+  },
+  saveBtn: {
     backgroundColor: colors.amber,
     borderRadius: radius.full,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
+    minHeight: 52,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: spacing.md,
   },
-  headerSaveBtnText: {
-    color: colors.cream,
+  saveBtnDisabled: { opacity: 0.7 },
+  saveBtnText: {
+    color: colors.bg,
     fontWeight: '700',
-    fontSize: 13,
+    fontSize: 16,
   },
   scrollContent: {
     paddingHorizontal: spacing.md,

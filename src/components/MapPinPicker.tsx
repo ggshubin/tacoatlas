@@ -45,6 +45,7 @@ export function MapPinPicker({ onConfirm, onCancel }: Props) {
         style={StyleSheet.absoluteFillObject}
         logoEnabled={false}
         attributionEnabled={false}
+        surfaceView={false}
       >
         <MapboxGL.Camera
           centerCoordinate={DEFAULT_CENTER}

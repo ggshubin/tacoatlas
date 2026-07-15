@@ -1,4 +1,5 @@
 import * as ImagePicker from 'expo-image-picker'
+import * as MediaLibrary from 'expo-media-library'
 import { supabase } from './supabase'
 import { nanoid } from 'nanoid/non-secure'
 import { compressImage } from '../utils/imageCompression'
@@ -22,7 +23,20 @@ export const photoService = {
     })
 
     if (result.canceled) return null
-    return result.assets[0].uri
+    const uri = result.assets[0].uri
+    await this.saveToGallery(uri)
+    return uri
+  },
+
+  // Best-effort: camera captures land in the app sandbox only, so mirror them
+  // to the phone gallery. Never blocks or fails the capture itself.
+  async saveToGallery(uri: string): Promise<void> {
+    try {
+      const { granted } = await MediaLibrary.requestPermissionsAsync(true)
+      if (granted) await MediaLibrary.saveToLibraryAsync(uri)
+    } catch {
+      // user keeps the photo in-app even if gallery access is denied/unavailable
+    }
   },
 
   async uploadPhoto(localUri: string, userId: string): Promise<string> {

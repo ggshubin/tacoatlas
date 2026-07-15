@@ -202,6 +202,9 @@ export default function ExploreScreen() {
         styleJSON={espressoMapStyleJSON}
         logoEnabled={false}
         attributionEnabled={false}
+        // TextureView on Android: SurfaceView composites on a separate hardware
+        // layer and ghosts when transparent modals animate over the map
+        surfaceView={false}
         onPress={() => setSelectedPin(null)}
       >
         <MapboxGL.Camera animationDuration={0} {...initialCameraProps} />
