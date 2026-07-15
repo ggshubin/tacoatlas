@@ -17,7 +17,7 @@ export const colors = {
   // Text
   cream: '#F5EDD8',
   creamMuted: '#B8A898',
-  creamDim: '#6B5B4E',
+  creamDim: '#857160',
 
   // Legacy / compat aliases
   terracotta: '#E8821A',
@@ -45,6 +45,16 @@ export const typography = {
   fontWeightRegular: '400' as const,
   fontWeightMedium: '500' as const,
   fontWeightBold: '700' as const,
+}
+
+// Display face — Fraunces, a warm editorial serif. Reserved for identity
+// moments: screen titles, spot names, and celebration numbers. Body/UI text
+// stays on the system font. Loaded in app/_layout.tsx via useFonts.
+// NOTE: with a custom fontFamily, do NOT also set fontWeight — Android
+// resolves the weight against the family name and falls back to system.
+export const fonts = {
+  display: 'Fraunces_600SemiBold',
+  displayBold: 'Fraunces_700Bold',
 }
 
 export const spacing = {

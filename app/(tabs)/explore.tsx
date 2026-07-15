@@ -5,6 +5,10 @@ import {
 } from 'react-native'
 import MapboxGL from '@rnmapbox/maps'
 import { toBoundsFromCoords, toMapboxCoord } from '../../src/utils/mapboxHelpers'
+import { espressoMapStyleJSON } from '../../src/utils/mapStyle'
+import { TacoPin } from '../../src/components/TacoPin'
+import { SpotDot } from '../../src/components/SpotDot'
+import { MapCallout } from '../../src/components/MapCallout'
 import { router, useFocusEffect } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -169,7 +173,6 @@ export default function ExploreScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top }]}>
-        <Image source={require('../../images/tacoatlas-logo-horz.png')} style={styles.headerLogo} resizeMode="contain" />
 
         {/* Filter chips */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
@@ -196,6 +199,7 @@ export default function ExploreScreen() {
       {/* Map */}
       <MapboxGL.MapView
         style={StyleSheet.absoluteFillObject}
+        styleJSON={espressoMapStyleJSON}
         logoEnabled={false}
         attributionEnabled={false}
         onPress={() => setSelectedPin(null)}
@@ -203,44 +207,44 @@ export default function ExploreScreen() {
         <MapboxGL.Camera animationDuration={0} {...initialCameraProps} />
         <MapboxGL.UserLocation visible={!locationDenied} />
 
-        {/* Mine — taco emoji pins */}
+        {/* Mine — taco pins */}
         {showMine && myPins.map(pin => (
           <MapboxGL.MarkerView
             key={`mine-${pin.localId}`}
             coordinate={toMapboxCoord({ latitude: pin.lat, longitude: pin.lng })}
+            anchor={{ x: 0.5, y: 1 }}
           >
-            <TouchableOpacity
-              style={styles.tacoPin}
-              onPress={() => setSelectedPin({ kind: 'mine', pin })}
-            >
-              <Text style={styles.tacoPinEmoji}>🌮</Text>
+            <TouchableOpacity onPress={() => setSelectedPin({ kind: 'mine', pin })}>
+              <TacoPin size={40} />
             </TouchableOpacity>
           </MapboxGL.MarkerView>
         ))}
 
-        {/* Friends — colored dot pins */}
+        {/* Friends — dot locators, ringed in the friend's color, icon = spot type */}
         {showFriends && friendPins.map(pin => (
           <MapboxGL.MarkerView
             key={`friend-${pin.id}`}
             coordinate={toMapboxCoord({ latitude: pin.lat, longitude: pin.lng })}
           >
-            <TouchableOpacity
-              onPress={() => setSelectedPin({ kind: 'friend', pin })}
-              style={[styles.dotPin, { backgroundColor: friendColor(pin.friend.username) }]}
-            />
+            <TouchableOpacity onPress={() => setSelectedPin({ kind: 'friend', pin })}>
+              <SpotDot
+                kind="friend"
+                spotType={pin.spotType}
+                color={friendColor(pin.friend.username)}
+              />
+            </TouchableOpacity>
           </MapboxGL.MarkerView>
         ))}
 
-        {/* Public — blue community pins */}
+        {/* Public — muted community dot locators */}
         {showPublic && publicPins.map(pin => (
           <MapboxGL.MarkerView
             key={`public-${pin.id}`}
             coordinate={toMapboxCoord({ latitude: pin.lat!, longitude: pin.lng! })}
           >
-            <TouchableOpacity
-              onPress={() => setSelectedPin({ kind: 'public', pin })}
-              style={[styles.dotPin, { backgroundColor: '#4A9EE8' }]}
-            />
+            <TouchableOpacity onPress={() => setSelectedPin({ kind: 'public', pin })}>
+              <SpotDot kind="public" spotType={pin.spot_type} />
+            </TouchableOpacity>
           </MapboxGL.MarkerView>
         ))}
 
@@ -249,12 +253,10 @@ export default function ExploreScreen() {
           <MapboxGL.MarkerView
             key={`mine-pub-${pin.localId}`}
             coordinate={toMapboxCoord({ latitude: pin.lat, longitude: pin.lng })}
+            anchor={{ x: 0.5, y: 1 }}
           >
-            <TouchableOpacity
-              style={styles.tacoPin}
-              onPress={() => setSelectedPin({ kind: 'mine', pin })}
-            >
-              <Text style={styles.tacoPinEmoji}>🌮</Text>
+            <TouchableOpacity onPress={() => setSelectedPin({ kind: 'mine', pin })}>
+              <TacoPin size={40} />
             </TouchableOpacity>
           </MapboxGL.MarkerView>
         ))}
@@ -267,8 +269,32 @@ export default function ExploreScreen() {
             onPress={() => setSelectedPin(null)}
             activeOpacity={1}
           />
-          <TouchableOpacity
-            style={styles.callout}
+          <MapCallout
+            title={selectedPin.kind === 'friend' ? selectedPin.pin.spotName : selectedPin.pin.name}
+            lat={selectedPin.pin.lat ?? undefined}
+            lng={selectedPin.pin.lng ?? undefined}
+            meta={
+              selectedPin.kind === 'mine'
+                ? selectedPin.pin.spotType ?? 'My pin'
+                : selectedPin.kind === 'friend'
+                  ? `@${selectedPin.pin.friend.username}`
+                  : selectedPin.pin.address ?? 'Community spot'
+            }
+            metaColor={
+              selectedPin.kind === 'friend'
+                ? friendColor(selectedPin.pin.friend.username)
+                : undefined
+            }
+            detail={
+              selectedPin.kind === 'friend'
+                ? selectedPin.pin.rating != null
+                  ? `${selectedPin.pin.rating.toFixed(1)} tacos`
+                  : null
+                : selectedPin.kind === 'mine'
+                  ? 'My pin · Tap to view'
+                  : 'Public · Tap to view'
+            }
+            bottom={120}
             onPress={() => {
               if (selectedPin.kind === 'mine') {
                 router.push(`/spot/${selectedPin.pin.localId}`)
@@ -277,37 +303,7 @@ export default function ExploreScreen() {
               }
               setSelectedPin(null)
             }}
-          >
-            {selectedPin.kind === 'mine' && (
-              <>
-                <Text style={styles.calloutName}>{selectedPin.pin.name}</Text>
-                {selectedPin.pin.spotType
-                  ? <Text style={styles.calloutMeta}>{selectedPin.pin.spotType}</Text>
-                  : null}
-                <Text style={styles.calloutSource}>My Pin · Tap to view</Text>
-              </>
-            )}
-            {selectedPin.kind === 'friend' && (
-              <>
-                <Text style={styles.calloutName}>{selectedPin.pin.spotName}</Text>
-                <Text style={[styles.calloutMeta, { color: friendColor(selectedPin.pin.friend.username) }]}>
-                  @{selectedPin.pin.friend.username}
-                </Text>
-                {selectedPin.pin.rating != null
-                  ? <Text style={styles.calloutSource}>{selectedPin.pin.rating.toFixed(1)} tacos</Text>
-                  : null}
-              </>
-            )}
-            {selectedPin.kind === 'public' && (
-              <>
-                <Text style={styles.calloutName}>{selectedPin.pin.name}</Text>
-                {selectedPin.pin.address
-                  ? <Text style={styles.calloutMeta}>{selectedPin.pin.address}</Text>
-                  : null}
-                <Text style={styles.calloutSource}>Public · Tap to view</Text>
-              </>
-            )}
-          </TouchableOpacity>
+          />
         </>
       )}
 
@@ -351,7 +347,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.surfaceBorder,
   },
-  headerLogo: { height: 28, width: 160, alignSelf: 'center', marginBottom: 6 },
   filterRow: { flexDirection: 'row', gap: spacing.sm, paddingBottom: 2 },
   filterChip: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
@@ -363,46 +358,6 @@ const styles = StyleSheet.create({
   filterChipTextActive: { color: colors.bg },
   filterCount: { fontSize: 10, fontWeight: '700', color: colors.creamDim, backgroundColor: colors.surfaceRaised, borderRadius: 6, paddingHorizontal: 4, overflow: 'hidden' },
   filterCountActive: { color: colors.amber, backgroundColor: 'rgba(0,0,0,0.15)' },
-
-  tacoPin: {
-    width: 34, height: 34, borderRadius: 17,
-    backgroundColor: colors.amberSubtle, borderWidth: 2, borderColor: colors.amber,
-    alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 4, shadowOffset: { width: 0, height: 2 },
-    elevation: 4,
-  },
-  tacoPinEmoji: { fontSize: 18 },
-
-  dotPin: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: '#fff',
-    shadowColor: '#000',
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    shadowOffset: { width: 0, height: 1 },
-    elevation: 3,
-  },
-  callout: {
-    position: 'absolute',
-    bottom: 120,
-    left: 16,
-    right: 16,
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 6,
-    zIndex: 10,
-  },
-  calloutName: { fontSize: 15, fontWeight: '700', color: '#18140F', marginBottom: 2 },
-  calloutMeta: { fontSize: 12, color: '#7A4310', marginBottom: 1 },
-  calloutSource: { fontSize: 11, color: '#B8A898', fontStyle: 'italic', marginTop: 2 },
 
   countBadge: {
     position: 'absolute', right: spacing.md,

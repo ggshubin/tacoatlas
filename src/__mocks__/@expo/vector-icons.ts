@@ -9,5 +9,6 @@ function createIconMock(name: string) {
 
 export const Ionicons = createIconMock('Ionicons')
 export const MaterialIcons = createIconMock('MaterialIcons')
+export const MaterialCommunityIcons = createIconMock('MaterialCommunityIcons')
 export const FontAwesome = createIconMock('FontAwesome')
-export default { Ionicons, MaterialIcons, FontAwesome }
+export default { Ionicons, MaterialIcons, MaterialCommunityIcons, FontAwesome }

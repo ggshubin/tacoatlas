@@ -1,9 +1,11 @@
 import { useState } from 'react'
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
+import { View, TouchableOpacity, StyleSheet } from 'react-native'
 import MapboxGL from '@rnmapbox/maps'
 import { router } from 'expo-router'
 import { toBoundsFromCoords, toMapboxCoord } from '../utils/mapboxHelpers'
-import { colors, spacing } from '../utils/theme'
+import { espressoMapStyleJSON } from '../utils/mapStyle'
+import { TacoPin } from './TacoPin'
+import { MapCallout } from './MapCallout'
 import type { LocalVendor } from '../types/app'
 
 interface VendorRow {
@@ -42,6 +44,7 @@ export function AtlasMapView({ rows }: Props) {
     <View style={styles.container}>
       <MapboxGL.MapView
         style={StyleSheet.absoluteFillObject}
+        styleJSON={espressoMapStyleJSON}
         logoEnabled={false}
         attributionEnabled={false}
         onPress={() => setSelectedRow(null)}
@@ -53,12 +56,10 @@ export function AtlasMapView({ rows }: Props) {
           <MapboxGL.MarkerView
             key={vendor.localId}
             coordinate={toMapboxCoord({ latitude: vendor.lat, longitude: vendor.lng })}
+            anchor={{ x: 0.5, y: 1 }}
           >
-            <TouchableOpacity
-              onPress={() => setSelectedRow({ vendor, avgRating })}
-              style={styles.tacoPin}
-            >
-              <Text style={styles.tacoPinEmoji}>🌮</Text>
+            <TouchableOpacity onPress={() => setSelectedRow({ vendor, avgRating })}>
+              <TacoPin size={44} />
             </TouchableOpacity>
           </MapboxGL.MarkerView>
         ))}
@@ -71,24 +72,22 @@ export function AtlasMapView({ rows }: Props) {
             onPress={() => setSelectedRow(null)}
             activeOpacity={1}
           />
-          <TouchableOpacity
-            style={styles.callout}
+          <MapCallout
+            title={selectedRow.vendor.name}
+            lat={selectedRow.vendor.lat}
+            lng={selectedRow.vendor.lng}
+            meta={selectedRow.vendor.spotType}
+            detail={
+              selectedRow.avgRating !== null
+                ? `${selectedRow.avgRating.toFixed(1)} tacos`
+                : 'No rating yet'
+            }
+            bottom={80}
             onPress={() => {
               setSelectedRow(null)
               router.push(`/spot/${selectedRow.vendor.localId}`)
             }}
-          >
-            <Text style={styles.calloutName}>{selectedRow.vendor.name}</Text>
-            {selectedRow.vendor.spotType ? (
-              <Text style={styles.calloutType}>{selectedRow.vendor.spotType}</Text>
-            ) : null}
-            <Text style={styles.calloutRating}>
-              {selectedRow.avgRating !== null
-                ? `${selectedRow.avgRating.toFixed(1)} tacos`
-                : 'No rating yet'}
-            </Text>
-            <Text style={styles.calloutTap}>Tap to view</Text>
-          </TouchableOpacity>
+          />
         </>
       )}
     </View>
@@ -97,32 +96,4 @@ export function AtlasMapView({ rows }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  tacoPin: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: colors.amberSubtle,
-    borderWidth: 2, borderColor: colors.amber,
-    alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 }, elevation: 4,
-  },
-  tacoPinEmoji: { fontSize: 18 },
-  callout: {
-    position: 'absolute',
-    bottom: 80,
-    left: spacing.md,
-    right: spacing.md,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: spacing.md,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 5,
-    zIndex: 10,
-  },
-  calloutName: { fontSize: 14, fontWeight: '700', color: '#18140F', marginBottom: 2 },
-  calloutType: { fontSize: 11, color: '#7A4310', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 2 },
-  calloutRating: { fontSize: 12, color: '#241C16', marginBottom: 2 },
-  calloutTap: { fontSize: 11, color: '#B8A898', fontStyle: 'italic' },
 })

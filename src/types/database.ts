@@ -13,6 +13,7 @@ export interface City {
 export interface Vendor {
   id: string
   name: string
+  spot_type?: string | null
   lat: number
   lng: number
   address: string | null

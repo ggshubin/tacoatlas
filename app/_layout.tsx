@@ -3,6 +3,7 @@ import { BetaBanner } from '../src/components/BetaBanner'
 import { BetaFeedbackModal } from '../src/components/BetaFeedbackModal'
 import { Alert, Platform, Linking } from 'react-native'
 import { Stack, router } from 'expo-router'
+import { useFonts, Fraunces_600SemiBold, Fraunces_700Bold } from '@expo-google-fonts/fraunces'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as NavigationBar from 'expo-navigation-bar'
 import MapboxGL from '@rnmapbox/maps'
@@ -71,6 +72,7 @@ export default function RootLayout() {
   const { checkPro, isPro } = useProStore()
   const { setPendingFriendCount } = useNotificationStore()
   const [ready, setReady] = useState(false)
+  const [fontsLoaded, fontError] = useFonts({ Fraunces_600SemiBold, Fraunces_700Bold })
   const [feedbackVisible, setFeedbackVisible] = useState(false)
   const [privacyReminderCount, setPrivacyReminderCount] = useState<number | null>(null)
   const prevIsPro = useRef(false)
@@ -203,6 +205,10 @@ export default function RootLayout() {
     }
     maybeShowReminder()
   }, [isPro])
+
+  // Fonts are bundled locally so this resolves in a frame or two; if loading
+  // somehow errors we render anyway and Text falls back to system fonts.
+  if (!fontsLoaded && !fontError) return null
 
   return (
     <>

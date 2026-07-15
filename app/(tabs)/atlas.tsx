@@ -1,18 +1,22 @@
 import { useState, useCallback, useEffect } from 'react'
 import { View, FlatList, Text, StyleSheet, TouchableOpacity, Image, TextInput, BackHandler } from 'react-native'
+import Animated, { FadeInDown } from 'react-native-reanimated'
+import * as Location from 'expo-location'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect, router } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAuthStore } from '../../src/store/authStore'
 import { useProStore } from '../../src/store/proStore'
 import { localStorageService } from '../../src/services/localStorage'
+import { photoService } from '../../src/services/photoService'
+import { distanceMeters } from '../../src/utils/geo'
 import { TacoRating } from '../../src/components/TacoRating'
 import { AtlasMapView } from '../../src/components/AtlasMapView'
 import { QuickActionSheet } from '../../src/components/QuickActionSheet'
 import { DotProgressIndicator } from '../../src/components/DotProgressIndicator'
 import { UpgradeNudge } from '../../src/components/UpgradeNudge'
 import { ProPaywallModal } from '../../src/components/ProPaywallModal'
-import { colors, spacing, radius } from '../../src/utils/theme'
+import { colors, spacing, radius, fonts } from '../../src/utils/theme'
 import type { LocalVendor, SpotType } from '../../src/types/app'
 
 interface VendorRow {
@@ -34,6 +38,49 @@ export default function MyTacosScreen() {
   const [showActionSheet, setShowActionSheet] = useState(false)
   const [nudgeDismissed, setNudgeDismissed] = useState(false)
   const [showPaywall, setShowPaywall] = useState(false)
+  const [nearbySpot, setNearbySpot] = useState<LocalVendor | null>(null)
+
+  // Location-first logging: when the sheet opens, quietly look for a saved
+  // spot within walking-up-to-the-window distance and lead with it.
+  const NEARBY_RADIUS_M = 150
+  async function openQuickActions() {
+    setNearbySpot(null)
+    setShowActionSheet(true)
+    try {
+      const { status } = await Location.getForegroundPermissionsAsync()
+      if (status !== 'granted') return
+      const pos =
+        (await Location.getLastKnownPositionAsync()) ??
+        (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }))
+      if (!pos) return
+      let best: { vendor: LocalVendor; d: number } | null = null
+      for (const { vendor } of rows) {
+        if (vendor.lat === 0 && vendor.lng === 0) continue
+        const d = distanceMeters(pos.coords.latitude, pos.coords.longitude, vendor.lat, vendor.lng)
+        if (d <= NEARBY_RADIUS_M && (!best || d < best.d)) best = { vendor, d }
+      }
+      if (best) setNearbySpot(best.vendor)
+    } catch {
+      // location is best-effort; the sheet works without it
+    }
+  }
+
+  // Camera-first logging: photo first, details after.
+  async function handleSnapIt() {
+    try {
+      const uri = await photoService.takePhoto()
+      if (!uri) return
+      router.push({
+        pathname: '/review/add',
+        params: {
+          prefillPhotoUri: uri,
+          ...(nearbySpot ? { vendorLocalId: nearbySpot.localId } : {}),
+        },
+      })
+    } catch {
+      // camera cancelled or unavailable — stay put
+    }
+  }
 
   const filteredRows = rows
     .filter(({ vendor }) => {
@@ -88,7 +135,6 @@ export default function MyTacosScreen() {
 
       {/* Static header — always visible */}
       <View style={[styles.staticHeader, { paddingTop: insets.top }, viewMode === 'map' && styles.staticHeaderMapOverlay]}>
-        <Image source={require('../../images/tacoatlas-logo-horz.png')} style={styles.headerLogo} resizeMode="contain" />
         <Text style={styles.headerTitle}>
           {profile?.display_name ? `${profile.display_name}'s Atlas` : 'My Atlas'}
         </Text>
@@ -149,23 +195,36 @@ export default function MyTacosScreen() {
         )}
       </View>
 
+      {/* Sign up nudge — inline so the bottom zone stays clear for the FAB */}
+      {!session && viewMode === 'list' && (
+        <View style={styles.signUpBanner}>
+          <Text style={styles.bannerText}>Create an account to share your atlas</Text>
+          <TouchableOpacity onPress={() => router.push('/(auth)/sign-up')}>
+            <Text style={styles.bannerLink}>Sign Up →</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {viewMode === 'map' ? (
         <AtlasMapView rows={rows} />
       ) : (
         <FlatList
           data={filteredRows}
           keyExtractor={r => r.vendor.localId}
-          renderItem={({ item: { vendor, visitCount, avgRating, firstPhotoUri } }) => (
+          renderItem={({ item: { vendor, visitCount, avgRating, firstPhotoUri }, index }) => (
+            <Animated.View entering={FadeInDown.duration(280).delay(Math.min(index * 45, 360))}>
             <TouchableOpacity style={[styles.card, vendor.isVisited === false && styles.cardUnvisited]} onPress={() => router.push(`/spot/${vendor.localId}`)}>
-              <View style={styles.cardLeft}>
-                <View style={styles.tacoIcon}>
-                  {firstPhotoUri ? (
-                    <Image source={{ uri: firstPhotoUri }} style={{ width: 48, height: 48, borderRadius: 6 }} resizeMode="cover" />
-                  ) : (
+              {firstPhotoUri && (
+                <Image source={{ uri: firstPhotoUri }} style={styles.cardPhoto} resizeMode="cover" />
+              )}
+              <View style={styles.cardRow}>
+              {!firstPhotoUri && (
+                <View style={styles.cardLeft}>
+                  <View style={styles.tacoIcon}>
                     <Image source={require('../../assets/taco-icon.png')} style={{ width: 32, height: 32, borderRadius: 6 }} resizeMode="contain" />
-                  )}
+                  </View>
                 </View>
-              </View>
+              )}
               <View style={styles.cardBody}>
                 <View style={styles.nameRow}>
                   <Text style={styles.name}>{vendor.name}</Text>
@@ -201,7 +260,9 @@ export default function MyTacosScreen() {
                   style={{ marginTop: 4 }}
                 />
               </View>
+              </View>
             </TouchableOpacity>
+            </Animated.View>
           )}
           ListEmptyComponent={
             loaded ? (
@@ -218,7 +279,7 @@ export default function MyTacosScreen() {
       {/* FAB */}
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => setShowActionSheet(true)}
+        onPress={openQuickActions}
         accessibilityLabel="Quick actions"
       >
         <Text style={styles.fabText}>+</Text>
@@ -226,20 +287,15 @@ export default function MyTacosScreen() {
 
       <QuickActionSheet
         visible={showActionSheet}
+        suggestion={nearbySpot ? {
+          name: nearbySpot.name,
+          onPress: () => router.push({ pathname: '/review/add', params: { vendorLocalId: nearbySpot.localId } }),
+        } : null}
         onClose={() => setShowActionSheet(false)}
         onLogVisit={() => router.push('/review/add')}
         onDropPin={() => router.push('/pin/add')}
+        onSnapIt={handleSnapIt}
       />
-
-      {/* Sign up nudge */}
-      {!session && (
-        <View style={styles.signUpBanner}>
-          <Text style={styles.bannerText}>Create an account to share your atlas</Text>
-          <TouchableOpacity onPress={() => router.push('/(auth)/sign-up')}>
-            <Text style={styles.bannerLink}>Sign Up →</Text>
-          </TouchableOpacity>
-        </View>
-      )}
 
       <ProPaywallModal visible={showPaywall} onClose={() => setShowPaywall(false)} />
     </View>
@@ -258,10 +314,9 @@ const styles = StyleSheet.create({
   staticHeaderMapOverlay: {
     backgroundColor: 'rgba(18,12,8,0.72)',
   },
-  headerLogo: { height: 28, width: 160, alignSelf: 'center', marginBottom: 4 },
   headerTitle: {
     fontSize: 36,
-    fontWeight: '800',
+    fontFamily: fonts.displayBold,
     color: colors.cream,
     letterSpacing: -0.5,
     marginBottom: spacing.sm,
@@ -335,7 +390,7 @@ const styles = StyleSheet.create({
   },
   cardBody: { flex: 1 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
-  name: { fontSize: 16, fontWeight: '700', color: colors.cream },
+  name: { fontSize: 16, fontFamily: fonts.display, color: colors.cream },
   cityRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginBottom: 2 },
   city: { fontSize: 12, color: colors.creamMuted },
   spotType: { fontSize: 11, color: colors.amberDim, fontWeight: '600', letterSpacing: 0.3, marginBottom: 4, textTransform: 'uppercase' },
@@ -363,31 +418,39 @@ const styles = StyleSheet.create({
   fabText: { color: colors.cream, fontSize: 30, lineHeight: 34, fontWeight: '300' },
 
   signUpBanner: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: colors.amberDim,
-    padding: spacing.md,
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+    backgroundColor: colors.amberSubtle,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: colors.amber,
+    gap: spacing.sm,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.amberDim,
   },
   bannerText: { color: colors.cream, fontSize: 13, flex: 1 },
   bannerLink: { color: colors.amber, fontWeight: '700', fontSize: 13 },
 
   card: {
-    flexDirection: 'row',
-    alignItems: 'center',
     backgroundColor: 'rgba(36, 28, 22, 0.88)',
     marginHorizontal: spacing.md,
     marginBottom: spacing.sm,
     borderRadius: radius.lg,
-    padding: spacing.md,
     borderWidth: 1,
     borderColor: 'rgba(61, 46, 34, 0.7)',
+    overflow: 'hidden',
+  },
+  cardPhoto: {
+    width: '100%',
+    height: 150,
+  },
+  cardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.md,
   },
   cardUnvisited: {
     borderStyle: 'dashed',

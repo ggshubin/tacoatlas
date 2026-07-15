@@ -1,20 +1,59 @@
 import { View, Text, TouchableOpacity, Modal, StyleSheet, Pressable } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
-import { colors, spacing, radius } from '../utils/theme'
+import { colors, spacing, radius, fonts } from '../utils/theme'
+
+interface Suggestion {
+  name: string
+  onPress: () => void
+}
 
 interface Props {
   visible: boolean
+  /** Location-first: nearest saved spot, offered as a one-tap head option. */
+  suggestion?: Suggestion | null
   onClose: () => void
   onLogVisit: () => void
   onDropPin: () => void
+  /** Camera-first: photo first, details after. */
+  onSnapIt?: () => void
 }
 
-export function QuickActionSheet({ visible, onClose, onLogVisit, onDropPin }: Props) {
+export function QuickActionSheet({ visible, suggestion, onClose, onLogVisit, onDropPin, onSnapIt }: Props) {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose} />
       <View style={styles.sheet}>
         <View style={styles.handle} />
+
+        {suggestion && (
+          <TouchableOpacity
+            style={styles.suggestion}
+            onPress={() => { onClose(); suggestion.onPress() }}
+          >
+            <View style={styles.suggestionIcon}>
+              <Ionicons name="location" size={20} color={colors.bg} />
+            </View>
+            <View style={styles.optionText}>
+              <Text style={styles.suggestionTitle} numberOfLines={1}>At {suggestion.name}?</Text>
+              <Text style={styles.suggestionSubtitle}>You're right here — log this visit</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.amber} />
+          </TouchableOpacity>
+        )}
+
+        {onSnapIt && (
+          <TouchableOpacity style={styles.option} onPress={() => { onClose(); onSnapIt() }}>
+            <View style={styles.optionIcon}>
+              <Ionicons name="camera" size={22} color={colors.amber} />
+            </View>
+            <View style={styles.optionText}>
+              <Text style={styles.optionTitle}>Snap It</Text>
+              <Text style={styles.optionSubtitle}>Photo first, details after</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.creamDim} />
+          </TouchableOpacity>
+        )}
+
         <TouchableOpacity style={styles.option} onPress={() => { onClose(); onLogVisit() }}>
           <View style={styles.optionIcon}>
             <Ionicons name="restaurant" size={22} color={colors.amber} />
@@ -60,6 +99,28 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     marginBottom: spacing.md,
   },
+  suggestion: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.amberSubtle,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.amber,
+  },
+  suggestionIcon: {
+    width: 44, height: 44,
+    borderRadius: radius.md,
+    backgroundColor: colors.amber,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  suggestionTitle: { fontSize: 17, fontFamily: fonts.display, color: colors.cream },
+  suggestionSubtitle: { fontSize: 13, color: colors.amber, marginTop: 2, fontWeight: '600' },
   option: {
     flexDirection: 'row',
     alignItems: 'center',

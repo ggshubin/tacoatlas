@@ -13,6 +13,7 @@ import { syncService } from '../../src/services/syncService'
 import { LocationPicker } from '../../src/components/LocationPicker'
 import { PrivacySelector } from '../../src/components/PrivacySelector'
 import { ProPaywallModal } from '../../src/components/ProPaywallModal'
+import { SaveCelebration } from '../../src/components/SaveCelebration'
 import { colors, spacing, radius } from '../../src/utils/theme'
 import { spotNameSchema, firstError } from '../../src/utils/validation'
 import type { SpotType, PrivacySetting } from '../../src/types/app'
@@ -33,6 +34,7 @@ export default function DropPinScreen() {
   const [saving, setSaving] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [showPaywall, setShowPaywall] = useState(false)
+  const [celebration, setCelebration] = useState<{ title: string; subtitle: string | null } | null>(null)
 
   async function handleSave() {
     setErrorMsg(null)
@@ -71,7 +73,8 @@ export default function DropPinScreen() {
       if (session?.user.id) {
         syncService.syncVendorOnly(savedVendor, session.user.id)
       }
-      router.back()
+      const vendors = await localStorageService.getVendors()
+      setCelebration({ title: `Spot #${vendors.length}`, subtitle: nameResult.data })
     } finally {
       setSaving(false)
     }
@@ -84,7 +87,6 @@ export default function DropPinScreen() {
     >
       <Image source={require('../../assets/background.png')} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
       <View style={[styles.header, { paddingTop: insets.top }]}>
-        <Image source={require('../../images/tacoatlas-logo-horz.png')} style={styles.headerLogo} resizeMode="contain" />
         <View style={styles.navRow}>
           <TouchableOpacity style={styles.closeBtn} onPress={() => router.back()}>
             <Ionicons name="close" size={20} color={colors.cream} />
@@ -161,6 +163,16 @@ export default function DropPinScreen() {
         </TouchableOpacity>
       </View>
       <ProPaywallModal visible={showPaywall} onClose={() => setShowPaywall(false)} />
+
+      <SaveCelebration
+        visible={!!celebration}
+        title={celebration?.title ?? ''}
+        subtitle={celebration?.subtitle}
+        onDone={() => {
+          setCelebration(null)
+          router.back()
+        }}
+      />
     </KeyboardAvoidingView>
   )
 }
@@ -170,7 +182,6 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: spacing.md, paddingBottom: spacing.md,
   },
-  headerLogo: { height: 28, width: 160, alignSelf: 'center', marginBottom: spacing.xs },
   navRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
   },

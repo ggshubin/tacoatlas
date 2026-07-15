@@ -27,7 +27,7 @@ import {
   type SentRequest,
 } from '../../src/services/miGenteService'
 import { openMapsNavigation } from '../../src/utils/mapsNavigation'
-import { colors, spacing, radius } from '../../src/utils/theme'
+import { colors, spacing, radius, fonts } from '../../src/utils/theme'
 
 const CREW_ITEM_W = 60 // crewItem width (44) + marginRight (16)
 
@@ -220,7 +220,6 @@ export default function MiGenteScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top, paddingHorizontal: spacing.md }]}>
         <Image source={require('../../assets/background.png')} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
-        <Image source={require('../../images/tacoatlas-logo-horz.png')} style={styles.headerLogo} resizeMode="contain" />
         <Text style={styles.title}>Mi Gente</Text>
         <View style={styles.lockedCard}>
           <Ionicons name="people-outline" size={28} color={colors.creamMuted} />
@@ -270,7 +269,6 @@ export default function MiGenteScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top, paddingHorizontal: spacing.md }]}>
         <Image source={require('../../assets/background.png')} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
-        <Image source={require('../../images/tacoatlas-logo-horz.png')} style={styles.headerLogo} resizeMode="contain" />
         <Text style={styles.title}>Mi Gente</Text>
         <Text style={styles.sectionLabel}>Friend Requests</Text>
         {pendingRequests.map(req => (
@@ -326,7 +324,6 @@ export default function MiGenteScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top, paddingHorizontal: spacing.md }]}>
         <Image source={require('../../assets/background.png')} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
-        <Image source={require('../../images/tacoatlas-logo-horz.png')} style={styles.headerLogo} resizeMode="contain" />
         <Text style={styles.title}>Mi Gente</Text>
         <View style={styles.emptyState}>
           <Ionicons name="people-outline" size={48} color={colors.amber} />
@@ -395,7 +392,6 @@ export default function MiGenteScreen() {
         scrollEnabled={!draggingUsername}
       >
       {/* Header */}
-      <Image source={require('../../images/tacoatlas-logo-horz.png')} style={styles.headerLogo} resizeMode="contain" />
       <Text style={styles.title}>Mi Gente</Text>
 
       {/* Pending friend requests */}
@@ -691,8 +687,7 @@ export default function MiGenteScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   content: { paddingHorizontal: spacing.md, paddingBottom: 100 },
-  headerLogo: { height: 28, width: 160, alignSelf: 'center', marginBottom: 4 },
-  title: { fontSize: 28, fontWeight: '800', color: colors.cream, letterSpacing: -0.5, marginBottom: spacing.md },
+  title: { fontSize: 28, fontFamily: fonts.displayBold, color: colors.cream, letterSpacing: -0.5, marginBottom: spacing.md },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   addPill: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: colors.amberDim, borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: 4, marginTop: spacing.xs },
   addPillText: { fontSize: 12, color: colors.amber, fontWeight: '700' },

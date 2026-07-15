@@ -2,7 +2,7 @@ import { View, Text, Image, TouchableOpacity, StyleSheet, ImageBackground } from
 import { router } from 'expo-router'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Ionicons } from '@expo/vector-icons'
-import { colors, spacing, radius } from '../src/utils/theme'
+import { colors, spacing, radius, fonts } from '../src/utils/theme'
 
 const FEATURES = [
   {
@@ -107,9 +107,9 @@ const styles = StyleSheet.create({
   },
   appName: {
     fontSize: 36,
-    fontWeight: '900',
+    fontFamily: fonts.displayBold,
     color: colors.cream,
-    letterSpacing: 8,
+    letterSpacing: 6,
     marginBottom: spacing.xs,
   },
   tagline: {

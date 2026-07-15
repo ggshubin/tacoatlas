@@ -1,7 +1,6 @@
 import React from 'react'
 import { View, TouchableOpacity } from 'react-native'
-import { Ionicons } from '@expo/vector-icons'
-import { colors } from '../utils/theme'
+import TacoGlyph from '../../assets/taco-glyph.svg'
 
 interface Props {
   value: number
@@ -10,6 +9,8 @@ interface Props {
   size?: number
 }
 
+// The brand taco glyph as the rating symbol — full color when earned,
+// dimmed when not.
 export function TacoRating({ value, onChange, readonly = false, size = 28 }: Props) {
   const tacos = [1, 2, 3, 4, 5]
 
@@ -23,11 +24,9 @@ export function TacoRating({ value, onChange, readonly = false, size = 28 }: Pro
           accessibilityLabel={`${n} taco${n > 1 ? 's' : ''}`}
           accessibilityRole="button"
         >
-          <Ionicons
-            name="restaurant"
-            size={size}
-            color={n <= value ? colors.amber : colors.surfaceBorder}
-          />
+          <View style={{ opacity: n <= value ? 1 : 0.22 }}>
+            <TacoGlyph width={size} height={size} />
+          </View>
         </TouchableOpacity>
       ))}
     </View>

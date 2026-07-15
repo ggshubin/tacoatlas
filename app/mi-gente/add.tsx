@@ -175,7 +175,6 @@ export default function AddFriendsScreen() {
             <Ionicons name="chevron-back" size={18} color={colors.amber} />
             <Text style={styles.backText}>Mi Gente</Text>
           </TouchableOpacity>
-          <Image source={require('../../images/tacoatlas-logo-horz.png')} style={styles.headerLogo} resizeMode="contain" />
         </View>
         <Text style={styles.title}>Add Friends</Text>
 
@@ -404,7 +403,6 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
   backRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   backText: { fontSize: 14, color: colors.amber },
-  headerLogo: { width: 120, height: 28 },
   title: { fontSize: 28, fontWeight: '800', color: colors.cream, letterSpacing: -0.5, marginBottom: spacing.lg },
   sectionLabel: { fontSize: 11, fontWeight: '700', color: colors.creamDim, letterSpacing: 1, textTransform: 'uppercase', marginBottom: spacing.sm },
   searchRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },

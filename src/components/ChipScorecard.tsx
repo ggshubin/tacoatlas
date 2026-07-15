@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { View, Text, TouchableOpacity, TextInput, StyleSheet } from 'react-native'
-import { Ionicons } from '@expo/vector-icons'
+import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated'
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
+import { TacoRating } from './TacoRating'
 import { colors, spacing, radius } from '../utils/theme'
 
 interface ScorecardItem {
@@ -10,11 +12,16 @@ interface ScorecardItem {
   heatLevel?: string | null
 }
 
+export interface HeatLevelMeta {
+  icon: keyof typeof MaterialCommunityIcons.glyphMap
+  color: string
+}
+
 interface Props {
   presets?: string[]        // preset chip labels (tacos, burritos, tortas)
   freeform?: boolean        // true for salsas — shows text input instead of chips
   heatLevels?: string[]              // if provided, shows heat picker in freeform add form
-  heatLevelIcons?: Record<string, string>  // emoji icons for each heat level
+  heatLevelMeta?: Record<string, HeatLevelMeta>  // drawn icon + palette color per heat level
   items: ScorecardItem[]
   onAdd: (item: ScorecardItem) => void
   onRemove: (index: number) => void
@@ -22,29 +29,8 @@ interface Props {
   renderHeatPicker?: (item: ScorecardItem, index: number) => React.ReactNode
 }
 
-function StarRating({ value, onChange, readonly, size = 20 }: {
-  value: number
-  onChange?: (v: number) => void
-  readonly?: boolean
-  size?: number
-}) {
-  return (
-    <View style={{ flexDirection: 'row', gap: 2 }}>
-      {[1,2,3,4,5].map(n => (
-        <TouchableOpacity
-          key={n}
-          onPress={() => !readonly && onChange?.(n)}
-          disabled={readonly}
-        >
-          <Text style={{ fontSize: size, color: n <= value ? colors.amber : colors.creamDim }}>★</Text>
-        </TouchableOpacity>
-      ))}
-    </View>
-  )
-}
-
 export function ChipScorecard({
-  presets, freeform, heatLevels, heatLevelIcons, items, onAdd, onRemove, onUpdate, renderHeatPicker,
+  presets, freeform, heatLevels, heatLevelMeta, items, onAdd, onRemove, onUpdate, renderHeatPicker,
 }: Props) {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
   const [pendingLabel, setPendingLabel] = useState('')
@@ -85,22 +71,26 @@ export function ChipScorecard({
       {items.map((item, idx) => {
         const isExpanded = expandedIndex === idx
         return (
-          <View key={idx} style={[styles.itemWrapper, isExpanded && styles.itemWrapperExpanded]}>
+          <Animated.View
+            key={idx}
+            layout={LinearTransition.springify().damping(18).stiffness(190)}
+            style={[styles.itemWrapper, isExpanded && styles.itemWrapperExpanded]}
+          >
             <TouchableOpacity
               style={[styles.ratedChip, isExpanded && styles.ratedChipExpanded]}
               onPress={() => setExpandedIndex(isExpanded ? null : idx)}
             >
               <Text style={styles.ratedChipLabel}>{item.label}</Text>
-              <StarRating value={item.rating} readonly size={14} />
+              <TacoRating value={item.rating} readonly size={14} />
               <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={14} color={colors.creamDim} style={{ marginLeft: 2 }} />
               <TouchableOpacity onPress={() => { onRemove(idx); setExpandedIndex(null) }}>
                 <Ionicons name="close-circle" size={18} color={colors.creamDim} />
               </TouchableOpacity>
             </TouchableOpacity>
             {isExpanded && (
-              <View style={styles.expanded}>
+              <Animated.View entering={FadeIn.duration(180)} style={styles.expanded}>
                 <Text style={styles.expandedLabel}>Rate your {item.label}</Text>
-                <StarRating value={item.rating} onChange={r => onUpdate(idx, { rating: r })} />
+                <TacoRating value={item.rating} onChange={r => onUpdate(idx, { rating: r })} size={22} />
                 {renderHeatPicker?.(item, idx)}
                 <TextInput
                   style={styles.noteInput}
@@ -109,9 +99,9 @@ export function ChipScorecard({
                   value={item.notes ?? ''}
                   onChangeText={t => onUpdate(idx, { notes: t || null })}
                 />
-              </View>
+              </Animated.View>
             )}
-          </View>
+          </Animated.View>
         )
       })}
 
@@ -156,7 +146,7 @@ export function ChipScorecard({
               )}
               <View style={styles.freeformCard}>
                 <Text style={styles.freeformCardLabel}>Flavor Rating</Text>
-                <StarRating value={pendingRating} onChange={r => { setPendingRating(r); if (showValidation) setShowValidation(false) }} />
+                <TacoRating value={pendingRating} onChange={r => { setPendingRating(r); if (showValidation) setShowValidation(false) }} size={22} />
                 {heatLevels && (
                   <>
                     <Text style={[styles.freeformCardLabel, { marginTop: spacing.sm }]}>Heat Level</Text>
@@ -167,8 +157,12 @@ export function ChipScorecard({
                           style={[styles.heatChip, pendingHeatLevel === h && styles.heatChipActive]}
                           onPress={() => setPendingHeatLevel(pendingHeatLevel === h ? null : h)}
                         >
-                          {heatLevelIcons?.[h] && (
-                            <Text style={styles.heatChipIcon}>{heatLevelIcons[h]}</Text>
+                          {heatLevelMeta?.[h] && (
+                            <MaterialCommunityIcons
+                              name={heatLevelMeta[h].icon}
+                              size={14}
+                              color={heatLevelMeta[h].color}
+                            />
                           )}
                           <Text style={[styles.heatChipText, pendingHeatLevel === h && styles.heatChipTextActive]}>{h}</Text>
                         </TouchableOpacity>

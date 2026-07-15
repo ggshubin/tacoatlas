@@ -10,6 +10,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "@expo-google-fonts/fraunces": "^0.4.1",
     "@expo/log-box": "^55.0.6",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@rnmapbox/maps": "^10.3.1",
@@ -19,6 +20,7 @@
     "expo-clipboard": "~55.0.13",
     "expo-constants": "~55.0.9",
     "expo-device": "~55.0.17",
+    "expo-font": "~55.0.8",
     "expo-image-manipulator": "~55.0.17",
     "expo-image-picker": "~55.0.20",
     "expo-linking": "~55.0.15",
@@ -34,10 +36,12 @@
     "react-native": "0.83.6",
     "react-native-purchases": "^9.14.0",
     "react-native-qrcode-svg": "^6.3.21",
+    "react-native-reanimated": "4.2.1",
     "react-native-safe-area-context": "~5.6.2",
     "react-native-screens": "~4.23.0",
     "react-native-svg": "15.15.3",
     "react-native-url-polyfill": "^3.0.0",
+    "react-native-worklets": "0.7.4",
     "zod": "^4.3.6",
     "zustand": "^5.0.11"
   },
@@ -76,6 +80,9 @@
     ],
     "moduleNameMapper": {
       "^react-native$": "<rootDir>/src/__mocks__/react-native.ts",
+      "\\.svg$": "<rootDir>/src/__mocks__/svg-file.ts",
+      "^react-native-reanimated$": "<rootDir>/src/__mocks__/react-native-reanimated.ts",
+      "^react-native-svg$": "<rootDir>/src/__mocks__/react-native-svg.ts",
       "^react-native-mmkv$": "<rootDir>/src/__mocks__/react-native-mmkv.js",
       "^nanoid/non-secure$": "<rootDir>/src/__mocks__/nanoid.ts",
       "^react-native-url-polyfill/auto$": "<rootDir>/src/__mocks__/react-native-url-polyfill.ts",

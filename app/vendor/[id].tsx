@@ -4,7 +4,7 @@ import { useLocalSearchParams, router } from 'expo-router'
 import { vendorRepository } from '../../src/services/vendorRepository'
 import { reviewRepository } from '../../src/services/reviewRepository'
 import { TacoRating } from '../../src/components/TacoRating'
-import { colors, spacing, typography, radius } from '../../src/utils/theme'
+import { colors, spacing, typography, radius, fonts } from '../../src/utils/theme'
 import type { Vendor, Review } from '../../src/types/database'
 
 export default function VendorDetailScreen() {
@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
   notFound: { color: colors.gray500 },
   heroPhoto: { width: '100%', height: 200 },
   header: { padding: spacing.md },
-  name: { fontSize: typography.fontSizeXxl, fontWeight: typography.fontWeightBold, color: colors.cream },
+  name: { fontSize: typography.fontSizeXxl, fontFamily: fonts.displayBold, color: colors.cream },
   city: { fontSize: typography.fontSizeMd, color: colors.creamMuted, marginTop: spacing.xs },
   hours: { fontSize: typography.fontSizeMd, color: colors.creamMuted, marginTop: spacing.xs },
   ratingSection: { paddingHorizontal: spacing.md, paddingBottom: spacing.md, alignItems: 'flex-start', gap: spacing.xs },

@@ -1,10 +1,11 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Image, Modal, Alert, FlatList, Dimensions,
+  KeyboardAvoidingView, Platform, ActivityIndicator, Image, Modal, Alert,
 } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
-import { Ionicons } from '@expo/vector-icons'
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
+import TacoGlyph from '../../assets/taco-glyph.svg'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useReviewFormStore, FoodCategory } from '../../src/store/reviewFormStore'
 import { localStorageService } from '../../src/services/localStorage'
@@ -17,7 +18,8 @@ import { FoodIconBar } from '../../src/components/FoodIconBar'
 import { ChipScorecard } from '../../src/components/ChipScorecard'
 import { PrivacySelector } from '../../src/components/PrivacySelector'
 import { ProPaywallModal } from '../../src/components/ProPaywallModal'
-import { colors, spacing, radius } from '../../src/utils/theme'
+import { SaveCelebration } from '../../src/components/SaveCelebration'
+import { colors, spacing, radius, fonts } from '../../src/utils/theme'
 import { spotNameSchema, notesSchema, firstError } from '../../src/utils/validation'
 import type { SpotType, HeatLevel } from '../../src/types/app'
 import { debounce } from '../../src/utils/debounce'
@@ -28,21 +30,14 @@ const TACO_TYPES = ['Al Pastor', 'Carne Asada', 'Carnitas', 'Birria', 'Pollo', '
 const BURRITO_TYPES = ['California', 'Birria', 'Carne Asada', 'Pollo', 'Chorizo', 'Bean & Cheese', 'Wet', 'Other']
 const TORTA_TYPES = ['Milanesa', 'Cubana', 'Pierna', 'Al Pastor', 'Chorizo', 'Other']
 const HEAT_LEVELS: HeatLevel[] = ['mild', 'medium', 'hot', 'fire', 'volcano']
-const HEAT_ICONS: Record<HeatLevel, string> = {
-  mild: '🌶',
-  medium: '🌶🌶',
-  hot: '🔥',
-  fire: '🔥🔥',
-  volcano: '🌋',
+// Drawn heat icons on the palette ramp (replaces emoji).
+const HEAT_META: Record<HeatLevel, { icon: keyof typeof MaterialCommunityIcons.glyphMap; color: string }> = {
+  mild: { icon: 'chili-mild', color: '#8BC34A' },
+  medium: { icon: 'chili-medium', color: '#E8C21A' },
+  hot: { icon: 'chili-hot', color: '#E8821A' },
+  fire: { icon: 'fire', color: '#E05252' },
+  volcano: { icon: 'fire-alert', color: '#A93226' },
 }
-
-const STEPS = [
-  { id: 'spot', title: 'The Spot' },
-  { id: 'photos', title: 'Photos' },
-  { id: 'food', title: "What'd You Have?" },
-  { id: 'verdict', title: 'Your Verdict' },
-]
-const { width: WINDOW_WIDTH } = Dimensions.get('window')
 
 export default function ReviewWizard() {
   const insets = useSafeAreaInsets()
@@ -57,6 +52,7 @@ export default function ReviewWizard() {
     prefillLat?: string
     prefillLng?: string
     prefillCity?: string
+    prefillPhotoUri?: string
   }>()
   const [showSpotNote, setShowSpotNote] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -65,23 +61,24 @@ export default function ReviewWizard() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [pickingPhoto, setPickingPhoto] = useState(false)
   const [lightboxUri, setLightboxUri] = useState<string | null>(null)
+  const [celebration, setCelebration] = useState<{ title: string; subtitle: string | null } | null>(null)
 
-  const flatListRef = useRef<FlatList>(null)
-  const [currentStepIndex, setCurrentStepIndex] = useState(0)
   const [autoSaveStatus, setAutoSaveStatus] = useState(false)
-
-  const scrollToStep = (stepIndex: number) => {
-    flatListRef.current?.scrollToIndex({ index: stepIndex, animated: true })
-    setCurrentStepIndex(stepIndex)
-  }
 
   // Reset form on mount for new reviews (not edits)
   useEffect(() => {
     if (!params.editReviewId) {
       store.reset()
-      scrollToStep(0)
     }
   }, [])
+
+  // Camera-first entry: attach the photo taken from the quick-action sheet
+  useEffect(() => {
+    const { prefillPhotoUri, editReviewId } = params
+    if (!prefillPhotoUri || editReviewId) return
+    const s = useReviewFormStore.getState()
+    if (!s.photoUris.includes(prefillPhotoUri)) s.addPhoto(prefillPhotoUri)
+  }, [params.prefillPhotoUri])
 
   // Load existing review for editing
   useEffect(() => {
@@ -118,9 +115,6 @@ export default function ReviewWizard() {
           if (vendor.spotNote) setShowSpotNote(true)
         }
       })
-
-      // Start at page 1 for editing
-      scrollToStep(0)
     })
   }, [params.editReviewId])
 
@@ -221,7 +215,6 @@ export default function ReviewWizard() {
       Alert.alert('Photo Error', 'Could not add photo. Try again.')
     } finally {
       setPickingPhoto(false)
-      setTimeout(() => scrollToStep(currentStepIndex), 100)
     }
   }
 
@@ -238,6 +231,8 @@ export default function ReviewWizard() {
       return
     }
     setSubmitting(true)
+    const wasNewVendor = !store.editingVendorLocalId
+    const cameFromEdit = !!params.editReviewId
     try {
       let vendorLocalId = store.editingVendorLocalId
       const effectivePrivacy = isPro ? store.privacy : 'private'
@@ -320,7 +315,17 @@ export default function ReviewWizard() {
         syncService.liveSync(vendorLocalId, savedReview, session.user.id)
       }
 
-      router.back()
+      if (cameFromEdit) {
+        router.back()
+      } else {
+        // Celebrate the moment: new spots get their atlas number, repeat
+        // visits get a quieter acknowledgment. Dismissal navigates back.
+        const vendors = await localStorageService.getVendors()
+        setCelebration({
+          title: wasNewVendor ? `Spot #${vendors.length}` : 'Visit logged',
+          subtitle: nameResult.data,
+        })
+      }
     } catch (e) {
       setErrorMsg('Could not save spot info. Try again.')
     } finally {
@@ -354,9 +359,9 @@ export default function ReviewWizard() {
       </Modal>
 
       {/* Full-screen image lightbox */}
-      <Modal visible={!!lightboxUri} transparent animationType="fade" onRequestClose={() => { setLightboxUri(null); scrollToStep(currentStepIndex) }}>
+      <Modal visible={!!lightboxUri} transparent animationType="fade" onRequestClose={() => setLightboxUri(null)}>
         <View style={styles.lightboxOverlay}>
-          <TouchableOpacity style={styles.lightboxClose} onPress={() => { setLightboxUri(null); scrollToStep(currentStepIndex) }}>
+          <TouchableOpacity style={styles.lightboxClose} onPress={() => setLightboxUri(null)}>
             <Ionicons name="close" size={28} color={colors.cream} />
           </TouchableOpacity>
           {lightboxUri && (
@@ -368,12 +373,12 @@ export default function ReviewWizard() {
       {/* Header — Review Page Only */}
       <View style={[styles.header, { paddingTop: insets.top }]}>
         <View style={styles.headerRow}>
-          <Image
-            source={require('../../images/tacoatlas-logo-horz.png')}
-            style={styles.headerLogo}
-            resizeMode="contain"
-          />
           <Text style={styles.headerTitle}>{store.editingReviewLocalId ? 'Edit a Visit' : 'Log a Visit'}</Text>
+          <TouchableOpacity style={styles.headerSaveBtn} onPress={handleSaveStep1} disabled={submitting}>
+            {submitting
+              ? <ActivityIndicator size="small" color={colors.cream} />
+              : <Text style={styles.headerSaveBtnText}>Save</Text>}
+          </TouchableOpacity>
           <TouchableOpacity
             style={styles.closeBtn}
             onPress={handleClose}
@@ -384,26 +389,6 @@ export default function ReviewWizard() {
         </View>
       </View>
 
-      {/* Step indicator + Save */}
-      <View style={styles.stepIndicator}>
-        <View style={styles.stepDots}>
-          {STEPS.map((step, idx) => (
-            <TouchableOpacity
-              key={step.id}
-              style={[styles.stepDot, idx === currentStepIndex && styles.stepDotActive]}
-              onPress={() => scrollToStep(idx)}
-            >
-              <Text style={styles.stepDotLabel}>{idx + 1}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-        <TouchableOpacity style={styles.headerSaveBtn} onPress={handleSaveStep1} disabled={submitting}>
-          {submitting
-            ? <ActivityIndicator size="small" color={colors.cream} />
-            : <Text style={styles.headerSaveBtnText}>Save</Text>}
-        </TouchableOpacity>
-      </View>
-
       {errorMsg && (
         <View style={styles.errorBanner}>
           <Ionicons name="alert-circle" size={16} color={colors.error} />
@@ -411,27 +396,9 @@ export default function ReviewWizard() {
         </View>
       )}
 
-      <FlatList
-        ref={flatListRef}
-        data={STEPS}
-        keyExtractor={step => step.id}
-        horizontal
-        pagingEnabled
-        scrollEventThrottle={16}
-        showsHorizontalScrollIndicator={false}
-        onMomentumScrollEnd={event => {
-          const stepIndex = Math.round(
-            event.nativeEvent.contentOffset.x / event.nativeEvent.layoutMeasurement.width
-          )
-          setCurrentStepIndex(stepIndex)
-        }}
-        renderItem={({ index }) => (
-          <View style={[styles.stepPage, { width: WINDOW_WIDTH }]}>
-            <ScrollView contentContainerStyle={styles.stepPageContent} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
 
-              {index === 0 && (
-                <>
-                  {/* === STEP 1: The Spot === */}
+              {/* === The Spot === */}
                   <TextInput
                     style={styles.nameInput}
                     placeholder="Taco spot name"
@@ -491,39 +458,37 @@ export default function ReviewWizard() {
                     />
                   )}
 
-                </>
-              )}
-
-              {index === 1 && (
-                <>
-                  {/* === STEP 2: Photos === */}
-                  <Text style={styles.fieldLabel}>Photos</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoScroll} contentContainerStyle={styles.photoScrollContent}>
-                    {store.photoUris.map((uri) => (
-                      <TouchableOpacity key={uri} style={styles.photoThumb} onPress={() => setLightboxUri(uri)} activeOpacity={0.8}>
-                        <Image source={{ uri }} style={styles.thumbImg} />
-                        <TouchableOpacity style={styles.removePhotoBtn} onPress={() => store.removePhoto(uri)}>
-                          <Ionicons name="close-circle" size={20} color={colors.cream} />
-                        </TouchableOpacity>
+              {/* === The Verdict — the under-a-minute essentials === */}
+                  <Text style={styles.sectionTitle}>The Verdict</Text>
+                  <Text style={styles.fieldLabel}>Overall Rating</Text>
+                  <View style={{ flexDirection: 'row', gap: 4, marginBottom: spacing.md }}>
+                    {[1,2,3,4,5].map(n => (
+                      <TouchableOpacity key={n} onPress={() => { store.setField('overallRating', n); debouncedAutoSave() }}>
+                        <Text style={{ fontSize: 32, color: n <= store.overallRating ? colors.amber : colors.creamDim }}>★</Text>
                       </TouchableOpacity>
                     ))}
-                    <TouchableOpacity style={styles.addPhotoBtn} onPress={() => handleAddPhoto('library')} disabled={pickingPhoto}>
-                      {pickingPhoto
-                        ? <ActivityIndicator size="small" color={colors.amber} />
-                        : <Ionicons name="image-outline" size={24} color={colors.amber} />}
-                      <Text style={styles.addPhotoText}>Gallery</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.addPhotoBtn} onPress={() => handleAddPhoto('camera')} disabled={pickingPhoto}>
-                      <Ionicons name="camera-outline" size={24} color={colors.amber} />
-                      <Text style={styles.addPhotoText}>Camera</Text>
-                    </TouchableOpacity>
-                  </ScrollView>
-                </>
-              )}
+                  </View>
 
-              {index === 2 && (
-                <>
-                  {/* === STEP 2: What'd You Have? === */}
+                  <Text style={styles.fieldLabel}>Would you come back?</Text>
+                  <View style={styles.intentRow}>
+                    {(['yes', 'maybe', 'no'] as const).map(intent => {
+                      const label = intent === 'yes' ? 'Hell yes 🤙' : intent === 'maybe' ? 'Maybe' : 'Nah'
+                      return (
+                        <TouchableOpacity
+                          key={intent}
+                          style={[styles.intentBtn, store.returnIntent === intent && styles.intentBtnActive]}
+                          onPress={() => { store.setField('returnIntent', intent); debouncedAutoSave() }}
+                        >
+                          <Text style={[styles.intentText, store.returnIntent === intent && styles.intentTextActive]}>
+                            {label}
+                          </Text>
+                        </TouchableOpacity>
+                      )
+                    })}
+                  </View>
+
+              {/* === What'd You Have? — optional depth === */}
+                  <Text style={styles.sectionTitle}>What'd You Have?</Text>
                   <FoodIconBar
                     active={store.activeCategory}
                     litCategories={litCategories}
@@ -533,7 +498,7 @@ export default function ReviewWizard() {
 
                   {store.activeCategory === null && (
                     <View style={styles.emptyState}>
-                      <Text style={styles.emptyStateEmoji}>🌮</Text>
+                      <TacoGlyph width={56} height={56} />
                       <Text style={styles.emptyStateTitle}>What did you eat?</Text>
                       <Text style={styles.emptyStateSubtitle}>Tap a category above, then pick what you had.</Text>
                     </View>
@@ -598,7 +563,7 @@ export default function ReviewWizard() {
                     <ChipScorecard
                       freeform
                       heatLevels={HEAT_LEVELS}
-                      heatLevelIcons={HEAT_ICONS}
+                      heatLevelMeta={HEAT_META}
                       items={store.salsaEntries.map(e => ({ label: e.salsaName, rating: e.flavorRating, notes: e.notes ?? null, heatLevel: e.heatLevel }))}
                       onAdd={item => { store.addSalsaEntry({ salsaName: item.label, flavorRating: item.rating, heatLevel: (item.heatLevel ?? null) as HeatLevel | null, notes: item.notes }); debouncedAutoSave() }}
                       onRemove={idx => { store.removeSalsaEntry(idx); debouncedAutoSave() }}
@@ -630,7 +595,11 @@ export default function ReviewWizard() {
                                   debouncedAutoSave()
                                 }}
                               >
-                                <Text style={{ fontSize: 16 }}>{HEAT_ICONS[h as HeatLevel]}</Text>
+                                <MaterialCommunityIcons
+                                  name={HEAT_META[h].icon}
+                                  size={18}
+                                  color={isActive ? HEAT_META[h].color : colors.creamMuted}
+                                />
                                 <Text style={{ fontSize: 10, fontWeight: '600', color: isActive ? colors.amber : colors.creamMuted }}>
                                   {h}
                                 </Text>
@@ -641,40 +610,32 @@ export default function ReviewWizard() {
                       )}
                     />
                   )}
-                </>
-              )}
 
-              {index === 3 && (
-                <>
-                  {/* === STEP 4: Your Verdict === */}
-                  <Text style={styles.fieldLabel}>Overall Rating</Text>
-                  <View style={{ flexDirection: 'row', gap: 4, marginBottom: spacing.md }}>
-                    {[1,2,3,4,5].map(n => (
-                      <TouchableOpacity key={n} onPress={() => { store.setField('overallRating', n); debouncedAutoSave() }}>
-                        <Text style={{ fontSize: 32, color: n <= store.overallRating ? colors.amber : colors.creamDim }}>★</Text>
+              {/* === Photos === */}
+                  <Text style={styles.sectionTitle}>Photos</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoScroll} contentContainerStyle={styles.photoScrollContent}>
+                    {store.photoUris.map((uri) => (
+                      <TouchableOpacity key={uri} style={styles.photoThumb} onPress={() => setLightboxUri(uri)} activeOpacity={0.8}>
+                        <Image source={{ uri }} style={styles.thumbImg} />
+                        <TouchableOpacity style={styles.removePhotoBtn} onPress={() => store.removePhoto(uri)}>
+                          <Ionicons name="close-circle" size={20} color={colors.cream} />
+                        </TouchableOpacity>
                       </TouchableOpacity>
                     ))}
-                  </View>
+                    <TouchableOpacity style={styles.addPhotoBtn} onPress={() => handleAddPhoto('library')} disabled={pickingPhoto}>
+                      {pickingPhoto
+                        ? <ActivityIndicator size="small" color={colors.amber} />
+                        : <Ionicons name="image-outline" size={24} color={colors.amber} />}
+                      <Text style={styles.addPhotoText}>Gallery</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.addPhotoBtn} onPress={() => handleAddPhoto('camera')} disabled={pickingPhoto}>
+                      <Ionicons name="camera-outline" size={24} color={colors.amber} />
+                      <Text style={styles.addPhotoText}>Camera</Text>
+                    </TouchableOpacity>
+                  </ScrollView>
 
-                  <Text style={styles.fieldLabel}>Would you come back?</Text>
-                  <View style={styles.intentRow}>
-                    {(['yes', 'maybe', 'no'] as const).map(intent => {
-                      const label = intent === 'yes' ? 'Hell yes 🤙' : intent === 'maybe' ? 'Maybe' : 'Nah'
-                      return (
-                        <TouchableOpacity
-                          key={intent}
-                          style={[styles.intentBtn, store.returnIntent === intent && styles.intentBtnActive]}
-                          onPress={() => { store.setField('returnIntent', intent); debouncedAutoSave() }}
-                        >
-                          <Text style={[styles.intentText, store.returnIntent === intent && styles.intentTextActive]}>
-                            {label}
-                          </Text>
-                        </TouchableOpacity>
-                      )
-                    })}
-                  </View>
-
-                  <Text style={styles.fieldLabel}>Notes</Text>
+              {/* === Notes === */}
+                  <Text style={styles.sectionTitle}>Notes</Text>
                   <TextInput
                     style={styles.noteInput}
                     placeholder="Anything else worth remembering..."
@@ -688,15 +649,20 @@ export default function ReviewWizard() {
                   {autoSaveStatus && (
                     <Text style={styles.autoSaveIndicator}>✓ Saved</Text>
                   )}
-                </>
-              )}
 
-            </ScrollView>
-          </View>
-        )}
-      />
+      </ScrollView>
 
       <ProPaywallModal visible={showPaywall} onClose={() => setShowPaywall(false)} />
+
+      <SaveCelebration
+        visible={!!celebration}
+        title={celebration?.title ?? ''}
+        subtitle={celebration?.subtitle}
+        onDone={() => {
+          setCelebration(null)
+          router.back()
+        }}
+      />
     </KeyboardAvoidingView>
   )
 }
@@ -710,7 +676,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.surfaceBorder,
   },
-  headerLogo: { height: 24, width: 100 },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -730,17 +695,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.cream,
   },
-  stepIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  stepDots: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
   headerSaveBtn: {
     backgroundColor: colors.amber,
     borderRadius: radius.full,
@@ -754,32 +708,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 13,
   },
-  stepDot: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.surfaceRaised,
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepDotActive: {
-    backgroundColor: colors.amber,
-    borderColor: colors.amber,
-  },
-  stepDotLabel: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.cream,
-  },
-  stepPage: {
-    flex: 1,
-  },
-  stepPageContent: {
+  scrollContent: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.lg,
     paddingBottom: 300,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontFamily: fonts.display,
+    color: colors.cream,
+    marginTop: spacing.xl,
+    marginBottom: spacing.xs,
   },
   nameInput: {
     backgroundColor: colors.surface, borderRadius: radius.md,

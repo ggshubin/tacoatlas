@@ -1,7 +1,8 @@
 import { useCallback, useState } from 'react'
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, Modal, Alert,
+  View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet, Image, Modal,
 } from 'react-native'
+import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated'
 import { useLocalSearchParams, router, useFocusEffect } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -18,15 +19,16 @@ import { AppBottomSheet } from '../../src/components/AppBottomSheet'
 import { PrivacySelector } from '../../src/components/PrivacySelector'
 import { ProPaywallModal } from '../../src/components/ProPaywallModal'
 import { shareSpot } from '../../src/utils/shareSpot'
-import { colors, spacing, radius, typography } from '../../src/utils/theme'
+import { colors, spacing, radius, typography, fonts } from '../../src/utils/theme'
 import type { LocalVendor, LocalReview } from '../../src/types/app'
 
+// Heat ramp drawn from the app palette: cilantro -> warning gold -> amber -> error red -> deep ember
 const HEAT_COLOR: Record<string, string> = {
-  mild: '#64B5F6',
-  medium: '#FFC107',
-  hot: '#FF7043',
-  fire: '#FF1744',
-  volcano: '#B71C1C',
+  mild: '#8BC34A',
+  medium: '#E8C21A',
+  hot: '#E8821A',
+  fire: '#E05252',
+  volcano: '#A93226',
 }
 
 export default function SpotDetailScreen() {
@@ -43,6 +45,16 @@ export default function SpotDetailScreen() {
   const [showDeleteSpotModal, setShowDeleteSpotModal] = useState(false)
   const [reviewToDelete, setReviewToDelete] = useState<LocalReview | null>(null)
   const [lightboxUri, setLightboxUri] = useState<string | null>(null)
+  const [showNoteModal, setShowNoteModal] = useState(false)
+  const [noteDraft, setNoteDraft] = useState('')
+
+  async function saveSpotNote() {
+    if (!vendor) return
+    const trimmed = noteDraft.trim() || null
+    setShowNoteModal(false)
+    await localStorageService.updateVendor(vendor.localId, { spotNote: trimmed })
+    setVendor(prev => (prev ? { ...prev, spotNote: trimmed } : null))
+  }
 
   function toggleExpanded(id: string) {
     setExpandedIds(prev => {
@@ -107,7 +119,6 @@ export default function SpotDetailScreen() {
 
       {/* Fixed header */}
       <View style={[styles.headerWrap, { paddingTop: insets.top }]}>
-        <Image source={require('../../images/tacoatlas-logo-horz.png')} style={styles.headerLogo} resizeMode="contain" />
         <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={22} color={colors.cream} />
@@ -185,6 +196,33 @@ export default function SpotDetailScreen() {
 
       <ProPaywallModal visible={showPaywall} onClose={() => setShowPaywall(false)} />
 
+      {/* About-this-spot note editor (cross-platform, replaces iOS-only Alert.prompt) */}
+      <Modal visible={showNoteModal} transparent animationType="fade" onRequestClose={() => setShowNoteModal(false)}>
+        <View style={styles.noteModalOverlay}>
+          <View style={styles.noteModalCard}>
+            <Text style={styles.noteModalTitle}>About this spot</Text>
+            <Text style={styles.noteModalHint}>A note visible on all your visits — "cash only", "closed Mondays"...</Text>
+            <TextInput
+              style={styles.noteModalInput}
+              placeholder="Add a note..."
+              placeholderTextColor={colors.creamDim}
+              value={noteDraft}
+              onChangeText={setNoteDraft}
+              autoFocus
+              multiline
+            />
+            <View style={styles.noteModalActions}>
+              <TouchableOpacity style={styles.noteModalCancel} onPress={() => setShowNoteModal(false)}>
+                <Text style={styles.noteModalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.noteModalSave} onPress={saveSpotNote}>
+                <Text style={styles.noteModalSaveText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <ScrollView contentContainerStyle={styles.scroll}>
 
         {/* About This Spot note */}
@@ -194,14 +232,7 @@ export default function SpotDetailScreen() {
             <Text style={styles.spotNoteText}>{vendor.spotNote}</Text>
           </View>
         ) : (
-          <TouchableOpacity style={styles.addSpotNote} onPress={() => {
-            Alert.prompt?.('About this spot', 'Add a note visible on all your visits',
-              (text) => { if (text !== undefined) localStorageService.updateVendor(vendor.localId, { spotNote: text || null }).then(() => {
-                setVendor(prev => prev ? { ...prev, spotNote: text || null } : null)
-              }) },
-              'plain-text', vendor.spotNote ?? ''
-            ) ?? Alert.alert('Coming soon', 'Note editing will be available soon.')
-          }}>
+          <TouchableOpacity style={styles.addSpotNote} onPress={() => { setNoteDraft(vendor.spotNote ?? ''); setShowNoteModal(true) }}>
             <Text style={styles.addSpotNoteText}>+ About this spot</Text>
           </TouchableOpacity>
         )}
@@ -256,7 +287,11 @@ export default function SpotDetailScreen() {
           const dateStr = new Date(review.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 
           return (
-            <View key={review.localId} style={[styles.reviewCard, !isExpanded && styles.reviewCardCollapsed]}>
+            <Animated.View
+              key={review.localId}
+              layout={LinearTransition.duration(180)}
+              style={[styles.reviewCard, !isExpanded && styles.reviewCardCollapsed]}
+            >
 
               {/* Card header — tappable on older reviews to expand/collapse */}
               <TouchableOpacity
@@ -294,7 +329,7 @@ export default function SpotDetailScreen() {
               </TouchableOpacity>
 
               {isExpanded && (
-                <>
+                <Animated.View entering={FadeIn.duration(180)}>
                   {/* Overall rating + intent */}
                   <View style={styles.ratingRow}>
                     <TacoRating value={review.overallRating} readonly size={20} />
@@ -370,20 +405,22 @@ export default function SpotDetailScreen() {
                       <Text style={styles.notes}>{review.notes}</Text>
                     </View>
                   )}
-                </>
+                </Animated.View>
               )}
-            </View>
+            </Animated.View>
           )
         })}
 
         {/* Add another review */}
-        <TouchableOpacity
-          style={styles.addReviewBtn}
-          onPress={() => router.push({ pathname: '/review/add', params: { vendorLocalId: vendor.localId, vendorName: vendor.name } })}
-        >
-          <Ionicons name="add" size={18} color={colors.cream} />
-          <Text style={styles.addReviewBtnText}>Add Another Visit</Text>
-        </TouchableOpacity>
+        <Animated.View layout={LinearTransition.duration(180)}>
+          <TouchableOpacity
+            style={styles.addReviewBtn}
+            onPress={() => router.push({ pathname: '/review/add', params: { vendorLocalId: vendor.localId, vendorName: vendor.name } })}
+          >
+            <Ionicons name="add" size={18} color={colors.cream} />
+            <Text style={styles.addReviewBtnText}>Add Another Visit</Text>
+          </TouchableOpacity>
+        </Animated.View>
 
       </ScrollView>
     </View>
@@ -398,7 +435,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.md,
   },
-  headerLogo: { height: 28, width: 160, alignSelf: 'center', marginBottom: spacing.xs },
   header: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -417,7 +453,7 @@ const styles = StyleSheet.create({
   shareBtn: {
     padding: spacing.sm,
   },
-  vendorName: { fontSize: 28, fontWeight: '800', color: colors.cream, letterSpacing: -0.5 },
+  vendorName: { fontSize: 28, fontFamily: fonts.displayBold, color: colors.cream, letterSpacing: -0.5 },
   vendorMeta: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm, marginTop: 6 },
   spotTypeBadge: { backgroundColor: colors.amberSubtle, borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: 2, borderWidth: 1, borderColor: colors.amberDim },
   spotTypeText: { fontSize: 11, color: colors.amber, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
@@ -471,6 +507,33 @@ const styles = StyleSheet.create({
   lightboxOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', justifyContent: 'center', alignItems: 'center' },
   lightboxImage: { width: '100%', height: '85%' },
   lightboxClose: { position: 'absolute', top: 60, right: spacing.lg, zIndex: 10, width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(36,28,22,0.85)', alignItems: 'center', justifyContent: 'center' },
+  noteModalOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.65)',
+    justifyContent: 'center', paddingHorizontal: spacing.xl,
+  },
+  noteModalCard: {
+    backgroundColor: colors.surface, borderRadius: radius.lg,
+    borderWidth: 1, borderColor: colors.surfaceBorder, padding: spacing.lg,
+  },
+  noteModalTitle: { fontSize: 18, fontFamily: fonts.display, color: colors.cream, marginBottom: spacing.xs },
+  noteModalHint: { fontSize: 13, color: colors.creamMuted, marginBottom: spacing.md },
+  noteModalInput: {
+    backgroundColor: colors.surfaceRaised, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.surfaceBorder,
+    padding: spacing.md, color: colors.cream, fontSize: 14,
+    minHeight: 72, textAlignVertical: 'top', marginBottom: spacing.md,
+  },
+  noteModalActions: { flexDirection: 'row', gap: spacing.sm },
+  noteModalCancel: {
+    flex: 1, paddingVertical: 12, borderRadius: radius.full, alignItems: 'center',
+    borderWidth: 1, borderColor: colors.surfaceBorder, backgroundColor: colors.surfaceRaised,
+  },
+  noteModalCancelText: { color: colors.creamMuted, fontWeight: '600', fontSize: 14 },
+  noteModalSave: {
+    flex: 1, paddingVertical: 12, borderRadius: radius.full, alignItems: 'center',
+    backgroundColor: colors.amber,
+  },
+  noteModalSaveText: { color: colors.bg, fontWeight: '700', fontSize: 14 },
 
   section: { marginTop: spacing.sm },
   sectionLabel: { fontSize: 10, fontWeight: '700', color: colors.amber, letterSpacing: 1.5, marginBottom: 6 },

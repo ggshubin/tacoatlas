@@ -8,13 +8,14 @@ import Constants from 'expo-constants'
 import * as Updates from 'expo-updates'
 import { Ionicons } from '@expo/vector-icons'
 import { AppBottomSheet } from '../../src/components/AppBottomSheet'
+import { TasteProfile } from '../../src/components/TasteProfile'
 import { useAuthStore } from '../../src/store/authStore'
 import { useProStore } from '../../src/store/proStore'
 import { localStorageService } from '../../src/services/localStorage'
 import { proService } from '../../src/services/proService'
 import { photoService } from '../../src/services/photoService'
 import { getFriends } from '../../src/services/miGenteService'
-import { colors, spacing, radius } from '../../src/utils/theme'
+import { colors, spacing, radius, fonts } from '../../src/utils/theme'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { passwordSchema, firstError } from '../../src/utils/validation'
 
@@ -355,6 +356,9 @@ export default function ProfileScreen() {
           )}
         </View>
         {avatarError && <Text style={styles.avatarError}>{avatarError}</Text>}
+
+        {/* Taste identity — computed from logged data, zero new input */}
+        <TasteProfile />
 
         {/* Stats */}
         <View style={styles.statsRow}>
@@ -764,7 +768,7 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: spacing.md, paddingBottom: 100 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.lg },
   headerLogo: { height: 28, width: 160, alignSelf: 'center', marginBottom: 4 },
-  title: { fontSize: 28, fontWeight: '800', color: colors.cream, letterSpacing: -0.5 },
+  title: { fontSize: 28, fontFamily: fonts.displayBold, color: colors.cream, letterSpacing: -0.5 },
 
   identityCard: {
     flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md,

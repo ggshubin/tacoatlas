@@ -8,6 +8,8 @@ import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { getFriendActivity } from '../../../src/services/miGenteService'
 import { openMapsNavigation } from '../../../src/utils/mapsNavigation'
+import { espressoMapStyleJSON } from '../../../src/utils/mapStyle'
+import { SpotDot } from '../../../src/components/SpotDot'
 import { colors, spacing, radius } from '../../../src/utils/theme'
 import type { ActivityStub } from '../../../src/data/mi-gente-stubs'
 
@@ -83,6 +85,7 @@ export default function FriendMapScreen() {
       {/* Map */}
       <MapboxGL.MapView
         style={styles.map}
+        styleJSON={espressoMapStyleJSON}
         logoEnabled={false}
         attributionEnabled={false}
       >
@@ -110,11 +113,10 @@ export default function FriendMapScreen() {
             key={pin.id}
             coordinate={toMapboxCoord({ latitude: pin.lat, longitude: pin.lng })}
           >
-            <View
-              style={[
-                styles.friendDot,
-                { backgroundColor: pin.type === 'reviewed' ? colors.amber : '#B37318' },
-              ]}
+            <SpotDot
+              kind="friend"
+              spotType={pin.spotType}
+              color={pin.type === 'reviewed' ? colors.amber : colors.amberDim}
             />
           </MapboxGL.MarkerView>
         ))}
@@ -158,16 +160,4 @@ const styles = StyleSheet.create({
   goBtn: { backgroundColor: colors.amber, borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: 3 },
   goBtnText: { fontSize: 10, fontWeight: '800', color: colors.bg },
   errorText: { color: colors.creamMuted, fontSize: 14 },
-  friendDot: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: '#fff',
-    shadowColor: '#000',
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    shadowOffset: { width: 0, height: 1 },
-    elevation: 3,
-  },
 })
