@@ -129,7 +129,7 @@
 
   <main>
     <h1>Privacy Policy</h1>
-    <p class="meta">Last updated: June 9, 2026</p>
+    <p class="meta">Last updated: July 25, 2026</p>
 
     <div class="highlight-box">
       <p>
@@ -137,6 +137,12 @@
         We collect only what we need to make the app work. We don't sell your data.
         Guest users' data never leaves their device. You can delete your account and
         all associated data at any time.
+      </p>
+      <p style="margin-top:14px; margin-bottom:0;">
+        <strong style="color:var(--cream);">While TacoAtlas is in beta:</strong>
+        every new account is automatically connected to the founder account, and the
+        founder can see all activity in the app — including entries you mark private.
+        <a href="#beta">Section 4</a> explains this in full, and how to undo the connection.
       </p>
     </div>
 
@@ -155,7 +161,7 @@
       <li><strong style="color:var(--cream);">Profile data</strong> — optional fields such as a profile photo, bio, home city, and favorite taco</li>
       <li><strong style="color:var(--cream);">Spot and review data</strong> — the locations, ratings, notes, and photos you log, subject to your privacy settings</li>
       <li><strong style="color:var(--cream);">Device information</strong> — push notification token (only if you grant permission), used solely to send you notifications you request</li>
-      <li><strong style="color:var(--cream);">Purchase records</strong> — if you purchase TacoAtlas Pro, the transaction is handled by Google Play and RevenueCat. We receive only a confirmation of your entitlement; we do not store payment card details</li>
+      <li><strong style="color:var(--cream);">Purchase records</strong> — if you purchase TacoAtlas Pro, the transaction is handled by Google Play and RevenueCat. We receive only a confirmation of your entitlement; we do not store payment card details. During the beta all Pro features are free for every account, so cloud sync applies to you whether or not you have purchased anything (see <a href="#beta">Section 4</a>)</li>
     </ul>
 
     <p><strong style="color:var(--cream);">Location data</strong> — the App uses your device location to center the map and to attach coordinates to spots you log. Location is used on-device and in the data you explicitly choose to save; we do not track your location in the background.</p>
@@ -175,20 +181,69 @@
     <p>We do not sell, rent, or trade your personal information. We share data only in these limited circumstances:</p>
     <ul>
       <li><strong style="color:var(--cream);">With other TacoAtlas users</strong> — according to your privacy settings. Reviews and profile information you mark as "Public" or "Friends" are visible to the corresponding audience within the App.</li>
+      <li><strong style="color:var(--cream);">With the founder account, during the beta</strong> — including entries you have marked private. See <a href="#beta">Section 4</a>.</li>
       <li><strong style="color:var(--cream);">With service providers</strong> — we use Supabase (database and authentication) and RevenueCat (purchase validation). These providers process data on our behalf under their own privacy policies and security standards.</li>
       <li><strong style="color:var(--cream);">As required by law</strong> — we may disclose information if required by a valid legal process, court order, or government authority.</li>
     </ul>
 
-    <h2>4. Your Privacy Controls</h2>
+    <h2 id="beta">4. Beta Program: Founder Access and Automatic Connections</h2>
+    <p>
+      TacoAtlas is a crowdsourced map currently in open beta. Three things during this
+      period differ from what you might reasonably expect, and we would rather
+      over-explain them than surprise you.
+    </p>
+
+    <p><strong style="color:var(--cream);">4a. Every new account is automatically connected to the founder.</strong>
+      When you create an account, an accepted friend connection is created between you and
+      the founder account (<strong style="color:var(--cream);">@ggshubin</strong>) automatically.
+      You are not asked to approve it, and it happens for every account.
+    </p>
+    <p>
+      We do this so a brand-new account isn't an empty app — you have at least one person
+      on your map from the start. The practical consequence is that
+      <strong style="color:var(--cream);">the founder can see the entries you share with
+      friends</strong>, exactly as any friend you added yourself could.
+    </p>
+    <p>
+      You can remove this connection at any time in the App:
+      <em>Mi Gente → the founder's entry → Remove Friend</em> (or Block). Nothing else stops
+      working if you do, and the connection is not recreated afterwards.
+    </p>
+
+    <p><strong style="color:var(--cream);">4b. The founder can see all app activity, including private entries.</strong>
+      The founder account has an administrative view listing every account, every spot, and
+      every review across the App — <strong style="color:var(--cream);">including entries you
+      have marked "Private"</strong> — along with signup dates and activity counts. It exists
+      to operate the beta: checking that the app works, seeing which spots are being added,
+      and finding where people get stuck.
+    </p>
+    <p>
+      This access is limited to the founder account. It is not available to other users, it is
+      not sold or shared with anyone, and it is not used for advertising. During the beta,
+      "Private" means hidden from other users — it does not mean hidden from the operator of
+      the service. If you would rather something not be visible to the operator at all, please
+      do not log it in TacoAtlas.
+    </p>
+
+    <p><strong style="color:var(--cream);">4c. Paid features are free during the beta.</strong>
+      All features previously reserved for TacoAtlas Pro — including cloud sync of your
+      entries — are currently enabled for every account at no charge. This means your entries
+      sync to our servers by default once you have an account. Guest use is unchanged: without
+      an account, nothing leaves your device.
+    </p>
+
+    <h2>5. Your Privacy Controls</h2>
     <p>Within the App you can:</p>
     <ul>
-      <li>Set each review to <strong style="color:var(--cream);">Private</strong>, <strong style="color:var(--cream);">Friends only</strong>, or <strong style="color:var(--cream);">Public</strong></li>
+      <li>Set each review to <strong style="color:var(--cream);">Private</strong>, <strong style="color:var(--cream);">Friends only</strong>, or <strong style="color:var(--cream);">Public</strong> — subject to founder access during the beta (<a href="#beta">Section 4</a>)</li>
+      <li>Remove the automatic founder connection via <em>Mi Gente → Remove Friend</em></li>
       <li>Control whether your profile is publicly discoverable</li>
       <li>Control whether your display name is shown to other users or only your @username</li>
       <li>Revoke push notification permission at any time in your device settings</li>
+      <li>Use the App as a guest, with no account, so that no data reaches our servers at all</li>
     </ul>
 
-    <h2>5. Data Retention and Deletion</h2>
+    <h2>6. Data Retention and Deletion</h2>
     <p>
       Your data is retained for as long as your account is active. You can delete your
       account at any time by contacting us at
@@ -201,7 +256,7 @@
       or clear its storage.
     </p>
 
-    <h2>6. Data Security</h2>
+    <h2>7. Data Security</h2>
     <p>
       We use industry-standard practices to protect your data, including encrypted
       connections (TLS), row-level security policies on our database, and secure
@@ -209,14 +264,14 @@
       a breach affecting your data we will notify you as required by applicable law.
     </p>
 
-    <h2>7. Children's Privacy</h2>
+    <h2>8. Children's Privacy</h2>
     <p>
       TacoAtlas is not directed at children under 13. We do not knowingly collect personal
       information from children under 13. If you believe a child under 13 has provided us
       with personal information, please contact us and we will delete it promptly.
     </p>
 
-    <h2>8. Third-Party Services</h2>
+    <h2>9. Third-Party Services</h2>
     <p>The App integrates with the following third-party services:</p>
     <ul>
       <li><strong style="color:var(--cream);">Google Maps Platform</strong> — for map display and location search. Subject to <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google's Privacy Policy</a>.</li>
@@ -224,14 +279,20 @@
       <li><strong style="color:var(--cream);">RevenueCat</strong> — for in-app purchase management. Subject to <a href="https://www.revenuecat.com/privacy" target="_blank" rel="noopener">RevenueCat's Privacy Policy</a>.</li>
     </ul>
 
-    <h2>9. Changes to This Policy</h2>
+    <h2>10. Changes to This Policy</h2>
     <p>
       We may update this Privacy Policy from time to time. We will notify you of material
       changes through the App or by email. The "Last updated" date at the top of this page
       reflects when changes were most recently made.
     </p>
+    <p>
+      <strong style="color:var(--cream);">July 25, 2026</strong> — added Section 4 covering the
+      beta program: the automatic founder connection, founder access to all app activity
+      including private entries, and Pro features being free for every account. Sections 3
+      and 5 were updated to point at it.
+    </p>
 
-    <h2>10. Contact Us</h2>
+    <h2>11. Contact Us</h2>
     <p>
       If you have questions about this Privacy Policy or want to exercise your data rights,
       contact us at <a href="mailto:hello@tacoatlas.app">hello@tacoatlas.app</a>.
