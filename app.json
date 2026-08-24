@@ -41,7 +41,8 @@
         "expo-media-library",
         {
           "savePhotosPermission": "TacoAtlas saves photos you take to your gallery so you keep a copy outside the app.",
-          "isAccessMediaLocationEnabled": false
+          "isAccessMediaLocationEnabled": false,
+          "granularPermissions": []
         }
       ],
       [
