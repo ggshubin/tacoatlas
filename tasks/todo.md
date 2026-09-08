@@ -24,13 +24,32 @@ reproducible from a commit.
 - [x] 4. Production AAB **versionCode 51** built from the clean tree via EAS.
 - [x] 5. CHANGELOG entry (versionCode 51).
 
-## Build versionCode 51
+## Build versionCode 52 — the one to upload (2026-09-08)
+
+AAB: https://expo.dev/artifacts/eas/REFV-m7SZGITjWQfrKYsGC1RrSY9rUeM8fIiXcGLosI.aab
+(EAS build `19d24257-db40-4125-92c5-35e050adba78`, git commit `7e15c15`)
+
+Identical contents to vc51 — rebuilt only because vc51 was consumed by a Play
+Console upload attempt and rejected on the next try with "Version code 51 has
+already been used." vc51 was never rolled out. Use vc52.
+
+### Play Console issues hit and resolved this session
+- **Privacy policy 404** — the declaration pointed at the retired GitHub Pages URL
+  `https://ggshubin.github.io/tacoatlas/privacy-policy.html` (whole site 404s, app
+  migrated to the tacoatlas.app domain). Fix: set the declaration (App content →
+  Privacy policy, and the Data safety form) to the live `https://tacoatlas.app/privacy`.
+- **"Release does not add or remove any app bundles" / "existing users can't upgrade"**
+  — the release draft had no AAB attached. Fix: add the bundle on the Create release step.
+- **"Version code 51 has already been used"** — required a fresh build (vc52).
+
+## Build versionCode 51 (superseded — do not upload)
 
 AAB: https://expo.dev/artifacts/eas/pDf0cOmtefT4s_nVC-Ee1sgKec0grR5z54alyAZ_iDI.aab
 (EAS build `1054aa4e-e9b7-4826-96a7-6ba8e2d8d0d6`, git commit `eac3d56`)
 
 EAS auto-incremented versionCode 50 → 51. Built with the production keystore and
-production env vars (Supabase, Maps, RevenueCat, Mapbox).
+production env vars (Supabase, Maps, RevenueCat, Mapbox). Version code consumed by
+a Play Console upload attempt; superseded by vc52.
 
 ## Before promoting to production
 

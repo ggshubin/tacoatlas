@@ -6,6 +6,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/) loosely. Android 
 
 Maintenance rule: when a production build is cut, add its entry here in the same commit/session.
 
+## versionCode 52 — 2026-09-08 (rebuild for fresh version code)
+
+Identical app contents to versionCode 51 (same commit `7e15c15`). Rebuilt only because versionCode 51 was consumed by a Play Console upload attempt and could not be reused ("Version code 51 has already been used"), so it was never rolled out. See the versionCode 51 entry below for the actual changes (review-form Photos reorder, etc.).
+
+### Internal
+- EAS auto-incremented versionCode 51 → 52 (remote version source). No code changes.
+- AAB: https://expo.dev/artifacts/eas/REFV-m7SZGITjWQfrKYsGC1RrSY9rUeM8fIiXcGLosI.aab (EAS build `19d24257-db40-4125-92c5-35e050adba78`).
+- Unrelated to any AAB: the Play Console privacy-policy declaration pointed at the retired `ggshubin.github.io/tacoatlas/privacy-policy.html` (404). Corrected to the live `https://tacoatlas.app/privacy`.
+
 ## versionCode 51 — 2026-09-07 (review-form reorder)
 
 ### Changed
