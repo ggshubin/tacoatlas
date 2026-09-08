@@ -6,6 +6,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/) loosely. Android 
 
 Maintenance rule: when a production build is cut, add its entry here in the same commit/session.
 
+## versionCode 51 — 2026-09-07 (review-form reorder)
+
+### Changed
+- **Photos moved up the logging flow** — on the "Log a Visit" form, the Photos section now sits directly below the spot details (name, type, location, privacy, about-this-spot) and above The Verdict, instead of down near the bottom by Notes. Adding a photo is part of capturing the spot, so it now lives with the rest of the spot info.
+
+### Internal
+- First production build cut from a fully committed working tree (commit `eac3d56`). Earlier builds were cut with a large amount of uncommitted work in the tree; that work is now committed, so this build's contents are reproducible from `HEAD`. The commit also carries the previously-uncommitted beta-feedback removal (BetaBanner, BetaFeedbackModal, betaFeedbackService, orphaned GooglePlaceCard/VendorCard components) and the admin-activity / welcome-onboarding features.
+- EAS auto-incremented versionCode 50 → 51 (remote version source). The stale `android.versionCode` value in `app.json` is ignored and should be removed to avoid confusion.
+- AAB: https://expo.dev/artifacts/eas/pDf0cOmtefT4s_nVC-Ee1sgKec0grR5z54alyAZ_iDI.aab (EAS build `1054aa4e-e9b7-4826-96a7-6ba8e2d8d0d6`).
+
 ## versionCode 50 — 2026-08-24 (undeclared permissions fix)
 
 ### Fixed

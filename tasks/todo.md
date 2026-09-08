@@ -1,3 +1,48 @@
+# Build: review-form Photos reorder + commit pending work (versionCode 51, 2026-09-07)
+
+## Why
+
+The "Log a Visit" form put Photos down near the bottom, next to Notes. Adding a
+photo is part of capturing the spot, so it belongs with the spot details, not as
+an afterthought after the food scorecards.
+
+Separately, the working tree had ~52 files of uncommitted work spanning multiple
+prior sessions (beta-feedback removal, admin/welcome features, Supabase migrations)
+that had never been committed or shipped in a clean build. The last production
+build (vc50) recorded git commit `a7fe4dd` (= HEAD), so its contents were not
+reproducible from a commit.
+
+## Plan
+
+- [x] 1. `app/review/add.tsx` — move the Photos section from between the food
+      scorecards and Notes to directly after the spot details (below "About this
+      spot", above "The Verdict"). New order: Name → Type → Location → Privacy →
+      About → **Photos** → The Verdict → What'd You Have? → Notes.
+- [x] 2. Verify: `tsc --noEmit` clean.
+- [x] 3. Commit all pending work except the throwaway `_to_delete/` folder
+      (commit `eac3d56`); gitignore `_to_delete/` so the tree is clean.
+- [x] 4. Production AAB **versionCode 51** built from the clean tree via EAS.
+- [x] 5. CHANGELOG entry (versionCode 51).
+
+## Build versionCode 51
+
+AAB: https://expo.dev/artifacts/eas/pDf0cOmtefT4s_nVC-Ee1sgKec0grR5z54alyAZ_iDI.aab
+(EAS build `1054aa4e-e9b7-4826-96a7-6ba8e2d8d0d6`, git commit `eac3d56`)
+
+EAS auto-incremented versionCode 50 → 51. Built with the production keystore and
+production env vars (Supabase, Maps, RevenueCat, Mapbox).
+
+## Before promoting to production
+
+- [ ] Confirm the three Supabase migrations are applied to the Supabase project:
+      `founder_auto_friend`, `admin_activity_rpcs`, `lock_privileged_profile_columns`.
+      The admin/founder features in this build call those RPCs and expect those
+      columns; if the migrations are not live, those screens error at runtime.
+- [ ] Remove the stale `android.versionCode` from `app.json` (ignored under remote
+      version source; kept only to avoid confusion in future builds).
+
+---
+
 # Fix: undeclared photo/video permissions flagged by Play Console (2026-08-24)
 
 ## Why
