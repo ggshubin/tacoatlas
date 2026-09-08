@@ -126,9 +126,6 @@ export default function MiGenteScreen() {
   const { setPendingFriendCount } = useNotificationStore()
   const insets = useSafeAreaInsets()
   const [purchasing, setPurchasing] = useState(false)
-  const toastOpacity = useRef(new Animated.Value(0)).current
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [toastMsg, setToastMsg] = useState('')
   const [friends, setFriends] = useState<FriendWithId[]>([])
   const [activity, setActivity] = useState<ActivityStub[]>([])
   const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([])
@@ -360,16 +357,6 @@ export default function MiGenteScreen() {
 
   // --- States B + C: friends present ---
   const hasActivity = activity.length > 0
-
-  function showToast(msg: string) {
-    if (toastTimer.current) clearTimeout(toastTimer.current)
-    setToastMsg(msg)
-    Animated.sequence([
-      Animated.timing(toastOpacity, { toValue: 1, duration: 180, useNativeDriver: true }),
-      Animated.delay(2000),
-      Animated.timing(toastOpacity, { toValue: 0, duration: 300, useNativeDriver: true }),
-    ]).start()
-  }
 
   function handleFriendOptions(username: string) {
     setFriendOptionsTarget(username)
@@ -622,12 +609,6 @@ export default function MiGenteScreen() {
       )}
       </ScrollView>
 
-      {/* Toast */}
-      <Animated.View style={[styles.toast, { opacity: toastOpacity, bottom: insets.bottom + 24 }]} pointerEvents="none">
-        <Ionicons name="checkmark-circle" size={16} color={colors.amber} />
-        <Text style={styles.toastText}>{toastMsg}</Text>
-      </Animated.View>
-
       {/* Friend options bottom sheet */}
       <Modal
         visible={friendOptionsTarget !== null}
@@ -791,14 +772,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md, paddingVertical: spacing.md,
   },
   modalActionText: { fontSize: 15, fontWeight: '600', color: colors.cream },
-  // Toast
-  toast: {
-    position: 'absolute', alignSelf: 'center',
-    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
-    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.amberDim,
-    borderRadius: radius.full, paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
-  },
-  toastText: { fontSize: 13, color: colors.cream, fontWeight: '600' },
   // Pro gate
   lockedCard: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md, backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: colors.surfaceBorder, marginTop: spacing.md, marginBottom: spacing.md },
   lockedText: { flex: 1, color: colors.creamMuted, fontSize: 14, lineHeight: 20 },

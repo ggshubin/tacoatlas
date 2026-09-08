@@ -3,6 +3,7 @@ import { router } from 'expo-router'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Ionicons } from '@expo/vector-icons'
 import { colors, spacing, radius, fonts } from '../src/utils/theme'
+import { useWelcomeStore } from '../src/store/welcomeStore'
 
 const FEATURES = [
   {
@@ -25,7 +26,9 @@ const FEATURES = [
 export default function OnboardingScreen() {
   async function handleGetStarted() {
     await AsyncStorage.setItem('hasSeenOnboarding', 'true')
-    router.replace('/(tabs)/atlas')
+    // Onboarding says what TacoAtlas is; the quick-start says how to use it.
+    // Hand straight off so a first-timer gets both, unless it's been disabled.
+    router.replace(useWelcomeStore.getState().showOnLaunch ? '/welcome' : '/(tabs)/atlas')
   }
 
   async function handleSignIn() {

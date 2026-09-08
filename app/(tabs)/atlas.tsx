@@ -17,7 +17,7 @@ import { DotProgressIndicator } from '../../src/components/DotProgressIndicator'
 import { UpgradeNudge } from '../../src/components/UpgradeNudge'
 import { ProPaywallModal } from '../../src/components/ProPaywallModal'
 import { colors, spacing, radius, fonts } from '../../src/utils/theme'
-import type { LocalVendor, SpotType } from '../../src/types/app'
+import type { LocalVendor } from '../../src/types/app'
 
 interface VendorRow {
   vendor: LocalVendor
@@ -33,7 +33,6 @@ export default function MyTacosScreen() {
   const [rows, setRows] = useState<VendorRow[]>([])
   const [loaded, setLoaded] = useState(false)
   const [search, setSearch] = useState('')
-  const [filterType, setFilterType] = useState<SpotType | null>(null)
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list')
   const [showActionSheet, setShowActionSheet] = useState(false)
   const [nudgeDismissed, setNudgeDismissed] = useState(false)
@@ -83,11 +82,7 @@ export default function MyTacosScreen() {
   }
 
   const filteredRows = rows
-    .filter(({ vendor }) => {
-      const matchesSearch = vendor.name.toLowerCase().includes(search.toLowerCase())
-      const matchesType = filterType === null || vendor.spotType === filterType
-      return matchesSearch && matchesType
-    })
+    .filter(({ vendor }) => vendor.name.toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => new Date(b.vendor.createdAt).getTime() - new Date(a.vendor.createdAt).getTime())
 
   // Intercept Android back button: map view → switch to list; list view → minimize app (not navigate back)

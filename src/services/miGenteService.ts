@@ -211,15 +211,6 @@ export async function declineFriendRequest(requestId: string): Promise<string | 
   return error ? error.message : null
 }
 
-export async function getUserIdsByUsernames(usernames: string[]): Promise<string[]> {
-  if (usernames.length === 0) return []
-  const { data } = await supabase
-    .from('profiles')
-    .select('id')
-    .in('username', usernames)
-  return data?.map((r: any) => r.id) ?? []
-}
-
 export async function searchUserByUsername(username: string): Promise<{ id: string; username: string; displayName: string | null }[]> {
   const query = username.replace(/^@/, '').toLowerCase().trim()
   if (!query) return []
@@ -238,14 +229,7 @@ export async function sendFriendRequest(requesterId: string, addresseeId: string
     .insert({ requester_id: requesterId, addressee_id: addresseeId, status: 'pending' })
   if (error) return error.message
   // Notify addressee — fire and forget, don't fail the request if notification fails
-  const { data: requesterProfile } = await supabase
-    .from('profiles')
-    .select('username')
-    .eq('id', requesterId)
-    .single()
-  if (requesterProfile?.username) {
-    sendFriendRequestNotification(addresseeId, requesterProfile.username).catch(() => {})
-  }
+  sendFriendRequestNotification(addresseeId).catch(() => {})
   return null
 }
 

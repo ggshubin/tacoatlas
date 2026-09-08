@@ -1,6 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { BetaBanner } from '../src/components/BetaBanner'
-import { BetaFeedbackModal } from '../src/components/BetaFeedbackModal'
 import { Alert, Platform, Linking } from 'react-native'
 import { Stack, router } from 'expo-router'
 import { useFonts, Fraunces_600SemiBold, Fraunces_700Bold } from '@expo-google-fonts/fraunces'
@@ -11,6 +9,7 @@ import { supabase } from '../src/services/supabase'
 import { useAuthStore } from '../src/store/authStore'
 import { proService } from '../src/services/proService'
 import { useProStore } from '../src/store/proStore'
+import { useWelcomeStore } from '../src/store/welcomeStore'
 import { migrateFromLegacyKeys, localStorageService } from '../src/services/localStorage'
 import { getPendingRequests } from '../src/services/miGenteService'
 import { useNotificationStore } from '../src/store/notificationStore'
@@ -71,9 +70,9 @@ export default function RootLayout() {
   const { session, setSession, loadProfile, setHasCompletedOnboarding, setShowRestorePrompt } = useAuthStore()
   const { checkPro, isPro } = useProStore()
   const { setPendingFriendCount } = useNotificationStore()
+  const hydrateWelcome = useWelcomeStore(s => s.hydrate)
   const [ready, setReady] = useState(false)
   const [fontsLoaded, fontError] = useFonts({ Fraunces_600SemiBold, Fraunces_700Bold })
-  const [feedbackVisible, setFeedbackVisible] = useState(false)
   const [privacyReminderCount, setPrivacyReminderCount] = useState<number | null>(null)
   const prevIsPro = useRef(false)
 
@@ -96,7 +95,10 @@ export default function RootLayout() {
         supabase.auth.getSession(),
         AsyncStorage.getItem('hasSeenOnboarding'),
         AsyncStorage.getItem('has_completed_onboarding'),
+        hydrateWelcome(),
       ])
+      // Read after hydrate — the store value, not the stale render closure.
+      const showWelcome = useWelcomeStore.getState().showOnLaunch
 
       setSession(session)
       await migrateFromLegacyKeys()
@@ -129,8 +131,10 @@ export default function RootLayout() {
       if (!seenOnboarding) {
         router.replace('/onboarding')
       } else if (session || storedOnboarding === 'true') {
-        // Replace any stale /landing entry that index.tsx may have pushed before session loaded
-        router.replace('/(tabs)/atlas')
+        // Quick-start guide sits between launch and the atlas for anyone who
+        // hasn't switched it off. First launch reaches it via /onboarding,
+        // which hands off here rather than straight to the atlas.
+        router.replace(showWelcome ? '/welcome' : '/(tabs)/atlas')
       } else {
         router.replace('/landing')
       }
@@ -214,6 +218,7 @@ export default function RootLayout() {
     <>
       <Stack screenOptions={{ contentStyle: { backgroundColor: '#18140F' } }}>
         <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+        <Stack.Screen name="welcome" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="landing" options={{ headerShown: false }} />
@@ -226,13 +231,6 @@ export default function RootLayout() {
         <Stack.Screen name="mi-gente/map/[username]" options={{ headerShown: false }} />
       </Stack>
       {ready && <RestorePromptModal />}
-      <BetaBanner onPress={() => setFeedbackVisible(true)} />
-      <BetaFeedbackModal
-        visible={feedbackVisible}
-        userId={session?.user.id}
-        userEmail={session?.user.email}
-        onClose={() => setFeedbackVisible(false)}
-      />
       {ready && <ProPrivacyReminderModal
         visible={privacyReminderCount !== null}
         spotCount={privacyReminderCount ?? 0}

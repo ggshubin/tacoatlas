@@ -6,6 +6,36 @@ Format follows [Keep a Changelog](https://keepachangelog.com/) loosely. Android 
 
 Maintenance rule: when a production build is cut, add its entry here in the same commit/session.
 
+## versionCode 50 — 2026-08-24 (undeclared permissions fix)
+
+### Fixed
+- **Play Console "undeclared permissions" flag** — expo-media-library's config plugin defaulted to requesting `READ_MEDIA_IMAGES`, `READ_MEDIA_VIDEO`, and `READ_MEDIA_AUDIO` on Android, none of which the app actually uses: `photoService` only calls the library with `writeOnly: true` (mirroring captured photos to the gallery), there's no video feature, and existing photos are picked via expo-image-picker's system Photo Picker, which needs none of these. Set `granularPermissions: []` in `app.json` to stop declaring them.
+
+### Internal
+- This build also carries the already-live "open the gates" changes from versionCode 49 (Pro-for-all, founder auto-friend, founder dashboard, quick-start guide) — see that entry below; nothing new there, `PRO_FOR_ALL` remains `true`.
+- Test suite green at 28 suites / 144 tests, `tsc` clean.
+
+## versionCode 49 — 2026-07-25 (open the gates)
+
+Every feature is now free while TacoAtlas recruits early adopters, and a new account is never alone or unguided on first open.
+
+### Changed
+- **Pro is now the standard experience** — every account gets the full feature set at no charge: unlimited spots (the 15-spot cap is gone), public and friends-only privacy, Mi Gente, cloud sync, all food categories, and unlimited spot search. A crowdsourced atlas needs contributions, and the free tier was gating exactly the behaviours that create them. Paid accounts show as "Founding Member".
+- **Privacy Policy updated and live** — tacoatlas.app/privacy gains section 4, "Beta Program: Founder Access and Automatic Connections", covering the automatic founder connection (and how to remove it), the founder's access to all app activity including private entries, and Pro features being free during the beta. Sections 1, 3 and 5 point at it. Shipped in the landing repo (`ggshubin/tacoatlas`, commit `ef0ac78`) and verified live on 2026-07-25.
+
+### Added
+- **Quick-start guide** — a three-step illustrated how-to (drop a pin, rate it, watch your atlas fill in) shown when you open the app. Turn it off with the switch on the guide itself or in Profile → App → "Show Guide on Launch", and reopen it any time from "View Quick Start".
+- **You start with a crew** — every new account is automatically connected to the founder account, so Mi Gente and the activity feed have something in them from the first launch. The connection can be removed like any other friend.
+- **Founder View** — an admin-only dashboard (Profile → Founder) listing every account with signup date, spot/review counts and last activity, plus a cross-user feed of everything being logged.
+
+### Fixed
+- **Admin screens were unreachable** — `is_admin` had never been granted to any account, so the pending-submissions queue could not be opened by anyone. The owner account is now an admin, and both admin screens have entry points in Profile.
+
+### Internal
+- Free-tier behaviour is switched off behind a single `PRO_FOR_ALL` flag (`src/config/features.ts`), not deleted — every gate, limit, nudge and paywall remains in the code and returns by setting the flag to `false`. Both sides of the flag are covered by tests.
+- New migrations: `founder_auto_friend` (adds `profiles.is_founder`, a `SECURITY DEFINER` signup trigger that pairs new users with founders in both directions without overwriting existing `blocked`/`pending` rows, plus a backfill) and `admin_activity_rpcs` (`admin_user_roster`, `admin_recent_activity`, both gated on `is_admin` and raising rather than returning empty).
+- Test suite green at 28 suites / 144 tests.
+
 ## versionCode 48 — 2026-07-14 (v1.3.1, beta feedback fixes)
 
 Fixes from the first beta-tester feedback round on the design-audit build, verified on device.

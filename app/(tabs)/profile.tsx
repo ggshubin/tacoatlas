@@ -18,6 +18,8 @@ import { getFriends } from '../../src/services/miGenteService'
 import { colors, spacing, radius, fonts } from '../../src/utils/theme'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { passwordSchema, firstError } from '../../src/utils/validation'
+import { PRO_FOR_ALL } from '../../src/config/features'
+import { useWelcomeStore } from '../../src/store/welcomeStore'
 
 interface Stats {
   totalSpots: number
@@ -43,6 +45,8 @@ function getOtaLabel(): string | null {
 export default function ProfileScreen() {
   const { session, profile, loadProfile, updateProfile, changeEmail, changePassword } = useAuthStore()
   const { isPro, checkPro } = useProStore()
+  const showWelcomeOnLaunch = useWelcomeStore(s => s.showOnLaunch)
+  const setShowWelcomeOnLaunch = useWelcomeStore(s => s.setShowOnLaunch)
   const insets = useSafeAreaInsets()
   const [stats, setStats] = useState<Stats | null>(null)
   const [purchasing, setPurchasing] = useState(false)
@@ -341,7 +345,12 @@ export default function ProfileScreen() {
                 <View style={styles.identityInfo}>
                   <Text style={styles.displayName}>{profile?.display_name ?? session.user.email?.split('@')[0] ?? 'Taco Lover'}</Text>
                   {profile?.username && <Text style={styles.username}>@{profile.username}</Text>}
-                  <Text style={styles.accountType}>{isPro ? '✦ Pro Member' : 'Free Account'}</Text>
+                  {/* While Pro is free for everyone, don't call them a Pro
+                      Member — nobody bought anything. "Founding Member" is
+                      both true and the thing we actually want them to feel. */}
+                  <Text style={styles.accountType}>
+                    {PRO_FOR_ALL ? '✦ Founding Member' : isPro ? '✦ Pro Member' : 'Free Account'}
+                  </Text>
                 </View>
                 <TouchableOpacity style={styles.editIconBtn} onPress={startEdit}>
                   <Ionicons name="pencil-outline" size={18} color={colors.amber} />
@@ -558,7 +567,7 @@ export default function ProfileScreen() {
               </View>
             ) : null}
             <TouchableOpacity
-              style={styles.accountRow}
+              style={[styles.accountRow, styles.accountRowBorder]}
               onPress={handleCheckForUpdate}
               disabled={checkingUpdate}
               activeOpacity={0.7}
@@ -574,8 +583,65 @@ export default function ProfileScreen() {
                 ? <ActivityIndicator size="small" color={colors.amber} />
                 : <Ionicons name="chevron-forward" size={16} color={colors.creamDim} />}
             </TouchableOpacity>
+            {/* Quick-start guide: the same switch that's on the guide itself */}
+            <View style={[styles.accountRow, styles.accountRowBorder]}>
+              <Ionicons name="compass-outline" size={18} color={colors.creamMuted} />
+              <View style={styles.accountRowText}>
+                <Text style={styles.accountLabel}>Show Guide on Launch</Text>
+                <Text style={styles.accountSub}>The three-step how-to when you open the app</Text>
+              </View>
+              <Switch
+                value={showWelcomeOnLaunch}
+                onValueChange={setShowWelcomeOnLaunch}
+                trackColor={{ false: colors.surfaceBorder, true: colors.amberDim }}
+                thumbColor={showWelcomeOnLaunch ? colors.amber : colors.creamDim}
+                accessibilityLabel="Show the quick-start guide when the app opens"
+              />
+            </View>
+            <TouchableOpacity
+              style={styles.accountRow}
+              onPress={() => router.push('/welcome')}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="help-circle-outline" size={18} color={colors.creamMuted} />
+              <Text style={[styles.accountLabel, { flex: 1 }]}>View Quick Start</Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.creamDim} />
+            </TouchableOpacity>
           </View>
         </View>
+
+        {/* Founder tools — only rendered for admin accounts */}
+        {profile?.is_admin && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Founder</Text>
+            <View style={styles.card}>
+              <TouchableOpacity
+                style={[styles.accountRow, styles.accountRowBorder]}
+                onPress={() => router.push('/admin/activity')}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="pulse-outline" size={18} color={colors.amber} />
+                <View style={styles.accountRowText}>
+                  <Text style={styles.accountLabel}>Founder View</Text>
+                  <Text style={styles.accountSub}>Everyone's signups, spots and reviews</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={colors.creamDim} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.accountRow}
+                onPress={() => router.push('/admin')}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="checkmark-done-outline" size={18} color={colors.amber} />
+                <View style={styles.accountRowText}>
+                  <Text style={styles.accountLabel}>Pending Submissions</Text>
+                  <Text style={styles.accountSub}>Approve spots for the community map</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={colors.creamDim} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
 
         {/* Legal section */}
         <View style={styles.section}>

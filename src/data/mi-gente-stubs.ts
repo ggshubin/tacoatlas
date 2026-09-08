@@ -24,7 +24,3 @@ export interface ActivityStub {
   note?: string
   timestamp: string
 }
-
-export const STUB_FRIENDS: FriendStub[] = []
-
-export const STUB_ACTIVITY: ActivityStub[] = []

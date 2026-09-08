@@ -42,6 +42,16 @@
       color: #111;
       margin: 2rem 0 0.5rem;
     }
+    .notice {
+      border-left: 3px solid #E8821A;
+      background: #fdf6ee;
+      padding: 0.9rem 1rem;
+      margin: 0 0 1.5rem;
+      font-size: 0.95rem;
+      line-height: 1.55;
+      color: #333;
+      border-radius: 0 4px 4px 0;
+    }
     p { margin-bottom: 0.75rem; color: #333; }
     ul {
       margin: 0.5rem 0 0.75rem 1.25rem;
@@ -79,9 +89,15 @@
 
     <div class="logo">🌮</div>
     <h1>TacoAtlas Privacy Policy</h1>
-    <p class="meta">Effective date: March 19, 2026 &nbsp;·&nbsp; Last updated: March 19, 2026</p>
+    <p class="meta">Effective date: March 19, 2026 &nbsp;·&nbsp; Last updated: July 25, 2026</p>
 
-    <p>TacoAtlas is a personal taco (and burrito / torta) logging app. Your data stays yours. This policy explains what is collected, why, and how it is handled.</p>
+    <p>TacoAtlas is a personal taco (and burrito / torta) logging app with a shared, crowdsourced map. This policy explains what is collected, why, and how it is handled.</p>
+
+    <div class="notice">
+      <strong>Beta notice — please read section 3.</strong> While TacoAtlas is in open beta, every new account is
+      automatically connected to the founder account, and the founder can see all app activity — including entries
+      you have marked private. Section 3 explains exactly what this means and how to opt out.
+    </div>
 
     <h2>1. Who We Are</h2>
     <p>TacoAtlas is operated by George (contact: <a href="mailto:mographguy@gmail.com">mographguy@gmail.com</a>). References to "we", "us", or "our" mean TacoAtlas.</p>
@@ -97,27 +113,46 @@
 
     <h2>2b. Data Collected Automatically</h2>
     <ul>
-      <li><strong>Approximate location</strong> — used only when you tap "Find My Tacos" to search for nearby spots via the Google Places API. Location is not stored on our servers.</li>
-      <li><strong>Device identifiers</strong> — RevenueCat may log an anonymous install ID to verify your Pro purchase across reinstalls. No personally identifiable data is tied to this ID.</li>
+      <li><strong>Your device location</strong> — read when you log a spot from where you are standing, or when you search for nearby spots via the Google Places API. Your device's own position is not stored on our servers as a location history.</li>
+      <li><strong>Spot coordinates</strong> — the latitude and longitude of each spot you save <em>are</em> stored on our servers. That is what puts the pin on the map. If you log a spot at your home or workplace, those coordinates are stored like any other spot.</li>
+      <li><strong>Device identifiers</strong> — RevenueCat may log an anonymous install ID to verify purchases across reinstalls. No personally identifiable data is tied to this ID.</li>
     </ul>
 
     <h2>2c. Data We Do Not Collect</h2>
     <ul>
-      <li>Precise GPS coordinates stored on our servers</li>
+      <li>Continuous or background location tracking</li>
       <li>Contacts, messages, browsing history, or any data unrelated to the app</li>
       <li>Health or financial data</li>
     </ul>
 
-    <h2>3. How We Use Your Data</h2>
+    <h2>3. Beta Program: Founder Access and Automatic Connections</h2>
+    <p>TacoAtlas is a crowdsourced map in open beta. Two things during this period are different from what you might expect, and we would rather over-explain them than surprise you.</p>
+
+    <h2>3a. Every new account is automatically connected to the founder</h2>
+    <p>When you create an account, an accepted friend connection is created between you and the founder account (<strong>@ggshubin</strong>) automatically. You do not need to approve it, and it happens for every account.</p>
+    <p>We do this so that a brand-new account isn't an empty app — you have at least one person on your map from the start. The practical consequence is that <strong>the founder can see the entries you share with friends</strong>, exactly as any other friend you added yourself could.</p>
+    <p>You can remove this connection at any time: <em>Mi Gente → the founder's entry → Remove Friend</em> (or Block). Nothing else in the app stops working if you do, and the connection is not recreated afterwards.</p>
+
+    <h2>3b. The founder can see all app activity, including private entries</h2>
+    <p>The founder account has an administrative view listing every account, every spot, and every review across the app — <strong>including entries marked "private"</strong> — together with signup dates and activity counts. It is used to operate the beta: seeing whether the app is working, which spots are being added, and where people get stuck.</p>
+    <p>This access is limited to the founder account. It is not available to other users, it is not sold or shared with anyone, and it is not used for advertising. "Private" means hidden from other users — it does not currently mean hidden from the operator of the service.</p>
+    <p>If you would rather not have something visible to the operator at all, do not log it in TacoAtlas.</p>
+
+    <h2>3c. Paid features are free during the beta</h2>
+    <p>All features previously reserved for TacoAtlas Pro — including cloud sync of your entries — are currently enabled for every account at no charge. This means your entries sync to our servers by default. You can still keep an entry off the shared map by setting its privacy to "private", subject to section 3b.</p>
+
+    <h2>4. How We Use Your Data</h2>
     <ul>
       <li>To store and sync your taco reviews across devices (Supabase)</li>
+      <li>To show your spots, and spots shared publicly or with friends, on the map</li>
       <li>To find nearby taco spots when you request it (Google Places API)</li>
-      <li>To verify and restore your Pro purchase (RevenueCat)</li>
+      <li>To verify and restore purchases (RevenueCat)</li>
+      <li>To operate the beta and understand how the app is being used (see section 3)</li>
       <li>To operate your account and respond to support requests</li>
     </ul>
     <p>We do not sell your data. We do not use your data for advertising.</p>
 
-    <h2>4. Third-Party Services</h2>
+    <h2>5. Third-Party Services</h2>
     <p>TacoAtlas uses the following third-party services, each with its own privacy policy:</p>
     <ul>
       <li><strong>Supabase</strong> — cloud database and authentication. <a href="https://supabase.com/privacy" target="_blank">Privacy Policy</a></li>
@@ -125,26 +160,27 @@
       <li><strong>RevenueCat</strong> — in-app purchase management. <a href="https://www.revenuecat.com/privacy" target="_blank">Privacy Policy</a></li>
     </ul>
 
-    <h2>5. Data Storage and Security</h2>
-    <p>Review data is stored locally on your device via AsyncStorage. If you enable cloud sync (Pro), your data is also stored in Supabase on servers located in the United States. We use industry-standard encryption in transit (HTTPS/TLS) and at rest.</p>
+    <h2>6. Data Storage and Security</h2>
+    <p>Review data is stored locally on your device via AsyncStorage. It is also stored in Supabase on servers located in the United States — during the beta this applies to every account, not only paid ones (see section 3c). We use industry-standard encryption in transit (HTTPS/TLS) and at rest.</p>
 
-    <h2>6. Data Retention</h2>
+    <h2>7. Data Retention</h2>
     <p>Your data is kept as long as your account is active. If you delete your account, all associated data is removed from our servers within 30 days.</p>
 
-    <h2>7. Account Deletion</h2>
+    <h2>8. Account Deletion</h2>
     <p>You can request account deletion at any time using the form below. We will process your request within 7 business days.</p>
     <p><a href="https://forms.gle/SdFvYRD4bjpT9Thv9" target="_blank">Request Account Deletion →</a></p>
 
-    <h2>8. Children's Privacy</h2>
+    <h2>9. Children's Privacy</h2>
     <p>TacoAtlas is not directed at children under 13. We do not knowingly collect data from children under 13. If you believe a child has provided us with personal information, contact us and we will delete it.</p>
 
-    <h2>9. Your Rights</h2>
+    <h2>10. Your Rights</h2>
     <p>Depending on your location, you may have the right to access, correct, or delete your personal data. To exercise any of these rights, email <a href="mailto:mographguy@gmail.com">mographguy@gmail.com</a>.</p>
 
-    <h2>10. Changes to This Policy</h2>
+    <h2>11. Changes to This Policy</h2>
     <p>We may update this policy from time to time. When we do, we'll update the "Last updated" date at the top. Continued use of the app after changes means you accept the revised policy.</p>
+    <p><strong>July 25, 2026:</strong> added section 3 (automatic founder connection, founder access to all activity, paid features free during the beta) and clarified in section 2b that saved spot coordinates are stored on our servers.</p>
 
-    <h2>11. Contact</h2>
+    <h2>12. Contact</h2>
     <p>Questions? Email <a href="mailto:mographguy@gmail.com">mographguy@gmail.com</a>.</p>
 
     <hr />

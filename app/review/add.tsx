@@ -453,6 +453,29 @@ export default function ReviewWizard() {
                     />
                   )}
 
+              {/* === Photos === */}
+                  <Text style={styles.sectionTitle}>Photos</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoScroll} contentContainerStyle={styles.photoScrollContent}>
+                    {store.photoUris.map((uri) => (
+                      <TouchableOpacity key={uri} style={styles.photoThumb} onPress={() => setLightboxUri(uri)} activeOpacity={0.8}>
+                        <Image source={{ uri }} style={styles.thumbImg} />
+                        <TouchableOpacity style={styles.removePhotoBtn} onPress={() => store.removePhoto(uri)}>
+                          <Ionicons name="close-circle" size={20} color={colors.cream} />
+                        </TouchableOpacity>
+                      </TouchableOpacity>
+                    ))}
+                    <TouchableOpacity style={styles.addPhotoBtn} onPress={() => handleAddPhoto('library')} disabled={pickingPhoto}>
+                      {pickingPhoto
+                        ? <ActivityIndicator size="small" color={colors.amber} />
+                        : <Ionicons name="image-outline" size={24} color={colors.amber} />}
+                      <Text style={styles.addPhotoText}>Gallery</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.addPhotoBtn} onPress={() => handleAddPhoto('camera')} disabled={pickingPhoto}>
+                      <Ionicons name="camera-outline" size={24} color={colors.amber} />
+                      <Text style={styles.addPhotoText}>Camera</Text>
+                    </TouchableOpacity>
+                  </ScrollView>
+
               {/* === The Verdict — the under-a-minute essentials === */}
                   <Text style={styles.sectionTitle}>The Verdict</Text>
                   <Text style={styles.fieldLabel}>Overall Rating</Text>
@@ -605,29 +628,6 @@ export default function ReviewWizard() {
                       )}
                     />
                   )}
-
-              {/* === Photos === */}
-                  <Text style={styles.sectionTitle}>Photos</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoScroll} contentContainerStyle={styles.photoScrollContent}>
-                    {store.photoUris.map((uri) => (
-                      <TouchableOpacity key={uri} style={styles.photoThumb} onPress={() => setLightboxUri(uri)} activeOpacity={0.8}>
-                        <Image source={{ uri }} style={styles.thumbImg} />
-                        <TouchableOpacity style={styles.removePhotoBtn} onPress={() => store.removePhoto(uri)}>
-                          <Ionicons name="close-circle" size={20} color={colors.cream} />
-                        </TouchableOpacity>
-                      </TouchableOpacity>
-                    ))}
-                    <TouchableOpacity style={styles.addPhotoBtn} onPress={() => handleAddPhoto('library')} disabled={pickingPhoto}>
-                      {pickingPhoto
-                        ? <ActivityIndicator size="small" color={colors.amber} />
-                        : <Ionicons name="image-outline" size={24} color={colors.amber} />}
-                      <Text style={styles.addPhotoText}>Gallery</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.addPhotoBtn} onPress={() => handleAddPhoto('camera')} disabled={pickingPhoto}>
-                      <Ionicons name="camera-outline" size={24} color={colors.amber} />
-                      <Text style={styles.addPhotoText}>Camera</Text>
-                    </TouchableOpacity>
-                  </ScrollView>
 
               {/* === Notes === */}
                   <Text style={styles.sectionTitle}>Notes</Text>

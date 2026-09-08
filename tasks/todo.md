@@ -1,3 +1,159 @@
+# Fix: undeclared photo/video permissions flagged by Play Console (2026-08-24)
+
+## Why
+
+Play Console's Photo and video permissions review flagged the app for declaring
+`READ_MEDIA_IMAGES` and `READ_MEDIA_VIDEO` (Android 13+ granular media permissions)
+without describing their use. expo-media-library's config plugin requests all three
+granular permissions (`photo`/`video`/`audio`) by default; the app doesn't need any
+of them — `photoService` only ever calls the library with `writeOnly: true` to mirror
+captured photos into the gallery, there's no video feature, and existing photos are
+picked via expo-image-picker's system Photo Picker (no media-library read access
+needed).
+
+## Plan
+
+- [x] 1. `app.json` — set `granularPermissions: []` on the `expo-media-library` plugin
+      config, verified against `node_modules/expo-media-library/plugin/src/withMediaLibrary.ts`
+      (v55.0.18) that this is a real option and maps directly to the three flagged
+      permissions (`GRANULAR_PERMISSIONS_MAP`), leaving `READ_MEDIA_VISUAL_USER_SELECTED`
+      and storage permissions (which are actually used) untouched.
+- [x] 2. Verify: `tsc` clean, jest 28 suites / 144 tests green (app.json-only change,
+      no code touched).
+- [x] 3. CHANGELOG entry (versionCode 50).
+- [x] 4. Production AAB **versionCode 50** built and manifest verified to no longer
+      declare the three permissions (see below).
+
+## Verification performed
+
+- Confirmed in `expo-media-library`'s plugin source that `granularPermissions` defaults
+  to `['photo', 'video', 'audio']` (→ `READ_MEDIA_IMAGES`/`READ_MEDIA_VIDEO`/`READ_MEDIA_AUDIO`)
+  and that passing `[]` filters all three out of `AndroidConfig.Permissions.withPermissions`.
+- `tsc --noEmit` clean; `jest` 28/28 suites, 144/144 tests passing.
+
+## Build versionCode 50 — verified fixed
+
+AAB: https://expo.dev/artifacts/eas/JLE1Ype5yyBqpoEMUBAn1UoZ1KJ2GkqY4zxDrT3xywo.aab
+(EAS build `0d5de99d-7dc7-4d69-85c9-5ecc69c74039`)
+
+Confirmed by extracting `base/manifest/AndroidManifest.xml` from the AAB
+(`unzip -p tacoatlas.aab base/manifest/AndroidManifest.xml`) and searching its raw
+bytes for permission strings — the protobuf manifest format keeps permission names
+as plain UTF-8 substrings, so no decoder is needed, just `strings manifest.pb | grep
+permission`. `READ_MEDIA_IMAGES`, `READ_MEDIA_VIDEO`, and `READ_MEDIA_AUDIO` are
+absent; `READ_MEDIA_VISUAL_USER_SELECTED` and the storage permissions (still
+legitimately needed) are present as expected.
+
+This build also carries the still-uncommitted "Open the Gates" work below (EAS builds
+the working tree, not `HEAD`) — see that section for its own verification.
+
+---
+
+# Open the Gates — Pro-for-all, founder auto-friend, founder dashboard (2026-07-25)
+
+## Why
+
+TacoAtlas is crowdsourced: the atlas is only worth opening if other people
+filled it in. The free tier gates exactly the behaviours that create that
+value — public privacy, friends, cloud sync, more than 15 spots — so during
+the land-grab phase it suppresses supply and confuses early adopters. Free
+tier is being *switched off*, not deleted: every gated branch stays in the
+codebase behind one flag so it can come back once adoption justifies it.
+
+## Plan
+
+- [x] 1. `src/config/features.ts` — single `PRO_FOR_ALL` flag with the rationale in a comment
+- [x] 2. `src/store/proStore.ts` — when the flag is on, `isPro` starts `true`, `checkPro()` short-circuits (no RC/server round trip), `setPro` can't downgrade below the floor. Every one of the 9 consumers flips off this one value; no gate code deleted.
+- [x] 3. `app/(tabs)/profile.tsx` — account label reads "Founding Member" under the flag, not "✦ Pro Member" (nobody paid; don't imply they did)
+- [x] 4. Migration `founder_auto_friend`: add `profiles.is_founder`; mark the owner account (looked up by email, not a hardcoded UUID) as founder **and** admin; `SECURITY DEFINER` trigger on profile insert that writes an `accepted` friendship founder→new user; backfill existing profiles. Must check **both** directions — the unique index is directional `(requester_id, addressee_id)` — and never overwrite an existing `blocked`/`pending` row.
+- [x] 5. Migration `admin_activity_rpcs`: `admin_user_roster()` + `admin_recent_activity(int)`, both `SECURITY DEFINER` and both hard-gated on the caller's `is_admin` (raise, don't return empty)
+- [x] 6. `src/services/adminService.ts` + `app/admin/activity.tsx` — founder dashboard: roster (who signed up, pin/review counts, last active) and a cross-user activity feed. Reached from Profile → Founder, alongside a link to the existing queue.
+- [x] 7. `src/types/database.ts` — `is_founder` on `Profile`
+- [x] 8. Tests: proStore flag behaviour (on and off), welcomeStore persistence, auto-friend trigger verified against the live DB with a real signup
+- [x] 9. Verify: `tsc` clean, jest 28 suites / 144 tests green, trigger + RPC gate proven by query
+- [x] 10. CHANGELOG entry
+- [x] 11. Privacy policy: section 4 (auto-friend, founder access, paid features free) written into the **landing repo's** `privacy.html`, pushed (`ef0ac78`), deployed, and verified live. The draft in this repo's `docs/privacy-policy.html` was the wrong file — see below.
+- [x] 13. Production AAB **versionCode 49** built and contents verified (see below).
+- [x] 12. Quick-start welcome screen (`app/welcome.tsx` + `src/components/welcome/QuickStartArt.tsx`), switch on the screen itself and in Profile → App, launch routing via `welcomeStore`
+
+## Verification performed
+
+- Migrations applied to the live project (`szblruvrajswbpksinkv`) and checked by query:
+  all 12 non-founder profiles have exactly one founder link (no duplicates); the four
+  pre-existing friendships — including two where the *user* was the requester — were
+  left untouched, proving the both-directions check.
+- Auto-friend trigger exercised by inserting a real `auth.users` row: exactly one
+  `accepted` link created, test user then deleted (0 leftover).
+- RPC gate exercised in both directions: founder gets rows, a normal user raises
+  `insufficient_privilege` rather than receiving an empty list.
+- Welcome screen art rendered to PNG and inspected. First pass showed the hand-drawn
+  taco row reading as buns and overflowing its card — replaced with the real
+  `taco-glyph.svg` at the same opacity ramp `TacoRating` uses.
+
+## Not verified
+
+The three new/changed screens (welcome, founder dashboard, profile settings rows)
+have not been run on a device — the app needs a dev build for the native Mapbox
+modules. Typecheck and the test suite pass; the visual check above was a static
+HTML render of the same markup and colours, not the React Native screen.
+
+## Build versionCode 49 — verified to contain this work
+
+AAB: https://expo.dev/artifacts/eas/MyrY2_SK8dTE-qvJUKTG9T5U1cZNlsfD_U1IVpWX4EU.aab
+
+EAS records `Commit fe15b91` (the previous commit) because this work is still
+uncommitted — but EAS uploads the **working tree**, not `HEAD`, so the changes are
+in the binary. Confirmed by extracting the AAB and grepping the Hermes bundle for
+12 strings that only exist in this change (`Start my atlas`, `Founder View`,
+`admin_user_roster`, `showWelcomeOnLaunch`, `Show Guide on Launch`, …) — all present.
+
+Gotcha for next time: `grep` alone reports nothing on the Hermes bundle because it
+is binary — use `grep -a`. And strings containing any non-ASCII character (e.g.
+`✦ Founding Member`) are stored **UTF-16**, so an ASCII grep misses them; match
+`F.o.u.n.d.i.n.g` or use `grep -a -P` instead. Both tripped me up and each looked
+exactly like "the change isn't in the build".
+
+## RESOLVED: the privacy disclosure is now live
+
+Auto-friending every signup to the founder account means the founder sees their
+`friends`-only content, and the dashboard reads across privacy settings entirely.
+That needs to be disclosed *before* a build with these changes reaches users.
+
+`docs/privacy-policy.html` in **this** repo is a stale copy and is not what users
+read. Verified 2026-07-25 by fetching the live page:
+
+| | this repo's `docs/privacy-policy.html` | live tacoatlas.app/privacy |
+|---|---|---|
+| Last updated | Mar 19, 2026 (now Jul 25 after this edit) | Jun 9, 2026 |
+| Sections | 11, "1. Who We Are" … | 10, "1. Information We Collect" … |
+
+The live document is served from the separate landing repo
+**github.com/ggshubin/tacoatlas** (Vercel, `index.html` + static pages at repo root)
+and has diverged — it is a different document, not an older revision of this one.
+The in-app Legal → Privacy Policy link points at the live URL.
+
+**Done 2026-07-25:** the disclosure was written into the landing repo's `privacy.html`
+as section 4 (4a auto-connection + how to remove it, 4b founder access to private
+entries, 4c paid features free), with sections 1, 3 and 5 cross-referencing it and a
+dated entry in "Changes to This Policy". Pushed as `ef0ac78`, auto-deployed by Vercel,
+and verified live by fetching the page: "Last updated: July 25, 2026", 11 sections,
+section 4 present.
+
+**Still open — decide what to do with `docs/privacy-policy.html` in this repo.** It is
+a stale, divergent second copy of a legal document and is what caused this near-miss:
+it was edited first, in good faith, and would have shipped as "done" while users saw
+nothing. Recommend deleting it or reducing it to a one-line pointer at
+tacoatlas.app/privacy. Left in place because deleting a legal doc should be your call.
+
+## Reverting to a paid tier later
+
+Set `PRO_FOR_ALL = false`. That restores the 15-spot cap, private-only
+privacy, the Mi Gente gate, Pro-only food categories, the Places search
+quota, the upgrade nudges and the paywall — all still present in the code.
+The founder auto-friend and dashboard are independent of the flag.
+
+---
+
 # Design Audit — Phase 3: Brand glyph, input flows, identity hooks (2026-07-04)
 
 ## Plan

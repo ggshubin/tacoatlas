@@ -76,6 +76,7 @@ export interface Profile {
   favorite_taco: string | null
   is_admin: boolean
   is_pro: boolean
+  is_founder: boolean
   is_profile_public: boolean
   is_name_public: boolean
   are_reviews_public: boolean

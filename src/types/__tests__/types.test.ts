@@ -37,6 +37,7 @@ describe('Type shapes', () => {
       favorite_taco: null,
       is_admin: false,
       is_pro: false,
+      is_founder: false,
       created_at: '',
       is_profile_public: true,
       is_name_public: true,

@@ -51,14 +51,15 @@ export async function savePushToken(userId: string, token: string): Promise<void
     .upsert({ user_id: userId, token, updated_at: new Date().toISOString() })
 }
 
+// The requester's username is resolved server-side from the verified JWT --
+// never sent from here. See supabase/functions/send-friend-notification.
 export async function sendFriendRequestNotification(
-  addresseeId: string,
-  requesterUsername: string
+  addresseeId: string
 ): Promise<void> {
   const session = (await supabase.auth.getSession()).data.session
   if (!session) return
 
   await supabase.functions.invoke('send-friend-notification', {
-    body: { addresseeId, requesterUsername },
+    body: { addresseeId },
   })
 }
