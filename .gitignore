@@ -45,3 +45,6 @@ yarn-error.*
 .claude/
 supabase/.temp/
 .superpowers/
+
+# Local throwaway staging (not for repo)
+_to_delete/
