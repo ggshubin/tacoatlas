@@ -43,6 +43,9 @@ export default function AnnouncementsScreen() {
   function renderItem({ item }: { item: Announcement }) {
     const unread = !isRead(item, readSet, since)
     const expanded = expandedId === item.id
+    // A row read only because it predates the viewer's join cutoff (no
+    // explicit receipt) has nothing to toggle: there is no read id to flip.
+    const canToggleRead = unread || readSet.has(item.id)
     return (
       <TouchableOpacity
         style={styles.row}
@@ -51,8 +54,8 @@ export default function AnnouncementsScreen() {
         accessibilityRole="button"
         accessibilityState={{ expanded }}
         accessibilityLabel={`${unread ? 'Unread. ' : ''}${item.title}`}
-        accessibilityActions={[{ name: 'toggleRead', label: unread ? 'Mark as read' : 'Mark as unread' }]}
-        onAccessibilityAction={() => setRead(item.id, unread)}
+        accessibilityActions={canToggleRead ? [{ name: 'toggleRead', label: unread ? 'Mark as read' : 'Mark as unread' }] : undefined}
+        onAccessibilityAction={canToggleRead ? () => setRead(item.id, unread) : undefined}
       >
         <View style={styles.rowHeader}>
           <View style={[styles.dot, !unread && styles.dotHidden]} />
@@ -64,14 +67,16 @@ export default function AnnouncementsScreen() {
         {expanded && (
           <View style={styles.expanded}>
             <Text style={styles.body}>{item.body}</Text>
-            <TouchableOpacity
-              onPress={() => setRead(item.id, unread)}
-              hitSlop={12}
-              accessibilityRole="button"
-              style={styles.toggleTouchable}
-            >
-              <Text style={styles.toggle}>{unread ? 'Mark as read' : 'Mark as unread'}</Text>
-            </TouchableOpacity>
+            {canToggleRead && (
+              <TouchableOpacity
+                onPress={() => setRead(item.id, unread)}
+                hitSlop={12}
+                accessibilityRole="button"
+                style={styles.toggleTouchable}
+              >
+                <Text style={styles.toggle}>{unread ? 'Mark as read' : 'Mark as unread'}</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
       </TouchableOpacity>

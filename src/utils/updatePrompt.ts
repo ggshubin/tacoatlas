@@ -14,7 +14,7 @@ export function updateStatusLabel(status: UpdateStatus): string | null {
 }
 
 // Never interrupt someone mid-log. The prompt reappears when they leave.
-const BUSY_ROUTE_PREFIXES = ['/review', '/pin']
+const BUSY_ROUTE_PREFIXES = ['/review', '/pin', '/welcome', '/onboarding']
 
 export function shouldShowUpdatePrompt(input: {
   status: UpdateStatus

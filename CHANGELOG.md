@@ -9,10 +9,11 @@ Maintenance rule: when a production build is cut, add its entry here in the same
 ## Unreleased
 
 ### Added
-- **Announcements** in Settings, with a banner for anything new and read/unread per item. New users only see announcements sent after they joined.
+- **Announcements** in Settings, with a banner for anything new and read/unread per item. New users aren't shown older announcements as unread.
 - **Update popup**: when an update finishes downloading, TacoAtlas offers to restart into it. Rollbacks of a bad update are applied the same way.
 - Settings shows the full version and build, e.g. `1.3.1 (52)`.
 - Founder tools to write, send, edit and delete announcements.
+- A badge on the Profile tab counts unread announcements.
 
 ### Security
 - Closed a hole that let any signed-in user grant themselves admin or Pro (migration `lock_privileged_profile_columns`, applied to production 2026-09-22).

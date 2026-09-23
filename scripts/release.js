@@ -25,8 +25,29 @@ function today() {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
+function readEnvFile(name) {
+  const p = path.join(root, name)
+  return fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null
+}
+
+// Never print keys or any other env value: only the Supabase host, so a
+// release run makes it obvious (without leaking secrets) which backend the
+// bundle will call.
+function printSupabaseTarget() {
+  const text = readEnvFile('.env.local') ?? readEnvFile('.env')
+    ?? (process.env.EXPO_PUBLIC_SUPABASE_URL ? `EXPO_PUBLIC_SUPABASE_URL=${process.env.EXPO_PUBLIC_SUPABASE_URL}` : null)
+  const host = lib.supabaseHostFrom(text)
+  console.log(`Bundling against Supabase: ${host ?? '(not set)'}`)
+}
+
+function currentBranch() {
+  return execSync('git rev-parse --abbrev-ref HEAD', { cwd: root }).toString().trim()
+}
+
 function main() {
   const { mode, level, dryRun } = lib.parseArgs(process.argv.slice(2))
+
+  if (!dryRun && currentBranch() !== 'main') throw new Error('Releases must run from main.')
 
   const dirty = execSync('git status --porcelain', { cwd: root }).toString().trim()
   if (dirty && !dryRun) throw new Error('Working tree is not clean. Commit or stash first.')
@@ -36,25 +57,45 @@ function main() {
   const summary = lib.unreleasedSummary(changelog)
   const current = JSON.parse(appJson).expo.version
 
+  printSupabaseTarget()
+
   if (mode === 'store') {
     const next = lib.bumpVersion(current, level)
     console.log(`Store release ${current} -> ${next}: ${summary}`)
-    if (!dryRun) {
-      fs.writeFileSync(appJsonPath, lib.setAppJsonVersion(appJson, next))
-      fs.writeFileSync(changelogPath, lib.stampUnreleased(changelog, `${next} (${today()})`))
+    if (dryRun) {
+      sh('eas build --profile production --platform android', dryRun)
+      console.log(`\nWhen EAS finishes, add the build number to the CHANGELOG heading: "## ${next} (<build>) (${today()})".`)
+      return
+    }
+    fs.writeFileSync(appJsonPath, lib.setAppJsonVersion(appJson, next))
+    fs.writeFileSync(changelogPath, lib.stampUnreleased(changelog, `${next} (${today()})`))
+    try {
+      sh('eas build --profile production --platform android', dryRun)
+    } catch (e) {
+      fs.writeFileSync(appJsonPath, appJson)
+      fs.writeFileSync(changelogPath, changelog)
+      throw e
     }
     sh('git add app.json CHANGELOG.md', dryRun)
     sh(`git commit -m "chore: release ${next}"`, dryRun)
-    sh('eas build --profile production --platform android', dryRun)
     console.log(`\nWhen EAS finishes, add the build number to the CHANGELOG heading: "## ${next} (<build>) (${today()})".`)
     return
   }
 
   console.log(`OTA update on ${current}: ${summary}`)
-  if (!dryRun) fs.writeFileSync(changelogPath, lib.stampUnreleased(changelog, `${current} OTA update (${today()})`))
+  if (dryRun) {
+    sh(`eas update --channel production --message ${JSON.stringify(summary)}`, dryRun)
+    return
+  }
+  fs.writeFileSync(changelogPath, lib.stampUnreleased(changelog, `${current} OTA update (${today()})`))
+  try {
+    sh(`eas update --channel production --message ${JSON.stringify(summary)}`, dryRun)
+  } catch (e) {
+    fs.writeFileSync(changelogPath, changelog)
+    throw e
+  }
   sh('git add CHANGELOG.md', dryRun)
   sh(`git commit -m "chore: OTA update on ${current}"`, dryRun)
-  sh(`eas update --channel production --message ${JSON.stringify(summary)}`, dryRun)
 }
 
 try {

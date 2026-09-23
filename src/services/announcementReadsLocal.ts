@@ -4,9 +4,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 // announcement_reads and cleared on sign-in by announcementStore.
 const KEY = 'announcements:read_ids'
 
-// First-seen timestamp for a signed-out device, used as the unread cutoff so
-// a new user never sees a backlog of older announcements as unread.
-const SINCE_KEY = 'announcements:since'
+// Clock-free seeding flag for a signed-out device: on first refresh, every
+// currently-fetched announcement is marked read so a new (or freshly
+// signed-out) device never sees a backlog of older items as unread, without
+// relying on the device clock.
+const SEEDED_KEY = 'announcements:seeded'
 
 export async function getLocalReadIds(): Promise<string[]> {
   try {
@@ -29,15 +31,21 @@ export async function clearLocalReadIds(): Promise<void> {
   await AsyncStorage.removeItem(KEY)
 }
 
-export async function getOrCreateLocalSince(): Promise<string> {
+export async function isLocalSeeded(): Promise<boolean> {
   try {
-    const stored = await AsyncStorage.getItem(SINCE_KEY)
-    if (stored !== null && !Number.isNaN(Date.parse(stored))) return stored
-    const now = new Date().toISOString()
-    await AsyncStorage.setItem(SINCE_KEY, now)
-    return now
+    return (await AsyncStorage.getItem(SEEDED_KEY)) === '1'
   } catch (e: unknown) {
-    console.warn('[announcements] local since unavailable, using now:', e)
-    return new Date().toISOString()
+    // Fail quiet: treat an unreadable flag as already seeded so a storage
+    // error never dumps a backlog of older announcements as unread.
+    console.warn('[announcements] local seeded flag unreadable, treating as seeded:', e)
+    return true
   }
+}
+
+export async function markLocalSeeded(): Promise<void> {
+  await AsyncStorage.setItem(SEEDED_KEY, '1')
+}
+
+export async function clearLocalSeeded(): Promise<void> {
+  await AsyncStorage.removeItem(SEEDED_KEY)
 }

@@ -10,7 +10,9 @@ jest.mock('../../services/announcementReadsLocal', () => ({
   getLocalReadIds: jest.fn(),
   setLocalReadIds: jest.fn(),
   clearLocalReadIds: jest.fn(),
-  getOrCreateLocalSince: jest.fn(),
+  isLocalSeeded: jest.fn(),
+  markLocalSeeded: jest.fn(),
+  clearLocalSeeded: jest.fn(),
 }))
 
 import * as service from '../../services/announcementService'
@@ -33,8 +35,6 @@ function viewer(id: string, joinedAt: string): AnnouncementViewer {
   return { id, joinedAt }
 }
 
-const DEFAULT_LOCAL_SINCE = '2026-09-01T00:00:00Z'
-
 beforeEach(() => {
   jest.resetAllMocks()
   useAnnouncementStore.setState({
@@ -47,7 +47,9 @@ beforeEach(() => {
   loc.getLocalReadIds.mockResolvedValue([])
   loc.setLocalReadIds.mockResolvedValue()
   loc.clearLocalReadIds.mockResolvedValue()
-  loc.getOrCreateLocalSince.mockResolvedValue(DEFAULT_LOCAL_SINCE)
+  loc.isLocalSeeded.mockResolvedValue(true)
+  loc.markLocalSeeded.mockResolvedValue()
+  loc.clearLocalSeeded.mockResolvedValue()
 })
 
 afterEach(() => {
@@ -78,12 +80,11 @@ describe('refresh', () => {
   it('signed in: sets since to the viewer joinedAt', async () => {
     await state().refresh(viewer('u1', '2026-09-05T00:00:00Z'))
     expect(state().since).toBe('2026-09-05T00:00:00Z')
-    expect(loc.getOrCreateLocalSince).not.toHaveBeenCalled()
   })
 
-  it('signed out: sets since from the local since store', async () => {
+  it('signed out: since is always null (clock-free cutoff)', async () => {
     await state().refresh(null)
-    expect(state().since).toBe(DEFAULT_LOCAL_SINCE)
+    expect(state().since).toBeNull()
   })
 
   it('is throttled for the same user unless forced', async () => {
@@ -152,6 +153,39 @@ describe('refresh', () => {
 
     expect(state().userId).toBe('u2')
     expect(state().items).toEqual([B])
+  })
+
+  it('signed out: first refresh marks all fetched items as read and seeds the device', async () => {
+    loc.isLocalSeeded.mockResolvedValue(false)
+    await state().refresh(null)
+    expect(state().readIds).toEqual(['a', 'b'])
+    expect(loc.setLocalReadIds).toHaveBeenCalledWith(['a', 'b'])
+    expect(loc.markLocalSeeded).toHaveBeenCalled()
+  })
+
+  it('signed out: a second refresh with a new item leaves only the new item unread', async () => {
+    loc.isLocalSeeded.mockResolvedValueOnce(false)
+    await state().refresh(null)
+    expect(state().readIds).toEqual(['a', 'b'])
+
+    const C = make('c', '2026-09-22T00:00:00Z')
+    svc.fetchPublished.mockResolvedValue([A, B, C])
+    loc.getLocalReadIds.mockResolvedValue(['a', 'b'])
+    loc.isLocalSeeded.mockResolvedValue(true)
+    await state().refresh(null, { force: true })
+    expect(state().readIds).toEqual(['a', 'b'])
+    expect(selectUnreadCount(state())).toBe(1)
+    expect(selectLatestUnread(state())).toBe(C)
+  })
+
+  it('sign-in then sign-out reseeds: clears the seeded flag and local ids before reading the feed', async () => {
+    await state().refresh(viewer('u1', '2026-09-01T00:00:00Z'))
+    loc.isLocalSeeded.mockResolvedValue(false)
+    loc.getLocalReadIds.mockResolvedValue([])
+    await state().refresh(null, { force: true })
+    expect(loc.clearLocalSeeded).toHaveBeenCalled()
+    expect(loc.clearLocalReadIds).toHaveBeenCalled()
+    expect(state().readIds).toEqual(['a', 'b'])
   })
 })
 

@@ -48,6 +48,36 @@ describe('stampUnreleased', () => {
   })
 })
 
+describe('supabaseHostFrom', () => {
+  it('returns the host from a plain assignment', () => {
+    expect(lib.supabaseHostFrom('EXPO_PUBLIC_SUPABASE_URL=https://abcd1234.supabase.co\n')).toBe('abcd1234.supabase.co')
+  })
+
+  it('strips surrounding double or single quotes', () => {
+    expect(lib.supabaseHostFrom('EXPO_PUBLIC_SUPABASE_URL="https://abcd1234.supabase.co"\n')).toBe('abcd1234.supabase.co')
+    expect(lib.supabaseHostFrom("EXPO_PUBLIC_SUPABASE_URL='https://abcd1234.supabase.co'\n")).toBe('abcd1234.supabase.co')
+  })
+
+  it('ignores commented-out lines', () => {
+    const text = '# EXPO_PUBLIC_SUPABASE_URL=https://commented.supabase.co\nEXPO_PUBLIC_SUPABASE_URL=https://real.supabase.co\n'
+    expect(lib.supabaseHostFrom(text)).toBe('real.supabase.co')
+  })
+
+  it('returns null when the file is null or the key is missing', () => {
+    expect(lib.supabaseHostFrom(null)).toBeNull()
+    expect(lib.supabaseHostFrom('OTHER_VAR=1\n')).toBeNull()
+  })
+
+  it('returns null for an unparseable URL rather than throwing', () => {
+    expect(lib.supabaseHostFrom('EXPO_PUBLIC_SUPABASE_URL=not-a-url\n')).toBeNull()
+  })
+
+  it('picks the value among other variables', () => {
+    const text = 'FOO=bar\nEXPO_PUBLIC_SUPABASE_URL=https://abcd1234.supabase.co\nBAZ=qux\n'
+    expect(lib.supabaseHostFrom(text)).toBe('abcd1234.supabase.co')
+  })
+})
+
 describe('parseArgs', () => {
   it('defaults to patch, not dry run', () => {
     expect(lib.parseArgs(['store'])).toEqual({ mode: 'store', level: 'patch', dryRun: false })

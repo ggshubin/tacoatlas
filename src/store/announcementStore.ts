@@ -6,7 +6,8 @@ import {
   fetchPublished, fetchReadIds, markRead, markUnread,
 } from '../services/announcementService'
 import {
-  getLocalReadIds, setLocalReadIds, clearLocalReadIds, getOrCreateLocalSince,
+  getLocalReadIds, setLocalReadIds, clearLocalReadIds,
+  isLocalSeeded, markLocalSeeded, clearLocalSeeded,
 } from '../services/announcementReadsLocal'
 
 const REFRESH_THROTTLE_MS = 5 * 60 * 1000
@@ -44,6 +45,21 @@ async function mergeLocalReads(userId: string, knownIds: ReadonlySet<string>): P
   } catch (e: unknown) {
     console.warn('[announcements] local read merge failed, will retry:', e)
   }
+}
+
+// Signed-out, clock-free cutoff: on the first refresh of a signed-out
+// session, every currently-fetched announcement is treated as read (a device
+// never sees a backlog of older items as unread), then the device is marked
+// seeded so later, genuinely-new items surface as unread. Already-signed-out
+// devices keep whatever local read ids they have plus this feed's ids merged
+// in, so an unread item stays unread until read or until the next seed.
+async function signedOutReadIds(items: readonly Announcement[]): Promise<string[]> {
+  const local = await getLocalReadIds()
+  if (await isLocalSeeded()) return local
+  const merged = [...new Set([...local, ...items.map(a => a.id)])]
+  await setLocalReadIds(merged)
+  await markLocalSeeded()
+  return merged
 }
 
 async function persistReads(
@@ -95,11 +111,17 @@ export const useAnnouncementStore = create<AnnouncementState>((set, get) => {
       if (!opts.force && userId === current && fresh) return
       const token = ++latestRefresh
       try {
+        // Signing out starts a fresh signed-out session read on the current
+        // feed, not a backlog carried over from a prior signed-out visit.
+        if (current !== null && userId === null) {
+          await clearLocalSeeded()
+          await clearLocalReadIds()
+        }
         const items = await fetchPublished()
         if (token !== latestRefresh) return
         if (userId) await mergeLocalReads(userId, new Set(items.map(a => a.id)))
-        const readIds = userId ? await fetchReadIds() : await getLocalReadIds()
-        const since = viewer ? viewer.joinedAt : await getOrCreateLocalSince()
+        const readIds = userId ? await fetchReadIds() : await signedOutReadIds(items)
+        const since = viewer ? viewer.joinedAt : null
         if (token !== latestRefresh) return
         set({
           items, readIds, userId, since, lastRefreshAt: Date.now(),

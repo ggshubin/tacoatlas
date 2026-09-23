@@ -28,7 +28,7 @@ describe('shouldShowUpdatePrompt', () => {
   it('hides unless ready', () => {
     expect(shouldShowUpdatePrompt({ ...base, status: 'downloading' })).toBe(false)
   })
-  it.each(['/review/add', '/pin/add'])('waits while %s is open', pathname => {
+  it.each(['/review/add', '/pin/add', '/welcome', '/onboarding/step-1'])('waits while %s is open', pathname => {
     expect(shouldShowUpdatePrompt({ ...base, pathname })).toBe(false)
   })
   it('hides when another modal is blocking (stacked-modal guard)', () => {

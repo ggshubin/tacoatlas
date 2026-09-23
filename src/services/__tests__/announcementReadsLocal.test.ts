@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import {
-  getLocalReadIds, setLocalReadIds, clearLocalReadIds, getOrCreateLocalSince,
+  getLocalReadIds, setLocalReadIds, clearLocalReadIds,
+  isLocalSeeded, markLocalSeeded, clearLocalSeeded,
 } from '../announcementReadsLocal'
 
 beforeEach(async () => {
@@ -36,31 +37,26 @@ it('clears', async () => {
   await expect(getLocalReadIds()).resolves.toEqual([])
 })
 
-describe('getOrCreateLocalSince', () => {
-  it('creates and stores a since timestamp when none exists', async () => {
-    const since = await getOrCreateLocalSince()
-    expect(new Date(since).toISOString()).toBe(since)
-    await expect(AsyncStorage.getItem('announcements:since')).resolves.toBe(since)
+describe('local seeded flag', () => {
+  it('is not seeded by default', async () => {
+    await expect(isLocalSeeded()).resolves.toBe(false)
   })
 
-  it('reuses a previously stored since timestamp', async () => {
-    const first = await getOrCreateLocalSince()
-    const second = await getOrCreateLocalSince()
-    expect(second).toBe(first)
+  it('is seeded after markLocalSeeded', async () => {
+    await markLocalSeeded()
+    await expect(isLocalSeeded()).resolves.toBe(true)
   })
 
-  it('replaces an invalid stored value with a fresh timestamp', async () => {
-    await AsyncStorage.setItem('announcements:since', 'not-a-date')
-    const since = await getOrCreateLocalSince()
-    expect(new Date(since).toISOString()).toBe(since)
-    await expect(AsyncStorage.getItem('announcements:since')).resolves.toBe(since)
+  it('is not seeded after clearLocalSeeded', async () => {
+    await markLocalSeeded()
+    await clearLocalSeeded()
+    await expect(isLocalSeeded()).resolves.toBe(false)
   })
 
-  it('warns and returns now without throwing on storage errors', async () => {
+  it('warns and treats as seeded on a storage read error, to avoid a backlog', async () => {
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => {})
     jest.spyOn(AsyncStorage, 'getItem').mockRejectedValueOnce(new Error('boom'))
-    const since = await getOrCreateLocalSince()
-    expect(new Date(since).toISOString()).toBe(since)
+    await expect(isLocalSeeded()).resolves.toBe(true)
     expect(warn).toHaveBeenCalled()
     warn.mockRestore()
   })

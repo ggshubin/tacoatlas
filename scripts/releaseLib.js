@@ -39,6 +39,25 @@ function stampUnreleased(changelog, heading) {
   return changelog.replace(UNRELEASED, `## ${heading}`)
 }
 
+// Reads EXPO_PUBLIC_SUPABASE_URL out of a .env-style file's text (or null if
+// the file doesn't exist) and returns just its host, so the release script
+// can print which Supabase project a bundle will target without ever
+// printing a key or any other env value. Commented-out lines are ignored.
+function supabaseHostFrom(envFileText) {
+  if (envFileText === null || envFileText === undefined) return null
+  const line = envFileText
+    .split('\n')
+    .find(l => /^\s*EXPO_PUBLIC_SUPABASE_URL\s*=/.test(l))
+  if (!line) return null
+  const raw = line.replace(/^\s*EXPO_PUBLIC_SUPABASE_URL\s*=/, '').trim()
+  const unquoted = raw.replace(/^['"]|['"]$/g, '')
+  try {
+    return new URL(unquoted).host
+  } catch {
+    return null
+  }
+}
+
 function parseArgs(argv) {
   const [mode, ...flags] = argv
   if (mode !== 'store' && mode !== 'ota') {
@@ -48,4 +67,6 @@ function parseArgs(argv) {
   return { mode, level, dryRun: flags.includes('--dry-run') }
 }
 
-module.exports = { bumpVersion, setAppJsonVersion, unreleasedSummary, stampUnreleased, parseArgs }
+module.exports = {
+  bumpVersion, setAppJsonVersion, unreleasedSummary, stampUnreleased, supabaseHostFrom, parseArgs,
+}
