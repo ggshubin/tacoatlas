@@ -4,6 +4,7 @@ import { Platform } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { colors } from '../../src/utils/theme'
 import { useNotificationStore } from '../../src/store/notificationStore'
+import { tabBarHeight, tabBarPaddingBottom } from '../../src/utils/tabBar'
 
 export default function TabsLayout() {
   const { pendingFriendCount } = useNotificationStore()
@@ -20,8 +21,8 @@ export default function TabsLayout() {
           backgroundColor: colors.surface,
           borderTopColor: colors.surfaceBorder,
           borderTopWidth: 1,
-          height: isAndroid ? 64 + insets.bottom : 60,
-          paddingBottom: isAndroid ? 12 + insets.bottom : 8,
+          height: tabBarHeight(insets.bottom, isAndroid),
+          paddingBottom: tabBarPaddingBottom(insets.bottom, isAndroid),
         },
         tabBarLabelStyle: {
           fontSize: 10,
