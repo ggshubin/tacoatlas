@@ -7,7 +7,9 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "test": "jest"
+    "test": "jest",
+    "release:store": "node scripts/release.js store",
+    "release:ota": "node scripts/release.js ota"
   },
   "dependencies": {
     "@expo-google-fonts/fraunces": "^0.4.1",

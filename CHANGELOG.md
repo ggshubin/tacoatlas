@@ -6,6 +6,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/) loosely. Android 
 
 Maintenance rule: when a production build is cut, add its entry here in the same commit/session.
 
+## Unreleased
+
+### Added
+- **Announcements** in Settings, with a banner for anything new and read/unread per item. New users only see announcements sent after they joined.
+- **Update popup**: when an update finishes downloading, TacoAtlas offers to restart into it. Rollbacks of a bad update are applied the same way.
+- Settings shows the full version and build, e.g. `1.3.1 (52)`.
+- Founder tools to write, send, edit and delete announcements.
+
+### Security
+- Closed a hole that let any signed-in user grant themselves admin or Pro (migration `lock_privileged_profile_columns`, applied to production 2026-09-22).
+
+### Internal
+- Tables `announcements` and `announcement_reads` with admin-only writes; send time is stamped by the server.
+- `npm run release:store` / `npm run release:ota`. `version` in app.json changes only on store releases.
+- Jest now ignores `.claude/` worktree copies; the real suite is 36 suites (earlier counts included duplicates).
+
 ## versionCode 52 — 2026-09-08 (rebuild for fresh version code)
 
 Identical app contents to versionCode 51 (same commit `7e15c15`). Rebuilt only because versionCode 51 was consumed by a Play Console upload attempt and could not be reused ("Version code 51 has already been used"), so it was never rolled out. See the versionCode 51 entry below for the actual changes (review-form Photos reorder, etc.).
