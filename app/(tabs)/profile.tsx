@@ -1,14 +1,14 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback } from 'react'
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   ActivityIndicator, Image, Modal, TextInput, KeyboardAvoidingView, Platform, Alert, Switch, Linking,
 } from 'react-native'
 import { useFocusEffect, router } from 'expo-router'
-import Constants from 'expo-constants'
-import * as Updates from 'expo-updates'
 import { Ionicons } from '@expo/vector-icons'
 import { AppBottomSheet } from '../../src/components/AppBottomSheet'
 import { TasteProfile } from '../../src/components/TasteProfile'
+import { AppSection } from '../../src/components/settings/AppSection'
+import { settingsStyles } from '../../src/components/settings/settingsStyles'
 import { useAuthStore } from '../../src/store/authStore'
 import { useProStore } from '../../src/store/proStore'
 import { localStorageService } from '../../src/services/localStorage'
@@ -19,7 +19,6 @@ import { colors, spacing, radius, fonts } from '../../src/utils/theme'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { passwordSchema, firstError } from '../../src/utils/validation'
 import { PRO_FOR_ALL } from '../../src/config/features'
-import { useWelcomeStore } from '../../src/store/welcomeStore'
 
 interface Stats {
   totalSpots: number
@@ -35,26 +34,14 @@ function getInitials(name: string): string {
   return (name.trim().slice(0, 2) || '?').toUpperCase()
 }
 
-function getOtaLabel(): string | null {
-  if (Updates.isEmbeddedLaunch) return null
-  const id = Updates.updateId
-  if (!id) return null
-  return id.replace(/-/g, '').slice(0, 8)
-}
-
 export default function ProfileScreen() {
   const { session, profile, loadProfile, updateProfile, changeEmail, changePassword } = useAuthStore()
   const { isPro, checkPro } = useProStore()
-  const showWelcomeOnLaunch = useWelcomeStore(s => s.showOnLaunch)
-  const setShowWelcomeOnLaunch = useWelcomeStore(s => s.setShowOnLaunch)
   const insets = useSafeAreaInsets()
   const [stats, setStats] = useState<Stats | null>(null)
   const [purchasing, setPurchasing] = useState(false)
   const [privacySaving, setPrivacySaving] = useState(false)
   const [privacyExpanded, setPrivacyExpanded] = useState(false)
-  const [checkingUpdate, setCheckingUpdate] = useState(false)
-  const [updateStatus, setUpdateStatus] = useState<string | null>(null)
-  const otaLabel = useMemo(() => getOtaLabel(), [])
 
   // Edit profile state
   const [editMode, setEditMode] = useState(false)
@@ -235,28 +222,6 @@ export default function ProfileScreen() {
     const { error } = await updateProfile({ [field]: value })
     if (error) Alert.alert('Could not save', error)
     setPrivacySaving(false)
-  }
-
-  async function handleCheckForUpdate() {
-    setCheckingUpdate(true)
-    setUpdateStatus(null)
-    try {
-      const result = await Updates.checkForUpdateAsync()
-      if (result.isAvailable) {
-        setUpdateStatus('Downloading update…')
-        await Updates.fetchUpdateAsync()
-        setUpdateStatus('Restarting to apply update…')
-        await Updates.reloadAsync()
-      } else {
-        setUpdateStatus("You're up to date!")
-        setTimeout(() => setUpdateStatus(null), 3000)
-      }
-    } catch {
-      setUpdateStatus('Could not check for updates')
-      setTimeout(() => setUpdateStatus(null), 3000)
-    } finally {
-      setCheckingUpdate(false)
-    }
   }
 
   return (
@@ -544,71 +509,7 @@ export default function ProfileScreen() {
           )}
         </View>
 
-        {/* App section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>App</Text>
-          <View style={styles.card}>
-            <View style={[styles.accountRow, styles.accountRowBorder]}>
-              <Ionicons name="information-circle-outline" size={18} color={colors.creamMuted} />
-              <View style={styles.accountRowText}>
-                <Text style={styles.accountLabel}>TacoAtlas v{Constants.expoConfig?.version ?? '1.3.0'}</Text>
-                <Text style={styles.accountSub}>App version</Text>
-              </View>
-            </View>
-            {otaLabel ? (
-              <View style={[styles.accountRow, styles.accountRowBorder]}>
-                <Ionicons name="cloud-download-outline" size={18} color={colors.creamMuted} />
-                <View style={styles.accountRowText}>
-                  <Text style={styles.accountLabel}>OTA {otaLabel}</Text>
-                  <Text style={styles.accountSub}>
-                    Over-the-air update{Updates.createdAt ? ` · ${Updates.createdAt.toLocaleDateString()}` : ''}
-                  </Text>
-                </View>
-              </View>
-            ) : null}
-            <TouchableOpacity
-              style={[styles.accountRow, styles.accountRowBorder]}
-              onPress={handleCheckForUpdate}
-              disabled={checkingUpdate}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="refresh-outline" size={18} color={colors.creamMuted} />
-              <View style={styles.accountRowText}>
-                <Text style={styles.accountLabel}>Check for Updates</Text>
-                {updateStatus ? (
-                  <Text style={styles.accountSub}>{updateStatus}</Text>
-                ) : null}
-              </View>
-              {checkingUpdate
-                ? <ActivityIndicator size="small" color={colors.amber} />
-                : <Ionicons name="chevron-forward" size={16} color={colors.creamDim} />}
-            </TouchableOpacity>
-            {/* Quick-start guide: the same switch that's on the guide itself */}
-            <View style={[styles.accountRow, styles.accountRowBorder]}>
-              <Ionicons name="compass-outline" size={18} color={colors.creamMuted} />
-              <View style={styles.accountRowText}>
-                <Text style={styles.accountLabel}>Show Guide on Launch</Text>
-                <Text style={styles.accountSub}>The three-step how-to when you open the app</Text>
-              </View>
-              <Switch
-                value={showWelcomeOnLaunch}
-                onValueChange={setShowWelcomeOnLaunch}
-                trackColor={{ false: colors.surfaceBorder, true: colors.amberDim }}
-                thumbColor={showWelcomeOnLaunch ? colors.amber : colors.creamDim}
-                accessibilityLabel="Show the quick-start guide when the app opens"
-              />
-            </View>
-            <TouchableOpacity
-              style={styles.accountRow}
-              onPress={() => router.push('/welcome')}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="help-circle-outline" size={18} color={colors.creamMuted} />
-              <Text style={[styles.accountLabel, { flex: 1 }]}>View Quick Start</Text>
-              <Ionicons name="chevron-forward" size={16} color={colors.creamDim} />
-            </TouchableOpacity>
-          </View>
-        </View>
+        <AppSection />
 
         {/* Founder tools — only rendered for admin accounts */}
         {profile?.is_admin && (
@@ -842,6 +743,7 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
+  ...settingsStyles,
   container: { flex: 1, backgroundColor: colors.bg },
   content: { paddingHorizontal: spacing.md, paddingBottom: 100 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.lg },
@@ -924,15 +826,7 @@ const styles = StyleSheet.create({
   upgradeBtn: { backgroundColor: colors.amber, borderRadius: radius.full, paddingVertical: 10, alignItems: 'center' },
   upgradeBtnText: { color: colors.cream, fontWeight: '700', fontSize: 14 },
 
-  section: { marginBottom: spacing.md },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },
-  sectionTitle: { fontSize: 11, fontWeight: '700', color: colors.creamDim, letterSpacing: 1, textTransform: 'uppercase', marginBottom: spacing.sm },
-  card: { backgroundColor: colors.surface, borderRadius: radius.md, paddingHorizontal: spacing.md, borderWidth: 1, borderColor: colors.surfaceBorder },
-  accountRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm + 2 },
-  accountRowBorder: { borderBottomWidth: 1, borderBottomColor: colors.surfaceBorder },
-  accountRowText: { flex: 1 },
-  accountLabel: { fontSize: 14, color: colors.cream },
-  accountSub: { fontSize: 11, color: colors.creamMuted, marginTop: 2 },
   changeBtn: { paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: radius.full, borderWidth: 1, borderColor: colors.amberDim, backgroundColor: colors.amberSubtle },
   changeBtnText: { fontSize: 12, color: colors.amber, fontWeight: '700' },
 
