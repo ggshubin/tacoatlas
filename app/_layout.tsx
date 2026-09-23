@@ -245,6 +245,7 @@ export default function RootLayout() {
         <Stack.Screen name="mi-gente/add" options={{ headerShown: false }} />
         <Stack.Screen name="mi-gente/friend/[username]" options={{ headerShown: false }} />
         <Stack.Screen name="mi-gente/map/[username]" options={{ headerShown: false }} />
+        <Stack.Screen name="announcements" options={{ headerShown: false }} />
       </Stack>
       {ready && <RestorePromptModal />}
       {ready && <ProPrivacyReminderModal
