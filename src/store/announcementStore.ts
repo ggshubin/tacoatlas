@@ -29,9 +29,8 @@ interface AnnouncementState {
 // server set. This must never block the feed from loading: a local id for an
 // announcement that has since been deleted would otherwise fail the upsert's
 // FK on every refresh, forever. So we only attempt ids that are still present
-// in the just-fetched feed, and swallow any failure (it will simply retry on
-// the next refresh, since local ids are only cleared once the merge attempt
-// finishes running, success or failure).
+// in the just-fetched feed, and swallow any failure. Local ids are cleared only
+// after a successful merge, so a failed attempt retries on the next refresh.
 async function mergeLocalReads(userId: string, knownIds: ReadonlySet<string>): Promise<void> {
   try {
     const local = (await getLocalReadIds()).filter(id => knownIds.has(id))
