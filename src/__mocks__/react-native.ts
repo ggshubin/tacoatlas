@@ -5,8 +5,12 @@ export const View = React.forwardRef((props: any, ref: any) =>
 )
 View.displayName = 'View'
 
+// Host type name must be 'Text' (not an arbitrary string like 'span'): this
+// runs under testEnvironment 'node' via react-test-renderer, not jsdom, so
+// there's no real DOM semantics here. @testing-library/react-native's
+// getByText only matches host elements whose type is 'Text' or 'RCTText'.
 export const Text = React.forwardRef((props: any, ref: any) =>
-  React.createElement('span', { ...props, ref })
+  React.createElement('Text', { ...props, ref })
 )
 Text.displayName = 'Text'
 
