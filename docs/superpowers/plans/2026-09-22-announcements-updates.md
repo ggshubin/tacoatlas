@@ -175,7 +175,7 @@ grant all on _r to authenticated, anon;
 insert into public.announcements (id, title, body, published_at, created_by)
 select '00000000-0000-0000-0000-00000000000d', 'Draft', 'draft body', null, id from public.profiles where is_admin limit 1;
 insert into public.announcements (id, title, body, published_at, created_by)
-select '00000000-0000-0000-0000-00000000000s', 'Sent', 'sent body', now() - interval '1 minute', id from public.profiles where is_admin limit 1;
+select '00000000-0000-0000-0000-00000000000e', 'Sent', 'sent body', now() - interval '1 minute', id from public.profiles where is_admin limit 1;
 
 -- ── as a NON-admin ──
 do $$ declare uid uuid; begin
@@ -189,14 +189,14 @@ do $$ declare uid uuid := current_setting('test.uid')::uuid; n int; begin
   insert into _r values ('non-admin sees only sent', case when n = 1 then 'ok' else 'BAD: ' || n end);
   begin insert into public.announcements (title, body) values ('x', 'y'); insert into _r values ('non-admin insert', 'ALLOWED (BAD)');
   exception when others then insert into _r values ('non-admin insert', 'blocked'); end;
-  update public.announcements set title = 'hacked' where id = '00000000-0000-0000-0000-00000000000s';
+  update public.announcements set title = 'hacked' where id = '00000000-0000-0000-0000-00000000000e';
   get diagnostics n = row_count; insert into _r values ('non-admin update', case when n = 0 then 'blocked' else 'ALLOWED (BAD)' end);
-  delete from public.announcements where id = '00000000-0000-0000-0000-00000000000s';
+  delete from public.announcements where id = '00000000-0000-0000-0000-00000000000e';
   get diagnostics n = row_count; insert into _r values ('non-admin delete', case when n = 0 then 'blocked' else 'ALLOWED (BAD)' end);
-  insert into public.announcement_reads (announcement_id) values ('00000000-0000-0000-0000-00000000000s');
+  insert into public.announcement_reads (announcement_id) values ('00000000-0000-0000-0000-00000000000e');
   insert into _r values ('non-admin mark read', 'ok');
   begin insert into public.announcement_reads (user_id, announcement_id)
-    select id, '00000000-0000-0000-0000-00000000000s' from public.profiles where id <> uid limit 1;
+    select id, '00000000-0000-0000-0000-00000000000e' from public.profiles where id <> uid limit 1;
     insert into _r values ('mark read for someone else', 'ALLOWED (BAD)');
   exception when others then insert into _r values ('mark read for someone else', 'blocked'); end;
 end $$;
@@ -223,7 +223,7 @@ do $$ declare n int; begin
   insert into _r values ('admin insert', 'ok');
   update public.announcements set published_at = now() where id = '00000000-0000-0000-0000-00000000000d';
   get diagnostics n = row_count; insert into _r values ('admin send', case when n = 1 then 'ok' else 'BAD' end);
-  delete from public.announcements where id = '00000000-0000-0000-0000-00000000000s';
+  delete from public.announcements where id = '00000000-0000-0000-0000-00000000000e';
   get diagnostics n = row_count; insert into _r values ('admin delete (cascades reads)', case when n = 1 then 'ok' else 'BAD' end);
 end $$;
 reset role;
