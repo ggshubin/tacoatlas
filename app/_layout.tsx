@@ -22,6 +22,8 @@ import { shouldShowProPrivacyReminder, getReminderShown, setReminderShown } from
 import { useAnnouncementStore } from '../src/store/announcementStore'
 import { viewerFromSession } from '../src/utils/announcementViewer'
 import { useAppForeground } from '../src/hooks/useAppForeground'
+import { useUpdateStore } from '../src/store/updateStore'
+import { UpdateReadyPrompt } from '../src/components/UpdateReadyPrompt'
 
 MapboxGL.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN ?? '')
 
@@ -221,9 +223,16 @@ export default function RootLayout() {
     if (ready) useAnnouncementStore.getState().refresh(viewerFromSession(session))
   }, [ready, userId])
 
+  // OTA update check: once at launch/sign-in, and again on every return to
+  // the foreground (the store throttles unforced checks to 30 min).
+  useEffect(() => {
+    if (ready && userId) useUpdateStore.getState().check()
+  }, [ready, userId])
+
   useAppForeground(() => {
     if (!ready) return
     useAnnouncementStore.getState().refresh(viewerFromSession(useAuthStore.getState().session))
+    if (useAuthStore.getState().session) useUpdateStore.getState().check()
   })
 
   // Fonts are bundled locally so this resolves in a frame or two; if loading
@@ -250,6 +259,7 @@ export default function RootLayout() {
         <Stack.Screen name="admin/announcement-edit" options={{ headerShown: false }} />
       </Stack>
       {ready && <RestorePromptModal />}
+      {ready && <UpdateReadyPrompt />}
       {ready && <ProPrivacyReminderModal
         visible={privacyReminderCount !== null}
         spotCount={privacyReminderCount ?? 0}
