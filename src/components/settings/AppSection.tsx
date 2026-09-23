@@ -1,12 +1,12 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { View, Text, TouchableOpacity, Switch, ActivityIndicator, Alert, StyleSheet } from 'react-native'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { settingsStyles as s } from './settingsStyles'
 import { useWelcomeStore } from '../../store/welcomeStore'
-import { useUpdateStore } from '../../store/updateStore'
+import { useUpdateStore, updatesActive } from '../../store/updateStore'
 import { useAnnouncementStore, selectUnreadCount } from '../../store/announcementStore'
-import { getVersionLabel, getOtaLabel } from '../../services/appVersion'
+import { getVersionLabel, getOtaLabel, getOtaSubtitle } from '../../services/appVersion'
 import { updateStatusLabel } from '../../utils/updatePrompt'
 import { colors, radius } from '../../utils/theme'
 
@@ -17,10 +17,20 @@ export function AppSection() {
   const unreadCount = useAnnouncementStore(selectUnreadCount)
   const versionLabel = useMemo(getVersionLabel, [])
   const otaLabel = useMemo(getOtaLabel, [])
+  const otaSubtitle = useMemo(getOtaSubtitle, [])
+  const [manualCheck, setManualCheck] = useState(false)
   const busy = updateStatus === 'checking' || updateStatus === 'downloading'
-  const statusText = updateStatusLabel(updateStatus)
+  // A stale 'error' from a background check is not worth surfacing unless
+  // the user just asked us to check, or they'll see a scary label for no
+  // reason they triggered themselves.
+  const statusText = updateStatus === 'error' && !manualCheck ? null : updateStatusLabel(updateStatus)
 
   async function onUpdatePress() {
+    setManualCheck(true)
+    if (!updatesActive()) {
+      Alert.alert('Updates unavailable', 'Updates only run in store builds.')
+      return
+    }
     const { status, check, restart } = useUpdateStore.getState()
     if (status === 'ready') {
       const ok = await restart()
@@ -46,11 +56,17 @@ export function AppSection() {
             <Ionicons name="cloud-download-outline" size={18} color={colors.creamMuted} />
             <View style={s.accountRowText}>
               <Text style={s.accountLabel}>OTA {otaLabel}</Text>
-              <Text style={s.accountSub}>Over-the-air update</Text>
+              <Text style={s.accountSub}>{otaSubtitle}</Text>
             </View>
           </View>
         ) : null}
-        <TouchableOpacity style={[s.accountRow, s.accountRowBorder]} onPress={onUpdatePress} disabled={busy} activeOpacity={0.7}>
+        <TouchableOpacity
+          style={[s.accountRow, s.accountRowBorder]}
+          onPress={onUpdatePress}
+          disabled={busy}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+        >
           <Ionicons name="refresh-outline" size={18} color={colors.creamMuted} />
           <View style={s.accountRowText}>
             <Text style={s.accountLabel}>Check for Updates</Text>
@@ -60,14 +76,25 @@ export function AppSection() {
             ? <ActivityIndicator size="small" color={colors.amber} />
             : <Ionicons name="chevron-forward" size={16} color={colors.creamDim} />}
         </TouchableOpacity>
-        <TouchableOpacity style={[s.accountRow, s.accountRowBorder]} onPress={() => router.push('/announcements')} activeOpacity={0.7}>
+        <TouchableOpacity
+          style={[s.accountRow, s.accountRowBorder]}
+          onPress={() => router.push('/announcements')}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+        >
           <Ionicons name="megaphone-outline" size={18} color={colors.creamMuted} />
           <View style={s.accountRowText}>
             <Text style={s.accountLabel}>Announcements</Text>
             <Text style={s.accountSub}>{unreadCount > 0 ? `${unreadCount} unread` : 'News from the TacoAtlas team'}</Text>
           </View>
           {unreadCount > 0 ? (
-            <View style={styles.count}><Text style={styles.countText}>{unreadCount}</Text></View>
+            <View
+              style={styles.count}
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+            >
+              <Text style={styles.countText}>{unreadCount}</Text>
+            </View>
           ) : null}
           <Ionicons name="chevron-forward" size={16} color={colors.creamDim} />
         </TouchableOpacity>
@@ -85,7 +112,12 @@ export function AppSection() {
             accessibilityLabel="Show the quick-start guide when the app opens"
           />
         </View>
-        <TouchableOpacity style={s.accountRow} onPress={() => router.push('/welcome')} activeOpacity={0.7}>
+        <TouchableOpacity
+          style={s.accountRow}
+          onPress={() => router.push('/welcome')}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+        >
           <Ionicons name="help-circle-outline" size={18} color={colors.creamMuted} />
           <Text style={[s.accountLabel, { flex: 1 }]}>View Quick Start</Text>
           <Ionicons name="chevron-forward" size={16} color={colors.creamDim} />

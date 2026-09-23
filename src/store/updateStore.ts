@@ -7,7 +7,7 @@ const CHECK_TIMEOUT_MS = 30_000
 const FETCH_TIMEOUT_MS = 120_000
 
 // expo-updates is a no-op in dev and Expo Go; skip the network entirely.
-function updatesActive(): boolean {
+export function updatesActive(): boolean {
   const isDev = typeof __DEV__ !== 'undefined' && __DEV__
   return Updates.isEnabled && !isDev
 }

@@ -14,3 +14,8 @@ export function formatVersionLabel(
 export function shortUpdateId(updateId: string | null): string | null {
   return updateId ? updateId.replace(/-/g, '').slice(0, 8) : null
 }
+
+export function formatOtaSubtitle(createdAt: Date | null): string {
+  if (!createdAt) return 'Over-the-air update'
+  return `Over-the-air update · ${createdAt.toLocaleDateString()}`
+}

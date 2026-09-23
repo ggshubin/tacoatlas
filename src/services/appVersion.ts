@@ -1,9 +1,11 @@
 import Constants from 'expo-constants'
 import * as Updates from 'expo-updates'
-import { formatVersionLabel, shortUpdateId } from '../utils/version'
+import { formatVersionLabel, shortUpdateId, formatOtaSubtitle } from '../utils/version'
 
-// expo-application is required lazily: if a binary were ever built without
-// it, the import would throw at startup. Here it only costs the build number.
+// expo-application is required lazily so a native module problem only
+// breaks this Settings row, not app startup: expo-notifications already
+// imports expo-application at top level, so this isn't guarding a
+// startup crash, just isolating the failure to the build-number lookup.
 function readNativeVersion(): { version: string | null; build: string | null } {
   try {
     const Application = require('expo-application') as typeof import('expo-application')
@@ -23,4 +25,8 @@ export function getVersionLabel(): string {
 export function getOtaLabel(): string | null {
   if (Updates.isEmbeddedLaunch) return null
   return shortUpdateId(Updates.updateId)
+}
+
+export function getOtaSubtitle(): string {
+  return formatOtaSubtitle(Updates.createdAt ?? null)
 }

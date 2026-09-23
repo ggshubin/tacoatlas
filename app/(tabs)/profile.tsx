@@ -743,6 +743,7 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
+  // Keys defined below override any same-named key from settingsStyles.
   ...settingsStyles,
   container: { flex: 1, backgroundColor: colors.bg },
   content: { paddingHorizontal: spacing.md, paddingBottom: 100 },

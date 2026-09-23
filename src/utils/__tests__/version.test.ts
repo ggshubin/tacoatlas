@@ -1,4 +1,4 @@
-import { formatVersionLabel, shortUpdateId } from '../version'
+import { formatVersionLabel, shortUpdateId, formatOtaSubtitle } from '../version'
 
 describe('formatVersionLabel', () => {
   it('version and build', () => {
@@ -21,5 +21,14 @@ describe('shortUpdateId', () => {
   })
   it('null for null', () => {
     expect(shortUpdateId(null)).toBeNull()
+  })
+})
+
+describe('formatOtaSubtitle', () => {
+  it('no date when createdAt is null', () => {
+    expect(formatOtaSubtitle(null)).toBe('Over-the-air update')
+  })
+  it('includes the date when createdAt is present', () => {
+    expect(formatOtaSubtitle(new Date('2026-01-15'))).toContain('Over-the-air update · ')
   })
 })
