@@ -49,6 +49,8 @@ export default function AnnouncementsScreen() {
         accessibilityRole="button"
         accessibilityState={{ expanded }}
         accessibilityLabel={`${unread ? 'Unread. ' : ''}${item.title}`}
+        accessibilityActions={[{ name: 'toggleRead', label: unread ? 'Mark as read' : 'Mark as unread' }]}
+        onAccessibilityAction={() => setRead(item.id, unread)}
       >
         <View style={styles.rowHeader}>
           <View style={[styles.dot, !unread && styles.dotHidden]} />
@@ -60,7 +62,12 @@ export default function AnnouncementsScreen() {
         {expanded && (
           <View style={styles.expanded}>
             <Text style={styles.body}>{item.body}</Text>
-            <TouchableOpacity onPress={() => setRead(item.id, unread)} hitSlop={8}>
+            <TouchableOpacity
+              onPress={() => setRead(item.id, unread)}
+              hitSlop={12}
+              accessibilityRole="button"
+              style={styles.toggleTouchable}
+            >
               <Text style={styles.toggle}>{unread ? 'Mark as read' : 'Mark as unread'}</Text>
             </TouchableOpacity>
           </View>
@@ -72,22 +79,26 @@ export default function AnnouncementsScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={12} accessibilityLabel="Back">
-          <Ionicons name="chevron-back" size={24} color={colors.cream} />
-        </TouchableOpacity>
-        <Text style={styles.heading}>Announcements</Text>
-        {unreadCount > 0 ? (
-          <TouchableOpacity onPress={markAllRead} hitSlop={8}>
-            <Text style={styles.markAll}>Mark all read</Text>
+        <View style={styles.headerSlotLeft}>
+          <TouchableOpacity onPress={() => router.back()} hitSlop={12} accessibilityLabel="Back">
+            <Ionicons name="chevron-back" size={24} color={colors.cream} />
           </TouchableOpacity>
-        ) : <View style={{ width: 24 }} />}
+        </View>
+        <Text style={styles.heading}>Announcements</Text>
+        <View style={styles.headerSlotRight}>
+          {unreadCount > 0 && (
+            <TouchableOpacity onPress={markAllRead} hitSlop={12} accessibilityRole="button" style={styles.markAllTouchable}>
+              <Text style={styles.markAll}>Mark all read</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
       <FlatList
         data={sorted}
         keyExtractor={a => a.id}
         renderItem={renderItem}
         contentContainerStyle={{ padding: spacing.md, paddingBottom: insets.bottom + spacing.lg }}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        ItemSeparatorComponent={Separator}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.amber} />}
         ListEmptyComponent={<Text style={styles.empty}>No announcements yet.</Text>}
       />
@@ -95,13 +106,20 @@ export default function AnnouncementsScreen() {
   )
 }
 
+function Separator() {
+  return <View style={styles.separator} />
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
   },
-  heading: { fontFamily: fonts.display, fontSize: 20, color: colors.cream },
+  headerSlotLeft: { width: 96, alignItems: 'flex-start' },
+  headerSlotRight: { width: 96, alignItems: 'flex-end' },
+  heading: { flex: 1, fontFamily: fonts.display, fontSize: 20, color: colors.cream, textAlign: 'center' },
+  markAllTouchable: { minHeight: 44, justifyContent: 'center' },
   markAll: { fontSize: 13, fontWeight: '600', color: colors.amber },
   row: { backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: colors.surfaceBorder },
   rowHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
@@ -112,6 +130,7 @@ const styles = StyleSheet.create({
   date: { fontSize: 11, color: colors.creamDim },
   expanded: { marginTop: spacing.sm, paddingLeft: 16, gap: spacing.sm },
   body: { fontSize: 14, lineHeight: 20, color: colors.cream },
+  toggleTouchable: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' },
   toggle: { fontSize: 12, fontWeight: '600', color: colors.amber },
   separator: { height: spacing.sm },
   empty: { textAlign: 'center', color: colors.creamDim, marginTop: spacing.xl },

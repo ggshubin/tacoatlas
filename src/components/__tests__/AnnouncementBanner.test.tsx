@@ -34,6 +34,13 @@ it('open and dismiss pass the id', () => {
   expect(onDismiss).toHaveBeenCalledWith('a1')
 })
 
+it('open button has an accessibility hint', () => {
+  const { getByTestId } = render(
+    <AnnouncementBanner announcement={A} bottomOffset={60} onOpen={jest.fn()} onDismiss={jest.fn()} />
+  )
+  expect(getByTestId('announcement-banner-open').props.accessibilityHint).toBe('Opens announcements')
+})
+
 it('inline preview is not absolutely positioned', () => {
   const { getByTestId } = render(
     <AnnouncementBanner announcement={A} inline onOpen={jest.fn()} onDismiss={jest.fn()} />

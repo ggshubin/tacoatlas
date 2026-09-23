@@ -28,13 +28,15 @@ export function AnnouncementBanner({
         onPress={() => onOpen(announcement.id)}
         activeOpacity={0.8}
         accessibilityRole="button"
-        accessibilityLabel={`Announcement: ${announcement.title}. Open`}
+        accessibilityLabel={announcement.title}
+        accessibilityHint="Opens announcements"
       >
         <Ionicons name="megaphone-outline" size={18} color={colors.amber} />
         <Text style={styles.title} numberOfLines={1}>{announcement.title}</Text>
       </TouchableOpacity>
       <TouchableOpacity
         testID="announcement-banner-dismiss"
+        style={styles.dismiss}
         onPress={() => onDismiss(announcement.id)}
         hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         accessibilityRole="button"
@@ -55,7 +57,6 @@ const styles = StyleSheet.create({
     borderColor: colors.amberDim,
     borderWidth: 1,
     borderRadius: radius.md,
-    paddingVertical: spacing.sm + 2,
     paddingHorizontal: spacing.md,
   },
   floating: {
@@ -68,6 +69,14 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 6,
   },
-  open: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  open: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    minHeight: 44,
+    paddingVertical: spacing.xs,
+  },
+  dismiss: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   title: { flex: 1, fontSize: 14, fontWeight: '600', color: colors.cream },
 })
