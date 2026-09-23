@@ -4,6 +4,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 // announcement_reads and cleared on sign-in by announcementStore.
 const KEY = 'announcements:read_ids'
 
+// First-seen timestamp for a signed-out device, used as the unread cutoff so
+// a new user never sees a backlog of older announcements as unread.
+const SINCE_KEY = 'announcements:since'
+
 export async function getLocalReadIds(): Promise<string[]> {
   try {
     const raw = await AsyncStorage.getItem(KEY)
@@ -23,4 +27,17 @@ export async function setLocalReadIds(ids: readonly string[]): Promise<void> {
 
 export async function clearLocalReadIds(): Promise<void> {
   await AsyncStorage.removeItem(KEY)
+}
+
+export async function getOrCreateLocalSince(): Promise<string> {
+  try {
+    const stored = await AsyncStorage.getItem(SINCE_KEY)
+    if (stored !== null && !Number.isNaN(Date.parse(stored))) return stored
+    const now = new Date().toISOString()
+    await AsyncStorage.setItem(SINCE_KEY, now)
+    return now
+  } catch (e: unknown) {
+    console.warn('[announcements] local since unavailable, using now:', e)
+    return new Date().toISOString()
+  }
 }

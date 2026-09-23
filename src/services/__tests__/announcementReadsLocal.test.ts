@@ -1,5 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { getLocalReadIds, setLocalReadIds, clearLocalReadIds } from '../announcementReadsLocal'
+import {
+  getLocalReadIds, setLocalReadIds, clearLocalReadIds, getOrCreateLocalSince,
+} from '../announcementReadsLocal'
 
 beforeEach(async () => {
   await AsyncStorage.clear()
@@ -32,4 +34,34 @@ it('clears', async () => {
   await setLocalReadIds(['a'])
   await clearLocalReadIds()
   await expect(getLocalReadIds()).resolves.toEqual([])
+})
+
+describe('getOrCreateLocalSince', () => {
+  it('creates and stores a since timestamp when none exists', async () => {
+    const since = await getOrCreateLocalSince()
+    expect(new Date(since).toISOString()).toBe(since)
+    await expect(AsyncStorage.getItem('announcements:since')).resolves.toBe(since)
+  })
+
+  it('reuses a previously stored since timestamp', async () => {
+    const first = await getOrCreateLocalSince()
+    const second = await getOrCreateLocalSince()
+    expect(second).toBe(first)
+  })
+
+  it('replaces an invalid stored value with a fresh timestamp', async () => {
+    await AsyncStorage.setItem('announcements:since', 'not-a-date')
+    const since = await getOrCreateLocalSince()
+    expect(new Date(since).toISOString()).toBe(since)
+    await expect(AsyncStorage.getItem('announcements:since')).resolves.toBe(since)
+  })
+
+  it('warns and returns now without throwing on storage errors', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {})
+    jest.spyOn(AsyncStorage, 'getItem').mockRejectedValueOnce(new Error('boom'))
+    const since = await getOrCreateLocalSince()
+    expect(new Date(since).toISOString()).toBe(since)
+    expect(warn).toHaveBeenCalled()
+    warn.mockRestore()
+  })
 })

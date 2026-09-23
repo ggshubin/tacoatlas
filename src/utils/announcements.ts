@@ -17,9 +17,25 @@ export function sortNewestFirst(items: readonly Announcement[]): Announcement[] 
 export function unreadOf(
   items: readonly Announcement[],
   readIds: readonly string[],
+  since: string | null = null,
 ): Announcement[] {
   const read = new Set(readIds)
-  return sortNewestFirst(items.filter(a => isPublished(a) && !read.has(a.id)))
+  return sortNewestFirst(items.filter(a => (
+    isPublished(a)
+    && !read.has(a.id)
+    && (since === null || Date.parse(a.publishedAt as string) >= Date.parse(since))
+  )))
+}
+
+// True when an item should render as read: either it has an explicit read
+// receipt, or it was published before the viewer joined (no backlog for new
+// users). A draft (publishedAt null) is never considered read by `since`.
+export function isRead(
+  a: Announcement,
+  readIds: ReadonlySet<string>,
+  since: string | null,
+): boolean {
+  return readIds.has(a.id) || (since !== null && a.publishedAt !== null && Date.parse(a.publishedAt) < Date.parse(since))
 }
 
 export function validateDraft(title: string, body: string): string | null {

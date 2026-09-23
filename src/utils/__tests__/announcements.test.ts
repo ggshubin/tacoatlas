@@ -1,5 +1,5 @@
 import {
-  isPublished, sortNewestFirst, unreadOf, validateDraft,
+  isPublished, isRead, sortNewestFirst, unreadOf, validateDraft,
 } from '../announcements'
 import type { Announcement } from '../../types/announcement'
 
@@ -41,6 +41,49 @@ describe('unreadOf', () => {
   })
   it('is empty when everything is read', () => {
     expect(unreadOf([make('a', '2026-09-10T00:00:00Z')], ['a'])).toEqual([])
+  })
+
+  it('excludes items published before since', () => {
+    const items = [
+      make('before', '2026-09-10T00:00:00Z'),
+      make('after', '2026-09-20T00:00:00Z'),
+    ]
+    expect(unreadOf(items, [], '2026-09-15T00:00:00Z').map(a => a.id)).toEqual(['after'])
+  })
+
+  it('includes an item published exactly at since', () => {
+    const items = [make('at', '2026-09-15T00:00:00Z')]
+    expect(unreadOf(items, [], '2026-09-15T00:00:00Z').map(a => a.id)).toEqual(['at'])
+  })
+
+  it('behaves as before when since is null', () => {
+    const items = [make('old', '2026-09-01T00:00:00Z')]
+    expect(unreadOf(items, [], null).map(a => a.id)).toEqual(['old'])
+  })
+})
+
+describe('isRead', () => {
+  it('is true when the id is in readIds', () => {
+    expect(isRead(make('a', '2026-09-10T00:00:00Z'), new Set(['a']), null)).toBe(true)
+  })
+
+  it('is false when unread and since is null', () => {
+    expect(isRead(make('a', '2026-09-10T00:00:00Z'), new Set(), null)).toBe(false)
+  })
+
+  it('is true when published before since, even if not in readIds', () => {
+    const a = make('a', '2026-09-10T00:00:00Z')
+    expect(isRead(a, new Set(), '2026-09-15T00:00:00Z')).toBe(true)
+  })
+
+  it('is false when published at or after since and not in readIds', () => {
+    const a = make('a', '2026-09-20T00:00:00Z')
+    expect(isRead(a, new Set(), '2026-09-15T00:00:00Z')).toBe(false)
+  })
+
+  it('is false for a draft (publishedAt null) that is not in readIds, even with a since', () => {
+    const a = make('a', null)
+    expect(isRead(a, new Set(), '2026-09-15T00:00:00Z')).toBe(false)
   })
 })
 

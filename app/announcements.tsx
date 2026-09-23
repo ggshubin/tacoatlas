@@ -5,7 +5,8 @@ import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAnnouncementStore, selectUnreadCount } from '../src/store/announcementStore'
 import { useAuthStore } from '../src/store/authStore'
-import { sortNewestFirst } from '../src/utils/announcements'
+import { isRead, sortNewestFirst } from '../src/utils/announcements'
+import { viewerFromSession } from '../src/utils/announcementViewer'
 import type { Announcement } from '../src/types/announcement'
 import { colors, spacing, radius, fonts } from '../src/utils/theme'
 
@@ -18,6 +19,7 @@ export default function AnnouncementsScreen() {
   const { id: openId } = useLocalSearchParams<{ id?: string }>()
   const items = useAnnouncementStore(s => s.items)
   const readIds = useAnnouncementStore(s => s.readIds)
+  const since = useAnnouncementStore(s => s.since)
   const unreadCount = useAnnouncementStore(selectUnreadCount)
   const { setRead, markAllRead, refresh } = useAnnouncementStore.getState()
   const [expandedId, setExpandedId] = useState<string | null>(openId ?? null)
@@ -28,7 +30,7 @@ export default function AnnouncementsScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true)
-    await refresh(useAuthStore.getState().session?.user.id ?? null, { force: true })
+    await refresh(viewerFromSession(useAuthStore.getState().session), { force: true })
     setRefreshing(false)
   }, [refresh])
 
@@ -39,7 +41,7 @@ export default function AnnouncementsScreen() {
   }
 
   function renderItem({ item }: { item: Announcement }) {
-    const unread = !readSet.has(item.id)
+    const unread = !isRead(item, readSet, since)
     const expanded = expandedId === item.id
     return (
       <TouchableOpacity

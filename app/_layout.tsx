@@ -20,6 +20,7 @@ import { ProPrivacyReminderModal } from '../src/components/ProPrivacyReminderMod
 import { parseAuthFragment } from '../src/utils/authLinking'
 import { shouldShowProPrivacyReminder, getReminderShown, setReminderShown } from '../src/utils/proPrivacyReminder'
 import { useAnnouncementStore } from '../src/store/announcementStore'
+import { viewerFromSession } from '../src/utils/announcementViewer'
 import { useAppForeground } from '../src/hooks/useAppForeground'
 
 MapboxGL.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN ?? '')
@@ -217,13 +218,12 @@ export default function RootLayout() {
   // every return to the foreground (store throttles to 5 min).
   const userId = session?.user.id ?? null
   useEffect(() => {
-    if (ready) useAnnouncementStore.getState().refresh(userId)
+    if (ready) useAnnouncementStore.getState().refresh(viewerFromSession(session))
   }, [ready, userId])
 
   useAppForeground(() => {
     if (!ready) return
-    const currentUserId = useAuthStore.getState().session?.user.id ?? null
-    useAnnouncementStore.getState().refresh(currentUserId)
+    useAnnouncementStore.getState().refresh(viewerFromSession(useAuthStore.getState().session))
   })
 
   // Fonts are bundled locally so this resolves in a frame or two; if loading

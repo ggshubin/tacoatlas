@@ -1,11 +1,12 @@
 import { create } from 'zustand'
 import type { Announcement } from '../types/announcement'
 import { unreadOf } from '../utils/announcements'
+import type { AnnouncementViewer } from '../utils/announcementViewer'
 import {
   fetchPublished, fetchReadIds, markRead, markUnread,
 } from '../services/announcementService'
 import {
-  getLocalReadIds, setLocalReadIds, clearLocalReadIds,
+  getLocalReadIds, setLocalReadIds, clearLocalReadIds, getOrCreateLocalSince,
 } from '../services/announcementReadsLocal'
 
 const REFRESH_THROTTLE_MS = 5 * 60 * 1000
@@ -19,8 +20,9 @@ interface AnnouncementState {
   items: Announcement[]
   readIds: string[]
   userId: string | null
+  since: string | null
   lastRefreshAt: number
-  refresh: (userId: string | null, opts?: { force?: boolean }) => Promise<void>
+  refresh: (viewer: AnnouncementViewer | null, opts?: { force?: boolean }) => Promise<void>
   setRead: (id: string, read: boolean) => Promise<void>
   markAllRead: () => Promise<void>
 }
@@ -83,9 +85,11 @@ export const useAnnouncementStore = create<AnnouncementState>((set, get) => {
     items: [],
     readIds: [],
     userId: null,
+    since: null,
     lastRefreshAt: 0,
 
-    async refresh(userId, opts = {}) {
+    async refresh(viewer, opts = {}) {
+      const userId = viewer?.id ?? null
       const { userId: current, lastRefreshAt } = get()
       const fresh = Date.now() - lastRefreshAt < REFRESH_THROTTLE_MS
       if (!opts.force && userId === current && fresh) return
@@ -95,8 +99,11 @@ export const useAnnouncementStore = create<AnnouncementState>((set, get) => {
         if (token !== latestRefresh) return
         if (userId) await mergeLocalReads(userId, new Set(items.map(a => a.id)))
         const readIds = userId ? await fetchReadIds() : await getLocalReadIds()
+        const since = viewer ? viewer.joinedAt : await getOrCreateLocalSince()
         if (token !== latestRefresh) return
-        set({ items, readIds, userId, lastRefreshAt: Date.now() })
+        set({
+          items, readIds, userId, since, lastRefreshAt: Date.now(),
+        })
       } catch (e: unknown) {
         console.warn('[announcements] refresh failed:', e)
       }
@@ -105,8 +112,8 @@ export const useAnnouncementStore = create<AnnouncementState>((set, get) => {
     setRead: (id, read) => applyReads([id], read),
 
     markAllRead: () => {
-      const { items, readIds } = get()
-      return applyReads(unreadOf(items, readIds).map(a => a.id), true)
+      const { items, readIds, since } = get()
+      return applyReads(unreadOf(items, readIds, since).map(a => a.id), true)
     },
   }
 })
@@ -114,7 +121,7 @@ export const useAnnouncementStore = create<AnnouncementState>((set, get) => {
 // Selectors return primitives or existing references (Zustand v5 re-renders
 // forever on a fresh array per call).
 export const selectUnreadCount = (s: AnnouncementState): number =>
-  unreadOf(s.items, s.readIds).length
+  unreadOf(s.items, s.readIds, s.since).length
 
 export const selectLatestUnread = (s: AnnouncementState): Announcement | null =>
-  unreadOf(s.items, s.readIds)[0] ?? null
+  unreadOf(s.items, s.readIds, s.since)[0] ?? null
