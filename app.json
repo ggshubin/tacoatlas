@@ -68,7 +68,6 @@
         "android.permission.RECORD_AUDIO"
       ],
       "package": "com.tacooatlas.app",
-      "versionCode": 2,
       "navigationBar": {
         "visible": "immersive",
         "backgroundColor": "#18140F",
