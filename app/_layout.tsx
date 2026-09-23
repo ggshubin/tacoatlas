@@ -221,6 +221,7 @@ export default function RootLayout() {
   }, [ready, userId])
 
   useAppForeground(() => {
+    if (!ready) return
     const currentUserId = useAuthStore.getState().session?.user.id ?? null
     useAnnouncementStore.getState().refresh(currentUserId)
   })

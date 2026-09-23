@@ -39,6 +39,10 @@ beforeEach(() => {
   loc.clearLocalReadIds.mockResolvedValue()
 })
 
+afterEach(() => {
+  jest.restoreAllMocks()
+})
+
 const state = () => useAnnouncementStore.getState()
 
 describe('refresh', () => {
@@ -80,6 +84,52 @@ describe('refresh', () => {
     jest.spyOn(console, 'warn').mockImplementation(() => {})
     await state().refresh('u1', { force: true })
     expect(state().items).toEqual([A])
+  })
+
+  it('still loads the feed when merging a local read to the server fails', async () => {
+    loc.getLocalReadIds.mockResolvedValue(['a'])
+    svc.fetchReadIds.mockResolvedValue(['a', 'b'])
+    svc.markRead.mockRejectedValue(new Error('fk violation'))
+    jest.spyOn(console, 'warn').mockImplementation(() => {})
+    await state().refresh('u1')
+    expect(state().items).toEqual([A, B])
+    expect(state().readIds).toEqual(['a', 'b'])
+  })
+
+  it('still loads the feed when clearing local reads after a merge fails', async () => {
+    loc.getLocalReadIds.mockResolvedValue(['a'])
+    svc.fetchReadIds.mockResolvedValue(['a', 'b'])
+    loc.clearLocalReadIds.mockRejectedValue(new Error('storage error'))
+    jest.spyOn(console, 'warn').mockImplementation(() => {})
+    await state().refresh('u1')
+    expect(state().items).toEqual([A, B])
+    expect(state().readIds).toEqual(['a', 'b'])
+  })
+
+  it('drops a local read id no longer present in the feed but still clears local storage', async () => {
+    loc.getLocalReadIds.mockResolvedValue(['deleted-id'])
+    svc.fetchReadIds.mockResolvedValue([])
+    await state().refresh('u1')
+    expect(svc.markRead).not.toHaveBeenCalled()
+    expect(loc.clearLocalReadIds).toHaveBeenCalled()
+  })
+
+  it('ignores a stale refresh response that resolves after a newer one', async () => {
+    let resolveFirst: (items: Announcement[]) => void = () => {}
+    const firstPromise = new Promise<Announcement[]>((resolve) => { resolveFirst = resolve })
+    svc.fetchPublished
+      .mockImplementationOnce(() => firstPromise)
+      .mockImplementationOnce(async () => [B])
+    svc.fetchReadIds.mockResolvedValue(['b'])
+
+    const firstRefresh = state().refresh('u1')
+    const secondRefresh = state().refresh('u2', { force: true })
+    await secondRefresh
+    resolveFirst([A])
+    await firstRefresh
+
+    expect(state().userId).toBe('u2')
+    expect(state().items).toEqual([B])
   })
 })
 
@@ -129,13 +179,45 @@ describe('setRead', () => {
     await state().setRead('a', true)
     expect(svc.markRead).not.toHaveBeenCalled()
   })
+
+  it('rolls back a failed mark-unread by re-adding the id', async () => {
+    useAnnouncementStore.setState({ items: [A], readIds: ['a'], userId: 'u1' })
+    svc.markUnread.mockRejectedValue(new Error('nope'))
+    jest.spyOn(console, 'warn').mockImplementation(() => {})
+    await state().setRead('a', false)
+    expect(state().readIds).toEqual(['a'])
+  })
+
+  it('keeps a later successful write after an earlier overlapping write fails', async () => {
+    useAnnouncementStore.setState({ items: [A, B], userId: 'u1' })
+    let rejectFirst: (e: Error) => void = () => {}
+    svc.markRead
+      .mockImplementationOnce(() => new Promise((_resolve, reject) => { rejectFirst = reject }))
+      .mockImplementationOnce(() => Promise.resolve())
+    jest.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const firstWrite = state().setRead('a', true)
+    const secondWrite = state().setRead('b', true)
+    await secondWrite
+    rejectFirst(new Error('nope'))
+    await firstWrite
+
+    expect(state().readIds).toEqual(['b'])
+  })
 })
 
 describe('markAllRead', () => {
   it('marks every unread item in one write', async () => {
     useAnnouncementStore.setState({ items: [A, B], userId: 'u1' })
     await state().markAllRead()
+    // unreadOf sorts newest-first, so B ('b', published 09-21) precedes A.
     expect(svc.markRead).toHaveBeenCalledWith('u1', ['b', 'a'])
     expect(selectUnreadCount(state())).toBe(0)
+  })
+
+  it('signed out: writes all ids to local storage', async () => {
+    useAnnouncementStore.setState({ items: [A, B] })
+    await state().markAllRead()
+    expect(loc.setLocalReadIds).toHaveBeenCalledWith(['b', 'a'])
   })
 })
