@@ -11,8 +11,8 @@ function load(isEnabled = true) {
   jest.isolateModules(() => {
     updates = {
       isEnabled,
-      checkForUpdateAsync: jest.fn(async () => ({ isAvailable: true })),
-      fetchUpdateAsync: jest.fn(async () => ({ isNew: true })),
+      checkForUpdateAsync: jest.fn(async () => ({ isAvailable: true, isRollBackToEmbedded: false })),
+      fetchUpdateAsync: jest.fn(async () => ({ isNew: true, isRollBackToEmbedded: false })),
       reloadAsync: jest.fn(async () => undefined),
     }
     jest.doMock('expo-updates', () => updates)
@@ -22,6 +22,7 @@ function load(isEnabled = true) {
 }
 
 beforeEach(() => jest.spyOn(console, 'warn').mockImplementation(() => {}))
+afterEach(() => jest.restoreAllMocks())
 
 it('does nothing when expo-updates is disabled (dev / Expo Go)', async () => {
   const { store, updates } = load(false)
@@ -39,7 +40,7 @@ it('checks, downloads, and becomes ready', async () => {
 
 it('reports up to date when nothing is available', async () => {
   const { store, updates } = load()
-  updates.checkForUpdateAsync.mockResolvedValueOnce({ isAvailable: false })
+  updates.checkForUpdateAsync.mockResolvedValueOnce({ isAvailable: false, isRollBackToEmbedded: false })
   await store.getState().check()
   expect(updates.fetchUpdateAsync).not.toHaveBeenCalled()
   expect(store.getState().status).toBe('upToDate')
@@ -47,7 +48,7 @@ it('reports up to date when nothing is available', async () => {
 
 it('throttles unforced checks for 30 minutes', async () => {
   const { store, updates } = load()
-  updates.checkForUpdateAsync.mockResolvedValue({ isAvailable: false })
+  updates.checkForUpdateAsync.mockResolvedValue({ isAvailable: false, isRollBackToEmbedded: false })
   await store.getState().check()
   await store.getState().check()
   expect(updates.checkForUpdateAsync).toHaveBeenCalledTimes(1)
@@ -70,6 +71,7 @@ it('a forced check while ready re-shows the prompt instead of re-downloading', a
   await store.getState().check({ force: true })
   expect(updates.checkForUpdateAsync).toHaveBeenCalledTimes(1)
   expect(store.getState().dismissed).toBe(false)
+  expect(store.getState().status).toBe('ready')
 })
 
 it('restart reloads and reports failure', async () => {
@@ -77,4 +79,71 @@ it('restart reloads and reports failure', async () => {
   await expect(store.getState().restart()).resolves.toBe(true)
   updates.reloadAsync.mockRejectedValueOnce(new Error('nope'))
   await expect(store.getState().restart()).resolves.toBe(false)
+})
+
+describe('rollback to embedded', () => {
+  it('treats a rollback check result as an available update and becomes ready', async () => {
+    const { store, updates } = load()
+    updates.checkForUpdateAsync.mockResolvedValueOnce({
+      isAvailable: false,
+      isRollBackToEmbedded: true,
+      manifest: undefined,
+      reason: undefined,
+    })
+    updates.fetchUpdateAsync.mockResolvedValueOnce({
+      isNew: false,
+      isRollBackToEmbedded: true,
+      manifest: undefined,
+    })
+    await store.getState().check()
+    expect(updates.fetchUpdateAsync).toHaveBeenCalled()
+    expect(store.getState().status).toBe('ready')
+  })
+
+  it('a non-rollback fetch that is not new stays up to date', async () => {
+    const { store, updates } = load()
+    updates.fetchUpdateAsync.mockResolvedValueOnce({
+      isNew: false,
+      isRollBackToEmbedded: false,
+      manifest: undefined,
+    })
+    await store.getState().check()
+    expect(store.getState().status).toBe('upToDate')
+  })
+})
+
+it('an in-flight check is not duplicated by a concurrent call', async () => {
+  const { store, updates } = load()
+  await Promise.all([store.getState().check(), store.getState().check()])
+  expect(updates.checkForUpdateAsync).toHaveBeenCalledTimes(1)
+})
+
+describe('stuck update checks', () => {
+  afterEach(() => jest.useRealTimers())
+
+  it('times out a stuck check and reports error, clearing timers', async () => {
+    jest.useFakeTimers()
+    const { store, updates } = load()
+    updates.checkForUpdateAsync.mockImplementation(() => new Promise(() => {}))
+
+    const checkPromise = store.getState().check()
+    await jest.advanceTimersByTimeAsync(30_000)
+    await checkPromise
+
+    expect(store.getState().status).toBe('error')
+    expect(jest.getTimerCount()).toBe(0)
+  })
+
+  it('times out a stuck fetch and reports error, clearing timers', async () => {
+    jest.useFakeTimers()
+    const { store, updates } = load()
+    updates.fetchUpdateAsync.mockImplementation(() => new Promise(() => {}))
+
+    const checkPromise = store.getState().check()
+    await jest.advanceTimersByTimeAsync(120_000)
+    await checkPromise
+
+    expect(store.getState().status).toBe('error')
+    expect(jest.getTimerCount()).toBe(0)
+  })
 })

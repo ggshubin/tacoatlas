@@ -21,7 +21,9 @@ export function shouldShowUpdatePrompt(input: {
   dismissed: boolean
   signedIn: boolean
   pathname: string
+  blocked?: boolean
 }): boolean {
+  if (input.blocked) return false
   if (!input.signedIn || input.dismissed || input.status !== 'ready') return false
   return !BUSY_ROUTE_PREFIXES.some(prefix => input.pathname.startsWith(prefix))
 }

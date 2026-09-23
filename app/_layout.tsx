@@ -73,6 +73,7 @@ let restoreCheckDone = false
 
 export default function RootLayout() {
   const { session, setSession, loadProfile, setHasCompletedOnboarding, setShowRestorePrompt } = useAuthStore()
+  const showRestorePrompt = useAuthStore(s => s.showRestorePrompt)
   const { checkPro, isPro } = useProStore()
   const { setPendingFriendCount } = useNotificationStore()
   const hydrateWelcome = useWelcomeStore(s => s.hydrate)
@@ -259,7 +260,7 @@ export default function RootLayout() {
         <Stack.Screen name="admin/announcement-edit" options={{ headerShown: false }} />
       </Stack>
       {ready && <RestorePromptModal />}
-      {ready && <UpdateReadyPrompt />}
+      {ready && <UpdateReadyPrompt blocked={showRestorePrompt || privacyReminderCount !== null} />}
       {ready && <ProPrivacyReminderModal
         visible={privacyReminderCount !== null}
         spotCount={privacyReminderCount ?? 0}

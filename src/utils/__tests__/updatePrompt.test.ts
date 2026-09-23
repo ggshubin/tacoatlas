@@ -31,4 +31,10 @@ describe('shouldShowUpdatePrompt', () => {
   it.each(['/review/add', '/pin/add'])('waits while %s is open', pathname => {
     expect(shouldShowUpdatePrompt({ ...base, pathname })).toBe(false)
   })
+  it('hides when another modal is blocking (stacked-modal guard)', () => {
+    expect(shouldShowUpdatePrompt({ ...base, blocked: true })).toBe(false)
+  })
+  it('shows when not blocked', () => {
+    expect(shouldShowUpdatePrompt({ ...base, blocked: false })).toBe(true)
+  })
 })
