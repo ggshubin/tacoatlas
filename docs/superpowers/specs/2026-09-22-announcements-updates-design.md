@@ -62,11 +62,11 @@ All new files. `app/(tabs)/profile.tsx` (974 lines, over the 800 cap) gets its A
 | `src/services/announcementReadsLocal.ts` | AsyncStorage read-set for signed-out users; `mergeIntoRemote()` on sign-in. | AsyncStorage |
 | `src/store/announcementStore.ts` | Zustand: `items`, `readIds`, derived `unreadCount`, `latestUnread`; `refresh()`, `setRead(id, bool)`, `markAllRead()`. Optimistic updates with rollback on error. | both services |
 | `src/components/AnnouncementBanner.tsx` | Floating card just above the tab bar on tab screens (not at the top: the Atlas map owns its top edge). Shows `latestUnread.title`. Tap → `/announcements?id=` and marks read. × marks read. Hidden when `unreadCount === 0`. | store |
-| `app/announcements.tsx` | List, newest first. Unread = amber dot + bold title. Tap expands and marks read; long-press / swipe toggles read↔unread. "Mark all read" header action. | store |
+| `app/announcements.tsx` | List, newest first. Unread = amber dot + bold title. Tap expands and marks read; an inline "Mark as read / unread" button (also exposed as a screen-reader action) toggles state. "Mark all read" header action. | store |
 | `app/admin/announcements.tsx` | Founder list: all announcements with a Draft / Sent chip, newest first. "New" button. | service |
 | `app/admin/announcement-edit.tsx` | Create or edit (`?id=`). Title + body with char counters, live preview of the banner. Actions: **Save draft**, **Send** (drafts only; ConfirmModal "Send to everyone?"), **Delete** (ConfirmModal, destructive). Editing a sent announcement saves in place and does not reset anyone's read state (typo fixes stay quiet). | service |
 | `src/components/settings/AppSection.tsx` | Extracted Settings "App" card: version row, OTA row, Check for Updates, **Announcements row with unread count**, guide toggle, quick start. | store, useOtaUpdate |
-| `app/(tabs)/_layout.tsx` | Profile tab gets `tabBarBadge` dot when `unreadCount > 0` (mirrors `pendingFriendCount`). | store |
+| `app/(tabs)/_layout.tsx` | Profile tab gets a `tabBarBadge` count when `unreadCount > 0` (mirrors `pendingFriendCount`). | store |
 
 Refresh triggers: app launch (after session restore) and `AppState` → `active`, throttled to 5 min. Also on sign-in/out (read-set source switches).
 
@@ -119,3 +119,11 @@ Manual on a preview build: create draft (not visible on a second non-admin accou
 
 - `expo-application` autolinked transitively is **probably** in vc52; confirmed only by running the preview build. If not, the version row falls back to `Constants.expoConfig.version` without the build number until the next store build.
 - OTA popup reaches existing installs only once this code itself ships (via OTA or store).
+
+## Decisions made during implementation (2026-09-22)
+
+- **Server-stamped send time.** A trigger sets `published_at = now()` on send and locks it afterwards (migration `20260922000002`). The client never compares `published_at` to its own clock.
+- **No backlog for new users.** Only announcements published at or after the viewer's join time count as unread (banner, badge, Settings count). Join time = `session.user.created_at` when signed in, else a first-seen timestamp stored on the device. Older announcements still show in the list, styled as read.
+- **Best-effort read merge.** Merging signed-out reads into the account never blocks the feed; only ids still in the feed are merged, then local reads are cleared.
+- **Jest ignores `.claude/`.** Real suite size is 31 suites / 187 tests at the end of Task 10; earlier baselines counted worktree copies.
+
