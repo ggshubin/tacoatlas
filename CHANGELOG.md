@@ -6,7 +6,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/) loosely. Android 
 
 Maintenance rule: when a production build is cut, add its entry here in the same commit/session.
 
-## 1.3.2 (2026-09-22)
+## 1.3.2 (53) (2026-09-22)
 
 ### Added
 - **Announcements** in Settings, with a banner for anything new and read/unread per item. New users aren't shown older announcements as unread.
@@ -22,6 +22,7 @@ Maintenance rule: when a production build is cut, add its entry here in the same
 - Tables `announcements` and `announcement_reads` with admin-only writes; send time is stamped by the server.
 - `npm run release:store` / `npm run release:ota`. `version` in app.json changes only on store releases.
 - Jest now ignores `.claude/` worktree copies; the real suite is 36 suites (earlier counts included duplicates).
+- AAB: https://expo.dev/artifacts/eas/83PO1YU3DI05jQrN1v3bU60l5b5kT1uDeCPw3T2x8AQ.aab (EAS build `d82df163-47f7-4e2d-beca-44ae6d48c24b`, runtime 1.3.2). OTA updates for this release must target runtime 1.3.2; vc52 testers (runtime 1.3.1) get it via Play.
 
 ## versionCode 52 — 2026-09-08 (rebuild for fresh version code)
 
