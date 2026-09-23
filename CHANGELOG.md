@@ -6,7 +6,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/) loosely. Android 
 
 Maintenance rule: when a production build is cut, add its entry here in the same commit/session.
 
-## Unreleased
+## 1.3.2 (2026-09-22)
 
 ### Added
 - **Announcements** in Settings, with a banner for anything new and read/unread per item. New users aren't shown older announcements as unread.
