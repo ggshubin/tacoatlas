@@ -19,6 +19,8 @@ import { RestorePromptModal } from '../src/components/RestorePromptModal'
 import { ProPrivacyReminderModal } from '../src/components/ProPrivacyReminderModal'
 import { parseAuthFragment } from '../src/utils/authLinking'
 import { shouldShowProPrivacyReminder, getReminderShown, setReminderShown } from '../src/utils/proPrivacyReminder'
+import { useAnnouncementStore } from '../src/store/announcementStore'
+import { useAppForeground } from '../src/hooks/useAppForeground'
 
 MapboxGL.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN ?? '')
 
@@ -209,6 +211,19 @@ export default function RootLayout() {
     }
     maybeShowReminder()
   }, [isPro])
+
+  // Announcements: load once the app is ready, again whenever the signed-in
+  // user changes (read receipts switch between local and server), and on
+  // every return to the foreground (store throttles to 5 min).
+  const userId = session?.user.id ?? null
+  useEffect(() => {
+    if (ready) useAnnouncementStore.getState().refresh(userId)
+  }, [ready, userId])
+
+  useAppForeground(() => {
+    const currentUserId = useAuthStore.getState().session?.user.id ?? null
+    useAnnouncementStore.getState().refresh(currentUserId)
+  })
 
   // Fonts are bundled locally so this resolves in a frame or two; if loading
   // somehow errors we render anyway and Text falls back to system fonts.
