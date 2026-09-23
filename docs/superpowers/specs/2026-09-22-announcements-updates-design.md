@@ -123,7 +123,12 @@ Manual on a preview build: create draft (not visible on a second non-admin accou
 ## Decisions made during implementation (2026-09-22)
 
 - **Server-stamped send time.** A trigger sets `published_at = now()` on send and locks it afterwards (migration `20260922000002`). The client never compares `published_at` to its own clock.
-- **No backlog for new users.** Only announcements published at or after the viewer's join time count as unread (banner, badge, Settings count). Join time = `session.user.created_at` when signed in, else a first-seen timestamp stored on the device. Older announcements still show in the list, styled as read.
+- **No backlog for new users.** Only announcements published at or after the viewer's join time count as unread (banner, badge, Settings count). Join time = `session.user.created_at` when signed in (server clock). Signed out, there is no clock comparison: the first signed-out refresh marks every announcement then in the feed as read on the device, and signing out re-seeds the same way. Older announcements still show in the list, styled as read.
 - **Best-effort read merge.** Merging signed-out reads into the account never blocks the feed; only ids still in the feed are merged, then local reads are cleared.
-- **Jest ignores `.claude/`.** Real suite size is 31 suites / 187 tests at the end of Task 10; earlier baselines counted worktree copies.
+- **Jest ignores `.claude/`.** Final suite: 36 suites / 262 tests; earlier baselines counted worktree copies.
+- **Shipped names differ from the module table above.** The update logic is a Zustand store (`src/store/updateStore.ts`, `check({ force })`) plus `src/components/UpdateReadyPrompt.tsx`, not a `useOtaUpdate` hook and `UpdateReadyModal`, so Settings and the root layout share one state. The release script is `scripts/release.js` + `scripts/releaseLib.js`. The sign-in merge lives in the store (`mergeLocalReads`).
+- **Rollbacks count as updates.** `eas update:roll-back-to-embedded` produces the same "ready, restart" prompt, so a bad OTA can be pulled mid-session. Native calls time out (30s check, 120s download).
+- **The update prompt waits** on `/review`, `/pin`, `/welcome`, `/onboarding`, and while the restore or Pro-privacy modals are open.
+- **Editor exit guard** uses `usePreventRemove` (blocks iOS swipe-back on the native stack). `@react-navigation/native` 7.1.33 and `expo-application` 55.0.15 are pinned to the versions already inside the vc52 binary, so the branch ships as an OTA.
+- **Release script** runs only from `main`, prints the Supabase host it will bundle against, and commits the CHANGELOG stamp only after `eas` succeeds.
 
