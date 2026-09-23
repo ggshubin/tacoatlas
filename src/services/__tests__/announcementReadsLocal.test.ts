@@ -14,9 +14,13 @@ it('round-trips ids and de-duplicates', async () => {
   await expect(getLocalReadIds()).resolves.toEqual(['a', 'b'])
 })
 
-it('returns [] for corrupt JSON instead of throwing', async () => {
+it('returns [] and resets storage for corrupt JSON instead of throwing', async () => {
+  const warn = jest.spyOn(console, 'warn').mockImplementation(() => {})
   await AsyncStorage.setItem('announcements:read_ids', '{not json')
   await expect(getLocalReadIds()).resolves.toEqual([])
+  expect(warn).toHaveBeenCalled()
+  await expect(AsyncStorage.getItem('announcements:read_ids')).resolves.toBeNull()
+  warn.mockRestore()
 })
 
 it('drops non-string entries', async () => {

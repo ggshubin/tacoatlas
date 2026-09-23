@@ -7,17 +7,12 @@ function make(id: string, publishedAt: string | null, createdAt = '2026-09-01T00
   return { id, title: `t-${id}`, body: 'b', publishedAt, createdAt, updatedAt: createdAt }
 }
 
-const NOW = Date.parse('2026-09-22T12:00:00Z')
-
 describe('isPublished', () => {
   it('is false for drafts', () => {
-    expect(isPublished(make('a', null), NOW)).toBe(false)
+    expect(isPublished(make('a', null))).toBe(false)
   })
-  it('is true once published_at has passed', () => {
-    expect(isPublished(make('a', '2026-09-22T11:00:00Z'), NOW)).toBe(true)
-  })
-  it('is false for a future published_at', () => {
-    expect(isPublished(make('a', '2026-09-23T00:00:00Z'), NOW)).toBe(false)
+  it('is true once published_at is set', () => {
+    expect(isPublished(make('a', '2026-09-22T11:00:00Z'))).toBe(true)
   })
 })
 
@@ -42,10 +37,10 @@ describe('unreadOf', () => {
       make('older', '2026-09-05T00:00:00Z'),
       make('newer', '2026-09-15T00:00:00Z'),
     ]
-    expect(unreadOf(items, ['read'], NOW).map(a => a.id)).toEqual(['newer', 'older'])
+    expect(unreadOf(items, ['read']).map(a => a.id)).toEqual(['newer', 'older'])
   })
   it('is empty when everything is read', () => {
-    expect(unreadOf([make('a', '2026-09-10T00:00:00Z')], ['a'], NOW)).toEqual([])
+    expect(unreadOf([make('a', '2026-09-10T00:00:00Z')], ['a'])).toEqual([])
   })
 })
 

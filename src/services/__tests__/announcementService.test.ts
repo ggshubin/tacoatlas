@@ -26,7 +26,7 @@ describe('fetchPublished', () => {
     const chain = respond({ data: [ROW], error: null })
     const result = await fetchPublished()
     expect(from).toHaveBeenCalledWith('announcements')
-    expect(methodsOf(chain)).toEqual(['select', 'not', 'lte', 'order', 'limit'])
+    expect(methodsOf(chain)).toEqual(['select', 'not', 'order', 'limit'])
     expect(chain.calls[1][1]).toEqual(['published_at', 'is', null])
     expect(result).toEqual([{
       id: 'a1', title: 'Hello', body: 'World',
@@ -73,27 +73,35 @@ describe('admin', () => {
     expect(chain.calls.find(([m]) => m === 'order')?.[1]).toEqual(['created_at', { ascending: false }])
   })
   it('fetchById returns null when missing', async () => {
-    respond({ data: null, error: null })
+    const chain = respond({ data: null, error: null })
     await expect(fetchById('nope')).resolves.toBeNull()
+    expect(methodsOf(chain)).toEqual(['select', 'eq', 'maybeSingle'])
   })
   it('createDraft inserts trimmed text with no published_at', async () => {
     const chain = respond({ data: { ...ROW, published_at: null }, error: null })
     const created = await createDraft({ title: '  Hi ', body: ' there ' })
+    expect(methodsOf(chain)).toEqual(['insert', 'select', 'single'])
     expect(chain.calls[0]).toEqual(['insert', [{ title: 'Hi', body: 'there' }]])
     expect(created.publishedAt).toBeNull()
   })
-  it('updateAnnouncement updates title and body by id', async () => {
+  it('updateAnnouncement updates trimmed title and body by id', async () => {
     const chain = respond({ data: ROW, error: null })
-    await updateAnnouncement('a1', { title: 'T', body: 'B' })
+    await updateAnnouncement('a1', { title: ' T ', body: ' B ' })
+    expect(methodsOf(chain)).toEqual(['update', 'eq', 'select', 'single'])
     expect(chain.calls[0]).toEqual(['update', [{ title: 'T', body: 'B' }]])
     expect(chain.calls[1]).toEqual(['eq', ['id', 'a1']])
   })
   it('sendAnnouncement sets published_at only on drafts', async () => {
     const chain = respond({ data: ROW, error: null })
     await sendAnnouncement('a1')
+    expect(methodsOf(chain)).toEqual(['update', 'eq', 'is', 'select', 'maybeSingle'])
     const [, [payload]] = chain.calls[0] as [string, [{ published_at: string }]]
     expect(typeof payload.published_at).toBe('string')
     expect(chain.calls[2]).toEqual(['is', ['published_at', null]])
+  })
+  it('sendAnnouncement rejects when already sent', async () => {
+    respond({ data: null, error: null })
+    await expect(sendAnnouncement('a1')).rejects.toThrow('Already sent, or you no longer have access.')
   })
   it('deleteAnnouncement deletes by id', async () => {
     const chain = respond({ error: null })

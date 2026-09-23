@@ -12,6 +12,7 @@ export async function getLocalReadIds(): Promise<string[]> {
     return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string') : []
   } catch (e: unknown) {
     console.warn('[announcements] local read ids unreadable, resetting:', e)
+    await AsyncStorage.removeItem(KEY).catch(() => {})
     return []
   }
 }

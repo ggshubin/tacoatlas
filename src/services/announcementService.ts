@@ -37,20 +37,19 @@ function clean(input: AnnouncementInput): AnnouncementInput {
   return { title: input.title.trim(), body: input.body.trim() }
 }
 
-function fail(error: { message: string } | null): void {
+function fail(error: { message: string } | null): asserts error is null {
   if (error) throw new Error(error.message)
 }
 
 // ── Everyone ──
 
 export async function fetchPublished(): Promise<Announcement[]> {
-  // RLS already hides drafts from non-admins; the filter keeps an admin's own
-  // feed (and banner) free of drafts too.
+  // Drafts are hidden from non-admins by RLS; the not-null filter here keeps
+  // an admin's own feed (and banner) free of drafts too.
   const { data, error } = await supabase
     .from('announcements')
     .select(COLUMNS)
     .not('published_at', 'is', null)
-    .lte('published_at', new Date().toISOString())
     .order('published_at', { ascending: false })
     .limit(FEED_LIMIT)
   fail(error)
@@ -58,6 +57,8 @@ export async function fetchPublished(): Promise<Announcement[]> {
 }
 
 export async function fetchReadIds(): Promise<string[]> {
+  // RLS scopes rows to the caller; only call this with a session, since anon
+  // has no grant on announcement_reads.
   const { data, error } = await supabase.from('announcement_reads').select('announcement_id')
   fail(error)
   return ((data ?? []) as { announcement_id: string }[]).map(r => r.announcement_id)
@@ -124,16 +125,19 @@ export async function updateAnnouncement(id: string, input: AnnouncementInput): 
 }
 
 export async function sendAnnouncement(id: string): Promise<Announcement> {
+  // Any non-null value here means "send"; a trigger overwrites it with the
+  // server's now() on write, so the client's timestamp is never trusted.
   // `.is('published_at', null)` makes a double-tap harmless: the second send
-  // matches no row and .single() errors instead of re-stamping the time.
+  // matches no row, so `data` comes back null instead of re-stamping the time.
   const { data, error } = await supabase
     .from('announcements')
     .update({ published_at: new Date().toISOString() })
     .eq('id', id)
     .is('published_at', null)
     .select(COLUMNS)
-    .single()
+    .maybeSingle()
   fail(error)
+  if (!data) throw new Error('Already sent, or you no longer have access.')
   return toAnnouncement(data as AnnouncementRow)
 }
 

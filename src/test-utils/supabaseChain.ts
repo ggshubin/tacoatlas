@@ -16,7 +16,9 @@ export interface Chain {
 export function supabaseChain(result: ChainResult): Chain {
   const calls: RecordedCall[] = []
   const builder: Chain = new Proxy({ calls } as Chain, {
-    get(target, prop: string) {
+    get(target, prop: string | symbol) {
+      if (typeof prop === 'symbol') return undefined
+      if (prop === 'asymmetricMatch' || prop === 'toJSON' || prop === '$$typeof') return undefined
       if (prop === 'calls') return target.calls
       if (prop === 'then') {
         return (resolve: (v: ChainResult) => unknown, reject: (e: unknown) => unknown) =>

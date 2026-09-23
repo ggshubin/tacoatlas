@@ -2,8 +2,8 @@ import {
   ANNOUNCEMENT_BODY_MAX, ANNOUNCEMENT_TITLE_MAX, type Announcement,
 } from '../types/announcement'
 
-export function isPublished(a: Announcement, now: number = Date.now()): boolean {
-  return a.publishedAt !== null && Date.parse(a.publishedAt) <= now
+export function isPublished(a: Announcement): boolean {
+  return a.publishedAt !== null
 }
 
 function sortKey(a: Announcement): number {
@@ -17,10 +17,9 @@ export function sortNewestFirst(items: readonly Announcement[]): Announcement[] 
 export function unreadOf(
   items: readonly Announcement[],
   readIds: readonly string[],
-  now: number = Date.now(),
 ): Announcement[] {
   const read = new Set(readIds)
-  return sortNewestFirst(items.filter(a => isPublished(a, now) && !read.has(a.id)))
+  return sortNewestFirst(items.filter(a => isPublished(a) && !read.has(a.id)))
 }
 
 export function validateDraft(title: string, body: string): string | null {
