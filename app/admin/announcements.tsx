@@ -74,7 +74,7 @@ export default function FounderAnnouncementsScreen() {
           ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load() }} tintColor={colors.amber} />}
           ListHeaderComponent={error ? <Text style={styles.error}>{error}</Text> : null}
-          ListEmptyComponent={<Text style={[styles.muted, { textAlign: 'center', marginTop: spacing.xl }]}>No announcements yet. Tap + to write one.</Text>}
+          ListEmptyComponent={error ? null : <Text style={[styles.muted, { textAlign: 'center', marginTop: spacing.xl }]}>No announcements yet. Tap + to write one.</Text>}
           renderItem={({ item }) => {
             const sent = item.publishedAt !== null
             const status = sent ? `Sent ${new Date(item.publishedAt!).toLocaleDateString()}` : `Edited ${new Date(item.updatedAt).toLocaleDateString()}`

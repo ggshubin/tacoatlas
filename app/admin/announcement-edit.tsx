@@ -4,6 +4,7 @@ import {
   Alert, ScrollView, KeyboardAvoidingView, Platform,
 } from 'react-native'
 import { router, useLocalSearchParams, useNavigation } from 'expo-router'
+import { usePreventRemove, type NavigationAction } from '@react-navigation/native'
 import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAuthStore } from '../../src/store/authStore'
@@ -37,10 +38,12 @@ export default function AnnouncementEditScreen() {
   const [loading, setLoading] = useState(Boolean(paramId))
   const [busy, setBusy] = useState(false)
   const [pending, setPending] = useState<Pending>(null)
-  const [leaveAction, setLeaveAction] = useState<unknown>(null)
-  // Set right before re-dispatching a confirmed discard, so the guard below
-  // (which may still hold a stale `dirty`) lets that navigation through.
-  const allowLeave = useRef(false)
+  const [leaveAction, setLeaveAction] = useState<NavigationAction | null>(null)
+  // Set right before re-dispatching a confirmed discard (or before a save/send/delete
+  // that navigates away on purpose), so usePreventRemove lets that navigation through
+  // even while `dirty` is still true.
+  const leavingRef = useRef(false)
+  const busyRef = useRef(false)
 
   const dirty = title !== (saved?.title ?? '') || body !== (saved?.body ?? '')
   const isSent = saved?.publishedAt != null
@@ -50,23 +53,27 @@ export default function AnnouncementEditScreen() {
     if (!paramId) return
     fetchById(paramId)
       .then(a => {
-        if (!a) { Alert.alert('Not found', 'This announcement was deleted.'); router.back(); return }
+        if (!a) {
+          Alert.alert('Not found', 'This announcement was deleted.')
+          leavingRef.current = true
+          router.back()
+          return
+        }
         setSaved(a); setTitle(a.title); setBody(a.body)
       })
-      .catch((e: unknown) => Alert.alert('Could not load', e instanceof Error ? e.message : String(e)))
+      .catch((e: unknown) => {
+        Alert.alert('Could not load', e instanceof Error ? e.message : String(e))
+        leavingRef.current = true
+        router.back()
+      })
       .finally(() => setLoading(false))
   }, [paramId])
 
-  // Guard back navigation when there are unsaved edits.
-  useEffect(() => {
-    const unsub = navigation.addListener('beforeRemove', (e: { preventDefault: () => void; data: { action: unknown } }) => {
-      if (!dirty || busy || allowLeave.current) return
-      e.preventDefault()
-      setLeaveAction(e.data.action)
-      setPending('discard')
-    })
-    return unsub
-  }, [navigation, dirty, busy])
+  // Guard back navigation (including iOS swipe-back) when there are unsaved edits.
+  usePreventRemove(dirty && !busy && !leavingRef.current, ({ data }) => {
+    setLeaveAction(data.action)
+    setPending('discard')
+  })
 
   async function persist(): Promise<Announcement> {
     const input = { title, body }
@@ -76,12 +83,15 @@ export default function AnnouncementEditScreen() {
   }
 
   async function run(action: () => Promise<void>, failTitle: string) {
+    if (busyRef.current) return
+    busyRef.current = true
     setBusy(true)
     try {
       await action()
     } catch (e: unknown) {
       Alert.alert(failTitle, e instanceof Error ? e.message : String(e))
     } finally {
+      busyRef.current = false
       setBusy(false)
     }
   }
@@ -96,6 +106,7 @@ export default function AnnouncementEditScreen() {
     const draft = dirty || !saved ? await persist() : saved
     await sendAnnouncement(draft.id)
     await refreshFeed()
+    leavingRef.current = true
     router.back()
   }, 'Could not send')
 
@@ -103,7 +114,7 @@ export default function AnnouncementEditScreen() {
     setPending(null)
     if (saved) await deleteAnnouncement(saved.id)
     await refreshFeed()
-    setTitle(''); setBody(''); setSaved(null)
+    leavingRef.current = true
     router.back()
   }, 'Could not delete')
 
@@ -162,6 +173,7 @@ export default function AnnouncementEditScreen() {
             placeholder="New map styles are live"
             placeholderTextColor={colors.creamDim}
             maxLength={ANNOUNCEMENT_TITLE_MAX + 20}
+            editable={!busy}
           />
         </View>
         <View>
@@ -177,12 +189,18 @@ export default function AnnouncementEditScreen() {
             placeholderTextColor={colors.creamDim}
             multiline
             textAlignVertical="top"
+            maxLength={ANNOUNCEMENT_BODY_MAX + 50}
+            editable={!busy}
           />
         </View>
 
         <Text style={styles.label}>Banner preview</Text>
         {preview
-          ? <AnnouncementBanner announcement={preview} inline onOpen={() => {}} onDismiss={() => {}} />
+          ? (
+            <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+              <AnnouncementBanner announcement={preview} inline onOpen={() => {}} onDismiss={() => {}} />
+            </View>
+          )
           : <Text style={styles.muted}>Add a title to see the banner.</Text>}
 
         {isSent && <Text style={styles.muted}>Already sent. Saving updates it in place without marking it unread for anyone.</Text>}
@@ -236,11 +254,9 @@ export default function AnnouncementEditScreen() {
         confirmLabel="Discard"
         destructive
         onConfirm={() => {
+          leavingRef.current = true
           setPending(null)
-          setTitle(saved?.title ?? ''); setBody(saved?.body ?? '')
-          // Re-dispatch the navigation the user asked for, now that it's clean.
-          allowLeave.current = true
-          if (leaveAction) navigation.dispatch(leaveAction as Parameters<typeof navigation.dispatch>[0])
+          if (leaveAction) navigation.dispatch(leaveAction)
         }}
         onCancel={() => setPending(null)}
       />
