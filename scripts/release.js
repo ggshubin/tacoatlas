@@ -9,6 +9,8 @@ const fs = require('fs')
 const path = require('path')
 const lib = require('./releaseLib')
 
+// Local master is the release line (origin/main is a stale, diverged branch).
+const RELEASE_BRANCH = 'master'
 const root = path.resolve(__dirname, '..')
 const appJsonPath = path.join(root, 'app.json')
 const changelogPath = path.join(root, 'CHANGELOG.md')
@@ -47,7 +49,7 @@ function currentBranch() {
 function main() {
   const { mode, level, dryRun } = lib.parseArgs(process.argv.slice(2))
 
-  if (!dryRun && currentBranch() !== 'main') throw new Error('Releases must run from main.')
+  if (!dryRun && currentBranch() !== RELEASE_BRANCH) throw new Error(`Releases must run from ${RELEASE_BRANCH}.`)
 
   const dirty = execSync('git status --porcelain', { cwd: root }).toString().trim()
   if (dirty && !dryRun) throw new Error('Working tree is not clean. Commit or stash first.')
