@@ -62,7 +62,7 @@
       "<rootDir>/jest.setup.js"
     ],
     "modulePathIgnorePatterns": [
-      "<rootDir>/\\.claude/worktrees/.*/src/__mocks__/"
+      "<rootDir>/.claude/"
     ],
     "transform": {
       "^.+\\.tsx?$": [
@@ -103,6 +103,10 @@
     },
     "transformIgnorePatterns": [
       "node_modules/(?!(react-native|expo-router|expo-status-bar|expo|expo-camera|expo-image-picker|expo-location|expo-updates|@rnmapbox)/)"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "<rootDir>/.claude/"
     ]
   },
   "private": true
