@@ -628,6 +628,18 @@ export default function ProfileScreen() {
                 <Ionicons name="chevron-forward" size={16} color={colors.creamDim} />
               </TouchableOpacity>
               <TouchableOpacity
+                style={[styles.accountRow, styles.accountRowBorder]}
+                onPress={() => router.push('/admin/announcements')}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="megaphone-outline" size={18} color={colors.amber} />
+                <View style={styles.accountRowText}>
+                  <Text style={styles.accountLabel}>Announcements</Text>
+                  <Text style={styles.accountSub}>Write, send, edit and delete</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={colors.creamDim} />
+              </TouchableOpacity>
+              <TouchableOpacity
                 style={styles.accountRow}
                 onPress={() => router.push('/admin')}
                 activeOpacity={0.7}
