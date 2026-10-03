@@ -11,6 +11,16 @@
     { "source": "/admin", "destination": "/admin.html" },
     { "source": "/terms", "destination": "/terms.html" },
     { "source": "/privacy", "destination": "/privacy.html" },
-    { "source": "/auth/confirm", "destination": "/auth/confirm.html" }
+    { "source": "/auth/confirm", "destination": "/auth/confirm.html" },
+    { "source": "/hunt", "destination": "/hunt.html" }
+  ],
+  "headers": [
+    {
+      "source": "/hunt(.html)?",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow" },
+        { "key": "Referrer-Policy", "value": "strict-origin" }
+      ]
+    }
   ]
 }
