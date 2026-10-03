@@ -5,3 +5,8 @@ node_modules/
 dist/
 build/
 *.log
+
+# Taco Hunt raw data: private (TikTok handles, DM notes). Repo is public.
+docs/taco-hunt/*.json
+docs/taco-hunt/*.sql
+.DS_Store

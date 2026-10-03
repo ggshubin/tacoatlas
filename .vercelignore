@@ -1,0 +1,4 @@
+# Not part of the site: never deploy
+docs/
+scripts/
+.env*
