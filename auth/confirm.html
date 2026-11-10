@@ -84,6 +84,7 @@
       transition: opacity 0.15s;
     }
     .btn-primary:hover { opacity: 0.88; }
+    .btn-primary[hidden] { display: none; }
 
     .btn-secondary {
       display: inline-block;
@@ -137,14 +138,13 @@
 </head>
 <body>
   <div class="card">
-    <span class="icon">📱</span>
-    <h1>Open this on your phone</h1>
-    <p class="subtitle">
-      This link is meant to be opened in the TacoAtlas app.<br />
-      Please open it on the phone where you have TacoAtlas installed.
+    <span id="status-icon" class="icon">📱</span>
+    <h1 id="status-title">Open TacoAtlas on your phone</h1>
+    <p id="status-body" class="subtitle">
+      Use the TacoAtlas app on your phone to sign in.
     </p>
 
-    <a id="deep-link-btn" class="btn-primary" href="#">
+    <a id="deep-link-btn" class="btn-primary" href="#" hidden>
       Open in TacoAtlas App
     </a>
 
@@ -160,8 +160,6 @@
     <hr class="divider" />
 
     <p class="help">
-      If your link has expired, open the app and request a new one from the
-      sign-in screen.<br /><br />
       Questions? Email us at
       <a href="mailto:hello@tacoatlas.app">hello@tacoatlas.app</a>
     </p>
@@ -170,30 +168,52 @@
   <p class="wordmark">TacoAtlas</p>
 
   <script>
-    // Build the deep link from whatever params/hash came in
-    var search = window.location.search;   // ?token_hash=...&type=...
-    var hash   = window.location.hash;     // #access_token=...
+    // Supabase verifies the email first, then redirects here with the result
+    // in the URL fragment: tokens on success, error fields on failure.
+    var APP_LINK = 'tacooatlas://atlas';
+    var fragment = window.location.hash;
+    var params = new URLSearchParams(fragment.slice(1));
+    var hasError = params.has('error') || params.has('error_code');
+    var hasTokens = params.has('access_token') && params.has('refresh_token');
+    var isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-    // Prefer query-string params (PKCE token_hash flow);
-    // fall back to hash params (implicit flow)
-    var deepLink;
-    if (search) {
-      deepLink = 'tacoatlas://auth/confirm' + search;
-    } else if (hash) {
-      // Convert #key=val to ?key=val for the deep link
-      deepLink = 'tacoatlas://auth/confirm?' + hash.slice(1);
-    } else {
-      deepLink = 'tacoatlas://auth/confirm';
+    // Keep session tokens out of the address bar and browser history.
+    if (fragment) {
+      window.history.replaceState(null, '', window.location.pathname);
     }
 
-    document.getElementById('deep-link-btn').href = deepLink;
+    function showStatus(icon, title, body) {
+      document.getElementById('status-icon').textContent = icon;
+      document.getElementById('status-title').textContent = title;
+      document.getElementById('status-body').textContent = body;
+    }
 
-    // On a mobile browser, attempt the redirect automatically.
-    // If the app isn't installed the browser will fall through and
-    // the user sees this page with the download button.
-    var isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    if (isMobile) {
+    if (hasError) {
+      showStatus(
+        '⏳',
+        'This link no longer works',
+        'It expired or was already used. If you already confirmed your email, ' +
+          'sign in to the TacoAtlas app. If not, tap Resend Email in the app ' +
+          'to get a new link.'
+      );
+    } else if (hasTokens && isMobile) {
+      showStatus(
+        '✅',
+        'Email confirmed',
+        'Opening TacoAtlas. If the app does not open, tap the button below.'
+      );
+      var deepLinkButton = document.getElementById('deep-link-btn');
+      var deepLink = APP_LINK + fragment;
+      deepLinkButton.href = deepLink;
+      deepLinkButton.hidden = false;
+      // Browsers can block this automatic attempt, so the button stays visible.
       window.location.href = deepLink;
+    } else if (hasTokens) {
+      showStatus(
+        '✅',
+        'Email confirmed',
+        'You can close this tab. Open TacoAtlas on your phone and sign in.'
+      );
     }
   </script>
 </body>
